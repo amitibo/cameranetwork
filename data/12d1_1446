@@ -1,0 +1,13 @@
+########################################################
+# Huawei E173 (Moviestar)
+#
+# Contributor: Molipha
+
+DefaultVendor= 0x12d1
+DefaultProduct=0x1446
+
+TargetVendor=  0x12d1
+TargetProduct= 0x1436
+
+MessageContent="55534243123456780000000000000011062000000100000000000000000000"
+

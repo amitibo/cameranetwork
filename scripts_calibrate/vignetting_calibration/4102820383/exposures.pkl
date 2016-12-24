@@ -1,0 +1,11 @@
+(dp1
+S'blue'
+p2
+I35
+sS'green'
+p3
+I35
+sS'red'
+p4
+I30
+s.
