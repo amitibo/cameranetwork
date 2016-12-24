@@ -1,0 +1,35 @@
+#!/bin/sh -e
+#
+# rc.local
+#
+# This script is executed at the end of each multiuser runlevel.
+# Make sure that the script will "exit 0" on success or any other
+# value on error.
+#
+# In order to enable or disable this script just change the execution
+# bits.
+#
+# By default this script does nothing.
+
+exec 2> /tmp/rc.local.log
+exec 1>&2
+set -x
+
+#dhclient -r eth0
+#dhclient eth0
+
+# The sleep is needed for the USB modem device to load.
+sleep 60
+
+# Restart the ueye deaumon just incase it malfunctions
+/etc/init.d/ueyeusbdrc force-stop
+/etc/init.d/ueyeusbdrc start
+
+# Sleep some more time to give the modem time to finish intializing
+sleep 20
+
+# Start the camera inside a screen (use 'screen -x sn_camera' to connect to camera process)
+su -l odroid -c "/usr/bin/screen -dmS sn_tunnel bash -c '/home/odroid/.local/bin/start_tunnel.py; exec bash'" &
+su -l odroid -c "/usr/bin/screen -dmS sn_camera bash -c '/home/odroid/.local/bin/start_server.py; exec bash'" &
+
+exit 0

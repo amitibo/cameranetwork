@@ -1,0 +1,918 @@
+import sys
+if sys.platform == 'win32':
+    from enaml import winutil
+
+from enaml.image import Image
+from enaml.layout.api import *
+from enaml.core.api import Include, Conditional, Looper
+from enaml.stdlib.fields import IntField, FloatField
+from enaml.widgets.api import *
+from enaml.stdlib.dialog_buttons import DialogButtonBox, DialogButton
+from enaml.stdlib.task_dialog import (TaskDialogBody, TaskDialogCommandArea,
+    TaskDialogContentArea, TaskDialogInstructionArea, TaskDialogStyleSheet)
+from enaml.stdlib.message_box import (MessageBox, about, critical, information,
+    question, warning)
+
+from extra import GradientButtonSheet
+from extra import MsgDataPopup
+from extra import SliderText
+from extra import ThumbPopup
+from settings import ConfigPopup
+
+from data_frame_table import DataFrameTable
+
+from CameraNetwork import global_settings as gs
+from CameraNetwork.mdp import MDP
+import numpy as np
+import time
+
+from PyQtWidgets import PyQtImageView
+
+
+################################################################################
+# Callback for the controller
+################################################################################
+def update_dockarea_servers(dock_area, model):
+    """Update the dockarea for new servers
+    """
+    
+    current_items = {}
+    for item in dock_area.dock_items():
+        if not item.name.startswith('camera'):
+            continue
+        item.enabled = False
+        current_items[item.server_id] = item
+        
+    previous_item = ''
+    ids_list = sorted(model.servers_dict.keys())
+    for server_id in ids_list:
+        server = model.servers_dict[server_id]
+        
+        if server_id in current_items.keys():
+            current_items[server_id].enabled = True
+            current_items[server_id].server_model = server
+            continue
+            
+        name = 'camera_%s' % server_id
+        title = 'Camera %s' % server_id
+
+        item = ServerItem(
+            dock_area,
+            name=name,
+            title=title,
+            server_model=server,
+            server_id=server_id,
+            closable=False
+        )
+        index = ids_list.index(server_id)
+        if previous_item == '':
+            dock_area.update_layout(
+                InsertDockBarItem(item=item.name, index=index))
+        else:
+            dock_area.update_layout(
+                InsertDockBarItem(item=item.name, target=previous_item, index=index))
+        previous_item = item.name
+
+
+def new_array(
+        array_views,
+        server_id,
+        img_array,
+        img_data,
+        view_index,
+        Almucantar_coords,
+        PrincipalPlane_coords):
+    """Update the dockarea with new array
+    """
+    
+    if img_array.ndim == 4:
+        img_array = np.mean(img_array, axis=3).astype(np.uint8)
+     
+    array_view = ArrayView(
+                    title=server_id,
+                    server_id=server_id,
+                    img_array=img_array,
+                    img_data=img_data,
+                    Almucantar_coords=Almucantar_coords,
+                    PrincipalPlane_coords=PrincipalPlane_coords
+                    )
+                    
+    array_views.objects.insert(view_index, array_view)
+
+    return array_view
+
+
+def clear_arrays(array_views):
+    """Clear the dockarea from all arrays
+    """
+    
+    while array_views.objects:
+        array_views.objects.pop()
+
+
+def new_thumbnail(img):
+    thumb_win = ThumbPopup(
+        img=img,
+    )
+    thumb_win.show()
+
+
+def open_settings(main_view, client_model, server_model):
+    """Open settings popup window."""
+
+    conf_win = ConfigPopup(
+        main_view,
+        client_model=client_model,
+        server_model=server_model)
+
+    conf_win.show()
+
+
+def restart_server(button, client_model, server_model):
+    if button is not None:
+        if button.text == 'Restart':
+            client_model.send_message(server_model, gs.MSG_TYPE_RESTART)
+
+
+def reboot_server(button, client_model, server_model):
+    if button is not None:
+        if button.text == 'Reboot':
+            client_model.send_message(server_model, gs.MSG_TYPE_REBOOT)
+
+
+enamldef UpdateTaskDialog(Dialog):
+    title = 'Update Camera Fimware'
+    
+    attr revisions
+    alias selected_revision: combo.selected
+    
+    TaskDialogStyleSheet:
+            pass
+    TaskDialogBody:
+        TaskDialogInstructionArea:
+            Label:
+                style_class = 'task-dialog-instructions'
+                text = 'Available Revisions'
+        TaskDialogContentArea:
+            ObjectCombo: combo:
+                items = revisions
+        TaskDialogCommandArea:
+            DialogButtonBox: bbox:
+                buttons = [
+                    DialogButton('Update', 'accept'),
+                    DialogButton('Cancel', 'reject'),
+                ]
+
+
+enamldef ImageDataPopup(PopupView):
+    foreground = 'white'
+    background = 'rgba(30, 30, 30, 0.85)'
+    window_type = 'window'
+
+    attr img_data_
+    
+    Form:
+        padding = 20
+        Label:
+            foreground = 'white'
+            text = 'Exposure [us]'
+        Field:
+            text = repr(img_data_.exposure_us)
+            read_only = True
+        Label:
+            foreground = 'white'
+            text = 'Gain'
+        Field:
+            text = repr(img_data_.gain_db)
+            read_only = True
+        Label:
+            foreground = 'white'
+            text = 'Gain Boost'
+        Field:
+            text = repr(img_data_.gain_boost)
+            read_only = True
+        Label:
+            foreground = 'white'
+            text = 'Time'
+        Field:
+            text = str(img_data_.name_time)
+            read_only = True
+
+            
+enamldef ArrayView(FlowItem):
+    alias img_array: image_widget.img_array
+    alias title : gb.title
+    alias server_id : image_widget.server_id
+    alias image_widget
+    alias epipolar_points: image_widget.epipolar_points
+    alias Almucantar_coords: image_widget.Almucantar_coords
+    alias PrincipalPlane_coords: image_widget.PrincipalPlane_coords
+    alias roi: image_widget.roi
+    alias reconstruct_flag: reconstruct_flag
+    attr img_data
+    
+    GroupBox: gb:
+        PyQtImageView: image_widget:
+            pass
+            
+        HGroup:
+            CheckBox: almucantar:
+                tool_tip = "Show the Almucantar"
+                checked := image_widget.show_almucantar
+                text = "Almucantar"
+                
+            CheckBox: principal:
+                tool_tip = "Show the PrincipalPlane"
+                checked := image_widget.show_principalplane
+                text = "PrincipalPlane"
+
+            PushButton:
+                text = 'Image Data'
+                clicked ::
+                    ImageDataPopup(img_data_=img_data).show()
+
+            CheckBox: reconstruct_flag:
+                tool_tip = "Use for reconstruction"
+                checked = True
+                text = "Reconstruct"
+        
+
+
+################################################################################
+# Panels
+################################################################################
+enamldef MainControlsPage(Page):
+    attr server_model_
+
+    HGroup: 
+        VGroup:
+            GroupBox:
+                title = 'Capture Mode'
+    
+                PushButton: pb_loop:
+                    text = 'Loop'
+                    clicked ::
+                        root_object().model.send_message(server_model_, gs.MSG_TYPE_LOOP)
+                    
+                PushButton: pb_calib:
+                    text = 'Calib Imgs'
+                    clicked :: root_object().model.send_message(server_model_, gs.MSG_TYPE_CALIB_IMGS)
+                    
+                PushButton: pb_halt:
+                    text = 'Halt'
+                    clicked :: root_object().model.send_message(server_model_, gs.MSG_TYPE_HALT)
+         
+            GroupBox:
+                title = 'SSH'
+    
+                PushButton: pb_tunnel_on:
+                    text = 'Tunnel On'
+                    clicked :: root_object().model.send_message(
+                        server_model_,
+                        gs.MSG_TYPE_TUNNEL,
+                        kwds=dict(tunnel_state=True)
+                        )
+                        
+                PushButton: pb_tunnel_off:
+                    text = 'Tunnel Off'
+                    clicked :: root_object().model.send_message(
+                        server_model_,
+                        gs.MSG_TYPE_TUNNEL,
+                        kwds=dict(tunnel_state=False)
+                        )
+                        
+                PushButton: pb_putty:
+                    text = 'Putty'
+                    clicked :: root_object().model.send_message(server_model_, gs.MSG_TYPE_TUNNEL_CHECK)
+
+                PushButton: pb_local:
+                    text = 'Local'
+                    clicked :: root_object().model.send_message(server_model_, gs.MSG_TYPE_LOCAL)
+
+        VGroup:
+            PushButton: pb_settings:
+                text = 'Settings'
+                clicked :: 
+                    root_object().model.send_message(server_model_, gs.MSG_TYPE_GET_SETTINGS)
+
+            PushButton: pb_restart:
+                text = 'Software Restart'
+                style_class = 'gradient-button gb-yellow rounded'
+                clicked ::
+                    btns = [DialogButton('Restart', 'accept'),
+                            DialogButton('Cancel', 'reject')]
+                    restart_server(
+                        warning(self, 'Restart Camera Software', 'Are you sure you want to restart the camera?', btns),
+                        root_object().model,
+                        server_model_
+                    )
+                    
+            PushButton: pb_reboot:
+                text = 'Reboot'
+                style_class = 'gradient-button gb-blue rounded'
+                clicked ::
+                    btns = [DialogButton('Reboot', 'accept'),
+                            DialogButton('Cancel', 'reject')]
+                    reboot_server(
+                        warning(self, 'Reboot Camera', 'Are you sure you want to reboot the camera?', btns),
+                        root_object().model,
+                        server_model_
+                    )
+                    
+            PushButton: pb_update:
+                text = 'Update'
+                style_class = 'gradient-button gb-red rounded'
+                clicked ::
+                    revisions = root_object().model.get_revisions_list()
+                    if revisions == []:
+                        warning(self, 'Warning', 'Your local repository is not synced with remote.\nPlease pull/push before trying to update the cameras.')
+                    else:
+                        descriptions, nodes = zip(*revisions)
+                        td = UpdateTaskDialog(
+                            self,
+                            revisions=list(descriptions)
+                        )
+                        if td.exec_():
+                            root_object().model.send_message(
+                                server_model_,
+                                gs.MSG_TYPE_UPDATE,
+                                kwds=dict(
+                                    rev=nodes[descriptions.index(td.selected_revision)]
+                                )
+                            )
+
+
+enamldef ImageControlPage(Page):
+    attr server_model_
+
+    alias settings_form
+
+    alias ff_exposure: ff_exposure.value
+    alias ff_gain: ff_gain.value
+    alias ff_gain_boost: ff_gain_boost.checked
+        
+    GroupBox:
+        title = 'Image Sample'
+
+        HGroup:
+            Form: settings_form:
+                Label:
+                    text = 'Exp[us]:'
+                IntField: ff_exposure:
+                    minimum = 0
+                    value = 500
+                Label:
+                    text = 'Gain[%]:'
+                IntField: ff_gain:
+                    minimum = 0
+                    maximum = 100
+                    value = 0
+                Label:
+                    text = 'Gain Boost:'
+                CheckBox: ff_gain_boost:
+                    pass
+                Label:
+                    text = 'Frames:'
+                IntField: ff_frames_num:
+                    minimum = 1
+                    value = 1
+                Label:
+                    text = 'Color Mode:'
+                ComboBox: cmode:
+                    index = 0
+                    items = [gs.COLOR_RAW, gs.COLOR_RGB]
+                Label:
+                    text = 'Resolution:'
+                IntField: ff_resolution:
+                    minimum = 64
+                    maximum = 1001
+                    value = 301
+                    
+            VGroup:
+                PushButton: pb_array:
+                    text = 'Get Array'
+                    clicked ::
+                        root_object().model.send_message(
+                            server_model_,
+                            gs.MSG_TYPE_ARRAY,
+                            kwds=dict(
+                                exposure_us=ff_exposure.value if ff_exposure.value>0 else None,
+                                gain_db=ff_gain.value if ff_gain.value>0 else None,
+                                frames_num=ff_frames_num.value,
+                                color_mode=cmode.items[cmode.index],
+                                gain_boost=ff_gain_boost.checked,
+                                normalize=ff_normalized_array.checked,
+                                resolution=ff_resolution.value
+                            )
+                        )
+                PushButton: pb_thumb:
+                    text = 'Thumb'
+                    clicked ::
+                        root_object().model.send_message(
+                            server_model_,
+                            gs.MSG_TYPE_THUMBNAIL,
+                            kwds=dict(
+                                exposure_us=ff_exposure.value if ff_exposure.value>0 else None,
+                                gain_db=ff_gain.value if ff_gain.value>0 else None,
+                                color_mode=cmode.items[cmode.index],
+                                gain_boost=ff_gain_boost.checked,
+                                normalize=ff_normalized_array.checked
+                            )
+                        )
+                PushButton: pb_auto_thumb:
+                    text = 'Auto Thumb'
+                    clicked ::
+                        root_object().model.send_message(
+                            server_model_,
+                            gs.MSG_TYPE_THUMBNAIL,
+                            kwds=dict(
+                                normalize=ff_normalized_array.checked
+                            )
+                        )
+                Form:
+                    Label:
+                        text = 'Normalized:'
+                    CheckBox: ff_normalized_array:
+                        checked = True
+                PushButton: pb_reset_camera:
+                    text = 'Reset Camera'
+                    clicked ::
+                        root_object().model.send_message(
+                            server_model_,
+                            gs.MSG_TYPE_RESET_CAMERA,
+                        )
+
+
+enamldef SeekControlPage(Page):
+    attr server_model_
+
+    GroupBox:
+        title = 'Seek Array'
+
+        VGroup:
+            HGroup:
+                DateSelector: query_day:
+                    pass
+                PushButton: pb_query:
+                    text = 'Query'
+                    clicked ::
+                        root_object().model.send_message(
+                            server_model_,
+                            gs.MSG_TYPE_QUERY,
+                            kwds=dict(query_date=query_day.date)
+                        )
+
+            DataFrameTable: df:
+                data_frame << server_model_.images_df
+                selected_index >> server_model_.img_index
+
+            HGroup:
+                PushButton: pb_seek:
+                    text = 'Seek'
+                    clicked ::
+                        index = server_model_.img_index
+                        print index
+                        root_object().model.send_message(
+                            server_model_,
+                            gs.MSG_TYPE_SEEK,
+                            kwds=dict(
+                                seek_time=index[0],
+                                hdr_index=index[1],
+                                normalize=ff_normalized_seek.checked,
+                                resolution=ff_resolution_seek.value
+                            )
+                        )
+                Label:
+                    text = 'Resolution:'
+                IntField: ff_resolution_seek:
+                    minimum = 64
+                    maximum = 1001
+                    value = 301
+                Form:
+                    Label:
+                        text = 'Normalized:'
+                    CheckBox: ff_normalized_seek:
+                        checked = True
+
+
+enamldef SunshaderControlPage(Page):
+    attr server_model_
+
+    alias sunshader_angle_value : sunshader_angle.value
+    
+    GroupBox:
+        title = 'Sun Shader'
+
+        SliderText: slider_sunshader:
+            label.text = 'Angle'
+            
+            slider.value ::
+                root_object().model.send_message(
+                    server_model_,
+                    gs.MSG_TYPE_SUNSHADER,
+                    kwds=dict(
+                        angle=slider.value
+                    )
+                )
+
+        HGroup:
+            PushButton: pb_scan:
+                text = 'Scan'
+                clicked ::
+                    root_object().model.send_message(
+                        server_model_,
+                        gs.MSG_TYPE_SUNSHADER_SCAN,
+                    )
+
+            IntField: sunshader_angle:
+                read_only = True
+        
+        MPLCanvas: canvas:
+            figure << server_model_.sunshader_figure
+
+
+enamldef CalibrationControlPage(Page):
+    attr server_model_
+    
+    attr exposure_us
+    attr gain_db
+    attr gain_boost
+    
+    GroupBox:
+        title = 'Calibration'
+
+        Form:
+            Label:
+                text = 'nx:'
+            IntField: calib_nx:
+               minimum = 6
+               maximum = 12
+               value = 9
+            Label:
+                text = 'ny:'
+            IntField: calib_ny:
+                minimum = 5
+                maximum = 10
+                value = 6
+            Label:
+                text = 'imgs num:'
+            IntField: calib_imgs:
+                minimum = 10
+                maximum = 50
+                value = 40
+            Label:
+                text = 'imgs dely:'
+            IntField: calib_delay:
+                minimum = 1
+                maximum = 3
+                value = 2
+                
+        PushButton: pb_calibration:
+            text = 'Calibrate'
+            clicked ::
+                box = MessageBox()
+                box.title = 'Geometric Calibration'
+                box.content = 'Do you want to do geometric calibration?'
+                box.buttons = [DialogButton('Accept', 'accept'),
+                               DialogButton('Cancel', 'reject')]
+                if sys.platform == 'win32':
+                    data, size = winutil.load_icon(winutil.OIC_INFORMATION)
+                    box.image = Image(data=data, raw_size=size, format='argb32')
+                box.set_parent(root_object())
+                box.exec_()
+                if box.buttons[0].was_clicked:            
+                    root_object().model.send_message(
+                        server_model_,
+                        gs.MSG_TYPE_CALIBRATION,
+                        kwds=dict(
+                            nx=calib_nx.value,
+                            ny=calib_ny.value,
+                            imgs_num=calib_imgs.value,
+                            delay=calib_delay.value,
+                            exposure_us=exposure_us if exposure_us>0 else None,
+                            gain_db=gain_db if gain_db>0 else None,
+                            gain_boost=gain_boost
+                        )
+                    )
+
+        PushButton: pb_dark_image:
+            text = 'Dark Images'
+            clicked ::
+                box = MessageBox()
+                box.title = 'Dark Images'
+                box.content = 'Do you want to measure dark images?'
+                box.buttons = [DialogButton('Accept', 'accept'),
+                               DialogButton('Cancel', 'reject')]
+                if sys.platform == 'win32':
+                    data, size = winutil.load_icon(winutil.OIC_INFORMATION)
+                    box.image = Image(data=data, raw_size=size, format='argb32')
+                box.set_parent(root_object())
+                box.exec_()
+                if box.buttons[0].was_clicked:            
+                    root_object().model.send_message(
+                        server_model_,
+                        gs.MSG_TYPE_DARK_IMAGES
+                    )
+
+        VGroup:
+            HGroup:
+                DateSelector: extrinsic_day:
+                    pass
+                PushButton: pb_extrinsic:
+                    text = 'Extrinsic'
+                    clicked ::
+                        root_object().model.send_message(
+                            server_model_,
+                            gs.MSG_TYPE_EXTRINSIC,
+                            kwds=dict(
+                                date=extrinsic_day.date,
+                                save=True
+                            )
+                        )
+
+            MPLCanvas: canvas:
+                figure << server_model_.extrinsic_figure
+
+
+################################################################################
+# The Server view
+################################################################################
+enamldef ServerItem(DockItem):
+    attr server_model
+    
+    attr server_id
+    
+    GradientButtonSheet:
+        pass
+
+    VGroup:
+        Notebook:
+            tab_style = 'preferences'
+            
+            MainControlsPage:           
+                title = 'Main'
+                closable = False
+                server_model_ = server_model
+                
+            ImageControlPage: image_page:
+                title = 'Image'
+                closable = False
+                server_model_ = server_model
+    
+            SeekControlPage:
+                title = 'Seek'
+                closable = False
+                server_model_ = server_model
+
+            SunshaderControlPage:           
+                title = 'Sun Shader'
+                closable = False
+                server_model_ = server_model
+                sunshader_angle_value << server_model.sunshader_required_angle
+
+            CalibrationControlPage:           
+                title = 'Calibration'
+                closable = False
+                server_model_ = server_model
+                exposure_us << image_page.ff_exposure
+                gain_db << image_page.ff_gain
+                gain_boost<< image_page.ff_gain_boost
+                
+        GroupBox:
+            title = 'Message'
+
+            constraints = [
+                grid(
+                    [lb_cmd,   fld_cmd,   pb_send],
+                    [lb_reply, fld_reply, pb_data],
+                    column_align='width',
+                    row_align='v_center',
+                ),
+            ]
+            
+            Label: lb_cmd:
+                text = 'Cmd:'
+            Field: fld_cmd:
+                text := server_model.cmd
+            PushButton: pb_send:
+                text = 'Send'
+                clicked :: root_object().model.send_message(server_model)
+            PushButton: pb_data:
+                text = 'Data'
+                clicked ::
+                    popup = MsgDataPopup(msg_data=server_model.reply_data).show()
+            Label: lb_reply:
+                text = 'Reply:'
+            Field: fld_reply:
+                text << server_model.reply
+                     
+
+enamldef ArraysItem(DockItem):
+
+    alias arrays_area
+    alias array_views
+    
+    GradientButtonSheet:
+        pass
+
+    VGroup:
+        HGroup:
+            Label:
+                text = 'Exp[us]:'
+            IntField: exposure:
+                minimum = 0
+                value = 500
+                
+            Label:
+                text = 'Gain Boost:'
+            CheckBox: gain_boost:
+                pass
+    
+            Label:
+                text = 'Resolution:'
+            IntField: resolution:
+                minimum = 201
+                value = 301
+
+            PushButton:
+                text = 'Get'
+                clicked ::
+                    root_object().model.broadcast_message(
+                        gs.MSG_TYPE_ARRAY,
+                        kwds=dict(
+                            exposure_us=exposure.value,
+                            gain_db=0,
+                            frames_num=1,
+                            color_mode=gs.COLOR_RAW,
+                            gain_boost=gain_boost.checked,
+                            normalize=True,
+                            resolution=resolution.value
+                        )
+                    )
+                    
+            PushButton:
+                text = 'Clear'
+                clicked ::
+                    root_object().model.clear_arrays()
+
+        Container:
+            FlowArea: arrays_area:
+                 Include: array_views:
+                     pass
+    
+        HGroup:
+            Label:
+                text = 'Latitude:'
+            FloatField: latitude:
+                value = 32.775776
+                
+            Label:
+                text = 'Longitude:'
+            FloatField: longitude:
+                value = 35.024963
+                
+            Label:
+                text = 'Altitude:'
+            IntField: altitude:
+                value = 229
+                
+            PushButton:
+                text = 'Reconstruct'
+                style_class = 'gradient-button gb-blue rounded'
+                
+                clicked ::
+                    root_object().model.reconstruct(
+                        lat=latitude.value,
+                        lon=longitude.value,
+                        alt=altitude.value
+                    )
+
+            PushButton:
+                text = 'Store ROI'
+                style_class = 'gradient-button gb-red rounded'
+                
+                clicked ::
+                    root_object().model.save_rois()
+
+            PushButton:
+                text = 'Load ROI'
+                style_class = 'gradient-button gb-yellow rounded'
+                
+                clicked ::
+                    root_object().model.load_rois()
+
+
+enamldef MyDockArea(DockArea):
+    alias array_views: arrays_dockitem.array_views
+
+    layout = HSplitLayout(
+        VSplitLayout(
+            'arrays',
+            'times',
+            'logger'
+        )
+    )
+
+    ArraysItem: arrays_dockitem:
+        name = 'arrays'
+        title = 'Arrays'
+        closable = False
+        
+    DockItem:
+        name = 'logger'
+        title = 'Logger'
+        closable = False
+
+        Container:
+            constraints = [
+                hbox(logger, clear)
+            ]
+            MultilineField: logger:
+                name = 'line-collector'
+                text << root_object().model.logger_text
+                font = '9pt Courier'
+                read_only = True
+
+            PushButton: clear:
+                text = 'Clear'
+                clicked ::
+                    root_object().model.logger_text = ''
+
+    DockItem:
+        name = 'times'
+        title = 'Times'
+        closable = False
+        
+        VGroup:
+            HGroup:
+                DateSelector: query_day:
+                    pass
+                    
+                PushButton: pb_query:
+                    text = 'Query'
+                    clicked ::
+                        root_object().model.clear_image_df()
+                        root_object().model.broadcast_message(
+                            gs.MSG_TYPE_QUERY,
+                            kwds=dict(query_date=query_day.date)
+                        )
+
+            DataFrameTable: df:
+                data_frame << root_object().model.images_df
+                selected_index >> root_object().model.img_index
+
+            HGroup:
+                Label:
+                    text = 'Resolution:'
+                IntField: resolution_seek:
+                    minimum = 64
+                    maximum = 1001
+                    value = 301
+
+                PushButton: pb_seek:
+                    text = 'Seek'
+                    clicked ::
+                        index = root_object().model.img_index
+                        print index
+                        #root_object().model.clear_arrays()
+                        root_object().model.broadcast_message(
+                            gs.MSG_TYPE_SEEK,
+                            kwds=dict(
+                                seek_time=index[0],
+                                hdr_index=index[1],
+                                normalize=True,
+                                resolution=resolution_seek.value
+                            )
+                        )
+
+
+################################################################################
+# The Main View
+################################################################################
+enamldef Main(MainWindow): main:
+    initial_size = (200, 200)
+    title = 'Camera Client'
+    
+    attr model
+    
+    alias dock_area
+    alias array_views : dock_area.array_views
+   
+    MenuBar:
+        Menu:
+            title = '&File'
+            Action:
+                text = 'Get Tunnels\tCtrl+N'
+                triggered :: model.send_mmi(MDP.MMI_TUNNELS)
+            
+            Menu:
+                title = 'Tunnels List'
+                Looper: column_looper:
+                    iterable << sorted(model.tunnels_dict.items())
+                    Action:
+                        text = "Camera {}, port {}".format(loop_item[0], loop_item[1]['tunnel_port'])
+                        triggered :: model.open_tunnel(loop_item[1])
+
+    Container:
+        MyDockArea: dock_area:
+            pass

@@ -1,0 +1,147 @@
+from enaml.layout.api import *
+from enaml.stdlib.fields import IntField, FloatField
+from enaml.styling import StyleSheet, Style, Setter
+from enaml.widgets.api import *
+
+
+#
+# Gradient button
+#
+enamldef GradientButtonSheet(StyleSheet):
+    Style:
+        element = 'PushButton'
+        style_class = 'gradient-button'
+        Setter:
+            field = 'border'
+            value = '1px solid #034994'
+        Setter:
+            field = 'padding'
+            value = '5px'
+        Setter:
+            field = 'color'
+            value = 'white'
+    Style:
+        element = 'PushButton'
+        style_class = 'gradient-button'
+        pseudo_class = 'hover'
+        Setter:
+            field = 'border'
+            value = '1px solid #007BFF'
+    Style:
+        element = 'PushButton'
+        style_class = 'gb-blue'
+        Setter:
+            field = 'background'
+            value = ('lineargradient(x1: 0, y1:0, x2:0, y2:1, '
+                        'stop: 0 #5CA9FA, stop: 0.49 #4790DE, '
+                        'stop: 0.50 #2C82DE, stop: 1 #045CBA)')
+    Style:
+        element = 'PushButton'
+        style_class = 'gb-blue'
+        pseudo_class = 'pressed'
+        Setter:
+            field = 'background'
+            value = ('lineargradient(x1: 0, y1:0, x2:0, y2:1, '
+                        'stop: 0 #166BC7, stop: 1 #2C82DE)')
+    Style:
+        element = 'PushButton'
+        style_class = 'gb-yellow'
+        Setter:
+            field = 'background'
+            value = ('lineargradient(x1: 0, y1:0, x2:0, y2:1, '
+                        'stop: 0 #FFFF00, stop: 0.49 #808000, '
+                        'stop: 0.50 #2C82DE, stop: 1 #045CBA)')
+    Style:
+        element = 'PushButton'
+        style_class = 'gb-yellow'
+        pseudo_class = 'pressed'
+        Setter:
+            field = 'background'
+            value = ('lineargradient(x1: 0, y1:0, x2:0, y2:1, '
+                        'stop: 0 #166BC7, stop: 1 #2C82DE)')
+    Style:
+        element = 'PushButton'
+        style_class = 'gb-red'
+        Setter:
+            field = 'background'
+            value = ('lineargradient(x1: 0, y1:0, x2:0, y2:1, '
+                        'stop: 0 #FA5C5C, stop: 0.49 #c84949, '
+                        'stop: 0.50 #4b1b1b, stop: 1 #321212)')
+    Style:
+        element = 'PushButton'
+        style_class = 'gb-red'
+        pseudo_class = 'pressed'
+        Setter:
+            field = 'background'
+            value = ('lineargradient(x1: 0, y1:0, x2:0, y2:1, '
+                        'stop: 0 #166BC7, stop: 1 #2C82DE)')
+    Style:
+        style_class = 'large-font'
+        Setter:
+            field = 'font'
+            value = '14pt Verdana'
+    Style:
+        style_class = 'rounded'
+        Setter:
+            field = 'border-radius'
+            value = '5px'
+
+
+#
+# Slider with text
+#
+enamldef SliderText(Container):
+    alias slider
+    alias label
+    
+    Container:
+        constraints = [
+            hbox(label, slider, text)
+        ]
+        Label: label:
+            pass
+            
+        Slider: slider:
+            tick_interval = 5
+            maximum = 180
+            minimum = 0
+            
+        IntField: text:
+            value := slider.value
+
+
+#
+# Message Popup
+#
+enamldef MsgDataPopup(PopupView):
+    foreground = 'white'
+    background = 'rgba(30, 30, 30, 0.85)'
+    
+    attr msg_data
+
+    Container:
+        MultilineField:
+            text << msg_data
+
+
+#
+# Thumbnail popup window.
+#
+enamldef ThumbPopup(PopupView):
+    foreground = 'white'
+    background = 'rgba(30, 30, 30, 0.85)'
+    window_type = 'tool_tip'
+    
+    attr img
+
+    Container:
+        constraints = [
+            vbox(img_view),
+        ]
+        ImageView: img_view:
+            scale_to_fit = True
+            allow_upscaling = True
+            preserve_aspect_ratio = True
+            image << img
+
+
