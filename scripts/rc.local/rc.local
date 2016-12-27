@@ -9,27 +9,53 @@
 # In order to enable or disable this script just change the execution
 # bits.
 #
-# By default this script does nothing.
 
+#
+# Log of this script output. To check its status do:
+#
+#   $> cat /tmp/rc.local.log
+#
 exec 2> /tmp/rc.local.log
 exec 1>&2
 set -x
 
+#
+# Load the ethernet module. This is required when connecting the Odroid
+# to the ethernet, e.g. in the lab. Leave commented when communication
+# is done using the cellular modem (e.g. when deployed).
+#
 #dhclient -r eth0
 #dhclient eth0
 
+#
 # The sleep is needed for the USB modem device to load.
+#
 sleep 60
 
-# Restart the ueye deaumon just incase it malfunctions
+#
+# Restart the ueye deaumon (controlling the camera) just incase it malfunctions
+#
 /etc/init.d/ueyeusbdrc force-stop
 /etc/init.d/ueyeusbdrc start
 
-# Sleep some more time to give the modem time to finish intializing
+#
+# Sleep some more time to give the modem time to finish correct boot.
+#
 sleep 20
 
-# Start the camera inside a screen (use 'screen -x sn_camera' to connect to camera process)
+#
+# Start the reverse tunnel script.
+# This script is run inside `screen`. To attach to the screen terminal do:
+# 
+#   $> screen -x sn_tunnel
+#
 su -l odroid -c "/usr/bin/screen -dmS sn_tunnel bash -c '/home/odroid/.local/bin/start_tunnel.py; exec bash'" &
+#
+# Start the main server.
+# This script is run inside a screen To attach to the screen terminal do:
+# 
+#   $> screen -x sn_camera
+#
 su -l odroid -c "/usr/bin/screen -dmS sn_camera bash -c '/home/odroid/.local/bin/start_server.py; exec bash'" &
 
 exit 0

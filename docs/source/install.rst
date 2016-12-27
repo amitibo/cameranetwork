@@ -1,62 +1,90 @@
 .. highlight:: sh
 
+************
 Installation
+************
+
+Introduction
 ============
+
+The ``CameraNetwork`` system is made of three logical parts:
+
+#. *Server*: The camera unit. The server performs the actual measuremetns.
+#. *Client*: A program that enables remote control of servers.
+#. *Proxy*: A program that bridges and manages the communication between the *Servers* and *Clients*.
+
+There can be multiple *Servers* and *Clients* but only one *proxy*.
+
+The ``CameraNetwork`` pacakge contains the code for both the *Server*, *Client* and *Proxy* subsystems.
+This simplifies the deployment and enables code reuse. The installation procedures is similar for the
+three components but differs due to the different platforms. 
+
+The ``CameraNetwork`` is implemented completely in `Python <http://www.python.org/>_`.
+
+Installing the Server
+=====================
+
+The server software is run on an `Odroid U3 <http://www.hardkernel.com/main/products/prdt_info.php?g_code=g138745696275>`_
+as at the time of selection it offered a unique balance between capabilites and cost. Nonetheless it should be straight
+forward to install the ``CameraNetwork`` pacakge and its prerequisites on other platforms like newer Oroids and even
+on the RaspberrPi.
+
+In the following we detail the procedure of installing the required prerequisites and main pacakge. Note that
+once the package is installed on one compture, it is much more time effective to create an image of the Odroid
+memory card and duplicate it as needed.
 
 Prerequisites
 -------------
 
-It might be useful, on *raspberryPi*, to install *miniconda* to help installing some python packages. Follow
-the instrucions in the following [link](http://continuum.io/blog/raspberry).
+To use *CameraNetwork* several software package are needed. This can be installed using the following
+commands. Copy paste these to a commandline::
 
-To use *CameraNetwork* the following packages need to be installed:
+    $> sudo apt-get install pip
+    $> sudo pip install paramiko
+    $> sudo pip install cython
+    $> pip install pyzmq --install-option="--zmq=bundled"
+    $> pip install tornado
+    $> pip install futures
+    $> sudo apt-get install numpy scipy matplotlib
+    $> sudo apt-get install opencv3
+    $> pip install beautifulsoup4
 
-* setuptools (> wget https://bootstrap.pypa.io/ez_setup.py -O - | python)
-* paramiko (using easy_install from setuptools)
-* cython (for installing the latest version of zmq)
-* zmq (tested against version 4.0.4) - should download and compile from source.
-* pyzmq (tested against version 14.0.0dev) - should download and compile from source.
-* pip (should be helpful in installing other stuff)
-* tornado
-* futures
-* numpy
-* scipy
-* matplotlib
-* ipython
-* opencv
-* beautifulsoup4 (pip install beautifulsoup4)
+Some platforms might require the installation of modem software::
 
-The code that runs on the *raspberryPi* expects the user 'pi' and installs some binaries
-on '/home/pi/.local/bin'. You need to add this path to '/home/pi/.bashrc'.
+    $> sudo apt-get install network-manager
+    $> sudo apt-get install network-manager-gnome
 
-Install picamera
-> pip install picamera
-or
-> sudo apt-get install python-picamera
-
-### Install software for modem (reqiured for RaspberrPi)
-
-Install Network-Manger:
-
-> sudo apt-get install network-manager
-> sudo apt-get install network-manager-gnome
-
-The first instal nmcli (used for activating the connection). The second intalls nmcli-connection-editor
+The first instal *nmcli* (used for activating the connection). The second intalls *nmcli-connection-editor*
 used for defining the mobile network connection.
 
-Install a recent version of usb_modeswitch (required on raspberryPi). Follow the [link][http://www.draisberghof.de/usb_modeswitch/].
-To compile the above code you will need to install the libusb-1 dev files:
+Install a recent version of usb_modeswitch (required on raspberryPi). Follow the `link <http://www.draisberghof.de/usb_modeswitch/>`_.
+To compile the above code you will need to install the *libusb-1* dev files::
 
-> sudo apt-get install libusb-1.0-0-dev
+    $> sudo apt-get install libusb-1.0-0-dev
 
-Prepare a device reference file from the following [link][http://www.draisberghof.de/usb_modeswitch/device_reference.txt] and run
-it using the command:
+Prepare a device reference file from the following `link <http://www.draisberghof.de/usb_modeswitch/device_reference.txt`_ and run
+it using the command::
 
-> sudo usb_modeswitch -c <path to device file>
+    $> sudo usb_modeswitch -c <path to device file>
 
-Package Installation
---------------------
-Run the setup.py code
+CameraNetwork Installation
+--------------------------
+
+Download and install the package::
+
+    $> git clone -b user --single-branch https://amitibo@bitbucket.org/amitibo/cameranetwork_git.git cameranetwork
+    $> cd cameranetwork
+    $> python setup.py develop --user
+
+.. note::
+
+    The first command downloads a *slim* version of the code that only includes the *Server* components.
+
+To make the system start automatically at boot time, we use the *rc.local* script::
+
+    $> sudo cp cameranetwork/scripts/rc.local/rc.local /etc/rc.local
+
+Run the setup.py cod
 
 > python setup.py install
 
