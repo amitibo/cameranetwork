@@ -16,9 +16,14 @@
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
-# import os
-# import sys
-# sys.path.insert(0, os.path.abspath('.'))
+import os
+import sys
+sys.path.insert(0, os.path.abspath('../..'))
+sys.path.insert(0, os.path.abspath('../../scripts'))
+sys.path.insert(0, os.path.abspath('../../scripts_calibrate'))
+sys.path.insert(0, os.path.abspath('../../scripts_client'))
+sys.path.insert(0, os.path.abspath('../../scripts_proxy'))
+sys.path.insert(0, os.path.abspath('../../scripts_sunphotometer'))
 
 # -- General configuration ------------------------------------------------
 
@@ -249,11 +254,11 @@ htmlhelp_basename = 'CameraNetworkdoc'
 latex_elements = {
      # The paper size ('letterpaper' or 'a4paper').
      #
-     # 'papersize': 'letterpaper',
+     'papersize': 'a4paper',
 
      # The font size ('10pt', '11pt' or '12pt').
      #
-     # 'pointsize': '10pt',
+     'pointsize': '10pt',
 
      # Additional stuff for the LaTeX preamble.
      #
@@ -261,7 +266,7 @@ latex_elements = {
 
      # Latex figure (float) alignment
      #
-     # 'figure_align': 'htbp',
+     'figure_align': 'htbp',
 }
 
 # Grouping the document tree into LaTeX files. List of tuples
