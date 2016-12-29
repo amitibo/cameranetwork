@@ -1,7 +1,15 @@
-"""
-"""
+"""Run a GUI Client.
 
+A GUI client allows easy access to cameras thier settings and their
+measurements.
+"""
 from __future__ import division
+
+#
+# We need to import enaml.qt before matplotlib to avoid some qt errors
+# 
+import enaml.qt
+
 import argparse
 from atom.api import Atom, Bool, Enum, Signal, Float, Int, Str, Unicode, \
      Typed, observe, Dict, Value, List, Tuple, Instance
@@ -27,10 +35,6 @@ from CameraNetwork.utils import buff2dict
 from CameraNetwork.utils import DataObj
 from CameraNetwork.utils import sun_direction
 
-#
-# We need to import enaml.qt before matplotlib to avoid some qt errors
-# 
-import enaml.qt
 import ephem
 import numpy as np
 import pandas as pd
@@ -222,7 +226,7 @@ class ClientModel(Atom):
         Xs, Ys, Zs, PHIs, PSIs, Rs, Gs, Bs, Datas = \
             {}, {}, {}, {}, {}, {}, {}, {}, {}
         for server_id, (array_model, array_view) in self.array_items.items():
-            if array_view.reconstruct_flag:
+            if not array_view.reconstruct_flag.checked:
                 logging.info(
                     "Reconstruction: Camera {} ignored.".format(server_id)
                 )
@@ -240,17 +244,15 @@ class ClientModel(Atom):
             # Calculate the center of the camera.
             # Note that the coords are stored as ENU (in contrast to NED)
             #
-            coords = pymap3d.geodetic2ned(
+            n, e, d = pymap3d.geodetic2ned(
                 array_model.latitude, array_model.longitude, array_model.altitude,
-                lat, lon, alt)            
-            
+                lat0=lat, lon0=lon, h0=alt)
             
             logging.info(
-                "ID: {}, pymap3D: {}.".format(
-                    server_id, coords)
+                "Saved reconstruction data of camera: {}.".format(server_id)
                 )
             
-            x, y, z = coords[1], coords[0], -coords[2]
+            x, y, z = e, n, -d
             Xs[server_id] = np.ones_like(Rs[server_id]) * x
             Ys[server_id] = np.ones_like(Rs[server_id]) * y
             Zs[server_id] = np.ones_like(Rs[server_id]) * z
@@ -268,7 +270,7 @@ class ClientModel(Atom):
                 np.linspace(-1, 1, img_array.shape[0])
             )
     
-            PHI = np.arctan2(Y_, X_)
+            PHI = np.arctan2(X_, Y_)
             PSI = array_model.fov * np.sqrt(X_**2 + Y_**2)
             
             PHIs[server_id] = array_view.image_widget.getArrayRegion(PHI)

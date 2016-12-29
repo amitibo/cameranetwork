@@ -1,7 +1,8 @@
 from __future__ import division
 
-from CameraNetwork.calibration import Gimbal, GimbalCamera, findSpot
-from CameraNetwork.image_utils import raw2RGB
+from CameraNetwork.cameras import IDSCamera
+from CameraNetwork import Gimbal, RGBsplit, findSpot
+import CameraNetwork.global_settings as gs
 import numpy as np
 import matplotlib.pyplot as plt
 import cv2
@@ -12,25 +13,21 @@ import ids
 import sys
 import os
 import scipy.io as sio
-import fisheye
+#import fisheye
 from skycameras import FisheyeProxy, Normalization
 import itertools
 import traceback
 import cPickle
 
-SLEEP_TIME = 1
+SLEEP_TIME = 0.1
 SAMPLING_STEPS = 32
 
-COLORS = ('blue', 'green', 'red')
-EXPOSURE_TIME = dict(zip(COLORS, (35, 35, 30)))
-DO_COLORS = COLORS#('red',)
-DO_GEOMETRIC_CALIBRATION = True
-DO_BLACK_IMG = True
+DO_GEOMETRIC_CALIBRATION = False
+DO_BLACK_IMG = False
 
 #
 # Calibration params
 #
-#NX, NY = 10, 7
 NX, NY = 8, 6
 
 def safe_mkdirs(path):
@@ -53,22 +50,32 @@ def main():
     spec = oceanoptics.get_a_random_spectrometer()
     
     p = Gimbal(com="COM3")
-    cam = GimbalCamera()
-
+    cam = IDSCamera()
+    
     #
     # Put here a break point if you want to adjust the focus.
     # Note: You will have to stop the program to be able to turn on the IDS cockpit.
     #
     p.move(90, 90)
 
-    base_path = os.path.join('radiometric_calibration', cam._cam.info['serial_num'])
+    base_path = os.path.join('radiometric_calibration', cam.info['serial_num'])
     safe_mkdirs(base_path)    
+
+    #
+    # Capture settings.
+    #
+    settings = {
+        "exposure_us": 40000,
+        "gain_db": 0,
+        "gain_boost": False,
+        "color_mode": gs.COLOR_RAW
+    }        
 
     #
     # Store the exposure time
     #
-    with open(os.path.join(base_path, 'exposures.pkl'), 'wb') as f:
-        cPickle.dump(EXPOSURE_TIME, f)
+    with open(os.path.join(base_path, 'settings.pkl'), 'wb') as f:
+        cPickle.dump(settings, f)
         
     if DO_GEOMETRIC_CALIBRATION:
         #
@@ -80,9 +87,9 @@ def main():
             print x, y
             p.move(int(x), int(y))
             time.sleep(1.5)
-            img = cam.measure()
+            img = cam.capture(settings, frames_num=10)
             imgs.append(img)
-            imgsR.append(raw2RGB(img)[0].astype(np.uint8))
+            imgsR.append(RGBsplit(img)[0].astype(np.uint8))
             
         #
         # Use the fisheye model
@@ -113,92 +120,86 @@ def main():
         raw_input("Turn off the lights and press any key")
         winsound.Beep(5000, 500)
     
-        for color in COLORS:
-            exposure = EXPOSURE_TIME[color]
-            
-            black_img = cam.measure(exposure=exposure, average=100)
-            winsound.Beep(5000, 500)
-            np.save(os.path.join(base_path, 'black_img_{}.npy'.format(color)), black_img)        
-
-    for color in DO_COLORS:
-        #
-        # Make path to store img measurements.
-        #
-        safe_mkdirs(os.path.join(base_path, color))
-        
-        exposure = EXPOSURE_TIME[color]
-
-        raw_input("Turn on the Colibri led {}, and press any key".format(color))
+        black_img = np.mean(cam.capture(settings, frames_num=10)[0], axis=2)
         winsound.Beep(5000, 500)
-        time.sleep(SLEEP_TIME)
-        
-        #
-        # Measure the spectrum
-        #
-        spec.integration_time(0.3)
-        measurements = []
-        for i in range(10):
-            s = spec.spectrum()
-            measurements.append(s[1])    
-    
-        with open(os.path.join(base_path, 'spec_{}.pkl'.format(color)), 'wb') as f:
-            cPickle.dump((s[0], np.mean(measurements, axis=0)), f)    
-        #
-        # Verify no saturation.
-        #
-        p.move(90, 90)
-        time.sleep(SLEEP_TIME)
-        if cam.measure(exposure=exposure).max() == 255:
-            raise Exception('Saturation')
-        
-        X_grid, Y_grid = np.meshgrid(np.linspace(0, 180, SAMPLING_STEPS), np.linspace(0, 180, SAMPLING_STEPS), indexing='xy')
-        X_grid = X_grid.astype(np.int32)
-        Y_grid = Y_grid.astype(np.int32)
-        
-        black_img = np.load(os.path.join(base_path, 'black_img_{}.npy'.format(color)))        
-        
-        measurements = []
-        for i, (x, y) in enumerate(zip(X_grid.ravel(), Y_grid.ravel())):
-            
-            sys.stdout.write('x={}, y={}...\t'.format(x, y))
-            
-            p.move(x, y)
-            time.sleep(SLEEP_TIME)
-            img = cam.measure(exposure=exposure)
-            winsound.Beep(8000, 500)        
-            try:
-                measurement = findSpot(np.clip(img-black_img, 0, 255))
-            except:
-                print 'FAIL'
-                print traceback.format_exc()
-                measurement = None, None, None
-            
-            measurements.append(measurement)
-            print measurement
-            
-            #
-            # Store the measurement image.
-            #
-            img_path = os.path.join(base_path, color, 'img_{:03}.mat'.format(i))
-            sio.savemat(img_path, {'img':img}, do_compression=True)
-                
-        img = np.zeros(shape=(1200, 1600, 3))
-        
-        for x, y, val in measurements:
-            if val is None:
-                continue
-            img[y, x, ...] = val
-        
-        #
-        # Save the results
-        #
-        sio.savemat(os.path.join(base_path, 'results_{}.mat'.format(color)), {'img':img}, do_compression=True)
-        with open(os.path.join(base_path, 'measurements_{}.pkl'.format(color)), 'wb') as f:
-            cPickle.dump(measurements, f)
+        np.save(os.path.join(base_path, 'black_img.npy'), black_img)        
 
-        plt.imshow(img)
-        plt.title(color)
-        plt.show()
+    #
+    # Make path to store img measurements.
+    #
+    safe_mkdirs(base_path)
+    
+    #
+    # Measure the spectrum
+    #
+    spec.integration_time(0.3)
+    measurements = []
+    for i in range(10):
+        s = spec.spectrum()
+        measurements.append(s[1])    
+
+    with open(os.path.join(base_path, 'spec.pkl'), 'wb') as f:
+        cPickle.dump((s[0], np.mean(measurements, axis=0)), f)    
+
+    #
+    # Verify no saturation.
+    #
+    p.move(90, 90)
+    time.sleep(SLEEP_TIME)
+    img, exp, gain = cam.capture(settings, frames_num=1)
+    if img.max() == 255:
+        raise Exception('Saturation')
+    
+    X_grid, Y_grid = np.meshgrid(
+        np.linspace(0, 180, SAMPLING_STEPS),
+        np.linspace(0, 180, SAMPLING_STEPS),
+        indexing='xy')
+    X_grid = X_grid.astype(np.int32)
+    Y_grid = Y_grid.astype(np.int32)
+    
+    black_img = np.load(os.path.join(base_path, 'black_img.npy'))
+    
+    measurements = []
+    for i, (x, y) in enumerate(zip(X_grid.ravel(), Y_grid.ravel())):
+        
+        sys.stdout.write('x={}, y={}...\t'.format(x, y))
+        
+        p.move(x, y)
+        time.sleep(SLEEP_TIME)
+        img = np.mean(cam.capture(settings, frames_num=10)[0], axis=2)
+        winsound.Beep(8000, 500)        
+        try:
+            measurement = findSpot(np.clip(img-black_img, 0, 255))
+        except:
+            print 'FAIL'
+            print traceback.format_exc()
+            measurement = None, None, None
+        
+        measurements.append(measurement)
+        print measurement
+        
+        #
+        # Store the measurement image.
+        #
+        #img_path = os.path.join(base_path, color, 'img_{:03}.mat'.format(i))
+        #sio.savemat(img_path, {'img':img}, do_compression=True)
+            
+    img = np.zeros(shape=(1200, 1600, 3))
+    
+    for x, y, val in measurements:
+        if val is None:
+            continue
+        img[y, x, ...] = val
+    
+    #
+    # Save the results
+    #
+    sio.savemat(os.path.join(base_path, 'results.mat'), {'img':img}, do_compression=True)
+    with open(os.path.join(base_path, 'measurements.pkl'), 'wb') as f:
+        cPickle.dump(measurements, f)
+
+    plt.imshow(img)
+    plt.show()
 
 if __name__ == '__main__':
     main()

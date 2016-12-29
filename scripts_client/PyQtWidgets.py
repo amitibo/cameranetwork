@@ -206,7 +206,7 @@ class PyQtImageView(PyQtGraphLayoutWidget):
         plot_area.addItem(self.img_item)        
         
         self.img_item.setImage(self.img_array.astype(np.float))
-        plot_area.vb.invertY(True)
+        #plot_area.vb.invertY(True)
 
         #
         # Add ROI
