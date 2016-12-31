@@ -1,5 +1,5 @@
 """
-Utilities used for different kinds of calibration.
+Utilities used in the process of calibration.
 """
 
 from __future__ import division
@@ -23,8 +23,27 @@ READY_REPLY = 'READY'
 
 
 class Gimbal( object ):
+    """Calibration Gimbal
     
-    def __init__( self, com='COM13', baudrate=9600, timeout = 20 ):
+    This class encapsulates the use of the Caliration Gimbal. During
+    vignetting calibration, a camera is connected to the gimbal and placed
+    infront of a light source. The Gimbal rotates the camera in all directions.
+    This way the spatial response of the camera (vignetting) is captured.
+    
+    Args:
+        com (str, optional): The serial port of the Arduino that controls the
+            gimbal.
+        baudrate (int, optional): Baud rate of serial port.
+        timeout (int, optional): timeout for tryingto connect to the Arduino.
+        
+    Note:
+        To use this class, one needs to first install the gimbal.ino file
+        on the Arduino. The file is located in:
+        
+            <ROOT FOLDER>/arduino/gimbal/gimba.ino
+    """
+    
+    def __init__(self, com='COM13', baudrate=9600, timeout=20):
         
         import serial        
         self._port = serial.Serial(com, baudrate=baudrate, timeout = timeout)
@@ -34,9 +53,8 @@ class Gimbal( object ):
         #
         #self._waitReady()
         
-    def _finalize( self ):
-        """
-        Finalize the serial port
+    def _finalize(self):
+        """Finalize the serial port
         """
 
         #
@@ -49,16 +67,15 @@ class Gimbal( object ):
             pass
 
 
-    def _waitReady( self ):
-        """
-        Wait for a ready reply from the arduino
+    def _waitReady(self):
+        """Wait for a ready reply from the arduino
         """
         
         rep = self._port.readline()
         if rep.strip() != READY_REPLY:
             raise Exception('Did not get ready reply from the arduino')
         
-    def __del__( self ):
+    def __del__(self):
         """
         Finalize the serial port
         """
@@ -66,9 +83,11 @@ class Gimbal( object ):
         self._finalize()
         
 
-    def _checkEcho( self, cmd ):
-        """
-        Check the answer echo validity.
+    def _checkEcho(self, cmd):
+        """Check the answer echo validity.
+        
+        Args:
+            cmd (str): Original command.
         """
 
         echo = self._port.readline()
@@ -81,8 +100,10 @@ class Gimbal( object ):
                 )
         
     def _sendCmd(self, cmd):
-        """
-        Send a command and test its echo.
+        """Send a command and test its echo.
+        
+        cmd (str): Command to send to the Arduino
+        
         """
         
         self._port.write( cmd )
@@ -91,9 +112,8 @@ class Gimbal( object ):
         #self._waitReady()
 
         
-    def flush( self ):
-        """
-        Empty the input & output buffers
+    def flush(self):
+        """Empty the input & output buffers
         """
 
         #
@@ -102,17 +122,21 @@ class Gimbal( object ):
         self._port.flushInput()
         self._port.flushOutput()
 
-    def resetPosition( self ):
-        """
-        Move to root position
+    def resetPosition(self):
+        """Move to root position
         """
         
         cmd = 'z\n'
         self._sendCmd( cmd )
         
-    def move( self, x, y ):
-        """
-        Move to x, y position
+    def move(self, x, y):
+        """Move to x, y position
+        
+        Args:
+            x, y (int): Corresponding positions of the x, y servo motors.
+        
+        Note:
+            The servo motors support angles in the range 0-180.
         """
 
         x = int(x)
@@ -166,7 +190,14 @@ class GimbalCamera(object):
 
 
 def meanColor(c):
+    """Calculate mean of nnz values in array.
     
+    Args:
+        c (array): Array for which to calculate mean.
+        
+    Returns:
+        Mean of non zero values in c.
+    """
     nnz_total = (c>0).sum()
     if nnz_total == 0:
         return 0
@@ -175,7 +206,9 @@ def meanColor(c):
 
 
 def findSpot(img, threshold=5):
-    """Returns (height, x, y, width_x, width_y)
+    """Calculate spot value in image.
+    
+    Returns (height, x, y, width_x, width_y)
     the gaussian parameters of a 2D distribution by calculating its
     moments"""
     
@@ -360,7 +393,14 @@ class VignettingCalibration():
             #
             # Read the measurements
             #
-            with open(os.path.join(base_path, 'measurements_{}.pkl'.format(color)), 'rb') as f:
+            path = os.path.join(base_path, 'measurements_{}.pkl'.format(color))
+            if not os.path.exists(path):
+                #
+                # The measurements are note split to colors.
+                #
+                path = os.path.join(base_path, 'measurements.pkl')
+
+            with open(path), 'rb') as f:
                 data = cPickle.load(f)
 
             #

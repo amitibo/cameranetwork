@@ -44,15 +44,18 @@ def calcHDR(img_arrays, img_exposures, low_limit=20, high_limit=230):
     return np.nanmean(hdr_imgs, axis=0)
 
 
-def raw2RGB(img):
+def raw2RGB(img, dtype=None):
     """Convert a Raw image to its three RGB channels."""
     
+    if dtype is None:
+        dtype = img.dtype
+
     R = np.ascontiguousarray(img[::2, ::2])
     B = np.ascontiguousarray(img[1::2, 1::2])
-    G1 = np.ascontiguousarray(img[1::2, 0::2])
-    G2 = np.ascontiguousarray(img[0::2, 1::2])
+    G1 = np.ascontiguousarray(img[1::2, 0::2]).astype(np.float)
+    G2 = np.ascontiguousarray(img[0::2, 1::2]).astype(np.float)
     
-    return R, ((G1+G2)/2).astype(R.dtype), B
+    return R, ((G1+G2)/2).astype(dtype), B
 
 
 def RGB2raw(R, G, B):
