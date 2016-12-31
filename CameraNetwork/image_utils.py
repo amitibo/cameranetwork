@@ -19,53 +19,53 @@ def calcHDR(img_arrays, img_exposures, low_limit=20, high_limit=230):
             ignored except in the longest exposure.
         high_limit (float[optional]): high RGB value above which values are
             ignored except in the shortest exposure.
-        
+
     Retruns:
         HDR image merged from the image arrays. There idea is that the shortest
-        exposure is used for the high RGB values, and the longest for the low 
+        exposure is used for the high RGB values, and the longest for the low
         values. The other values are averaged from all images. The HDR image
         returned is float in units of [RGB/ms]
     """
-    
+
     hdr_imgs = []
     for i, (img, exp) in enumerate(zip(img_arrays, img_exposures)):
         hdr_img = img.copy().astype(np.float) / exp
-        if i == 0: 
+        if i == 0:
             mask_min, mask_max = low_limit, 255
         elif i == len(img_arrays)-1:
             mask_min, mask_max = 0, high_limit
         else:
             mask_min, mask_max = low_limit, high_limit
-        
+
         mask = (img < mask_min) | (img > mask_max)
         hdr_img[mask] = np.nan
         hdr_imgs.append(hdr_img)
-        
+
     return np.nanmean(hdr_imgs, axis=0)
 
 
 def raw2RGB(img):
     """Convert a Raw image to its three RGB channels."""
-    
+
     R = np.ascontiguousarray(img[::2, ::2])
     B = np.ascontiguousarray(img[1::2, 1::2])
     G1 = np.ascontiguousarray(img[1::2, 0::2])
     G2 = np.ascontiguousarray(img[0::2, 1::2])
-    
-    return R, ((G1+G2)/2).astype(R.dtype), B
+
+    return R, ((G1.astype(np.float)+G2.astype(np.float))/2).astype(R.dtype), B
 
 
 def RGB2raw(R, G, B):
     """Convert RGB channels to Raw image."""
-    
+
     h, w = R.shape
     raw = np.empty(shape=(2*h, 2*w), dtype=R.dtype)
-    
+
     raw[::2, ::2] = R
     raw[1::2, 1::2] = B
     raw[1::2, 0::2] = G
     raw[0::2, 1::2] = G
-    
+
     return raw
 
 

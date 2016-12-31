@@ -37,12 +37,9 @@ URL = "http://bitbucket.org/amitibo/CameraNetwork"
 def choose_scripts():
 
     scripts = [
-        'scripts/start_camera.py',
         'scripts/start_tunnel.py',
         'scripts/start_server.py',
         'scripts/setup_camera.py',
-        'scripts/monitor_folder.py',
-        'scripts/drone_camera.py',
         'scripts_client/setup_config_server.py',
         'scripts_proxy/start_proxy.py'
     ]
