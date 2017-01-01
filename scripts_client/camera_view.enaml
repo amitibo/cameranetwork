@@ -799,7 +799,9 @@ enamldef ArraysItem(DockItem):
                 style_class = 'gradient-button gb-yellow rounded'
                 
                 clicked ::
-                    root_object().model.load_rois()
+                    path = FileDialogEx.get_open_file_name()
+                    if path:
+                        root_object().model.load_rois(path)
 
 
 enamldef MyDockArea(DockArea):

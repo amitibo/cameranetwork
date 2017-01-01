@@ -25,6 +25,7 @@ import scipy.io as sio
 import StringIO
 import subprocess
 from threading import Thread
+import traceback
 from zmq.eventloop import ioloop
 
 import CameraNetwork
@@ -92,7 +93,6 @@ class ClientModel(Atom):
     settings_signal = Signal()
 
     array_items = Dict()
-    saved_rois = Dict()
     
     images_df = Typed(pd.DataFrame)
     img_index = Tuple()
@@ -315,34 +315,41 @@ class ClientModel(Atom):
         rs_df = load_radiosonde(date)
         rs_df[['HGHT', 'TEMP']].to_csv(
             os.path.join(base_path, 'radiosonde.csv'))
-                
-    def save_rois(self):
+        
+        #
+        # Save the ROIs
+        #
+        self.save_rois(base_path=base_path)
+        
+    def save_rois(self, base_path='.'):
         """Save the current ROIS for later use."""
+        
+        dst_path = os.path.join(base_path, 'ROIS.pkl')
         
         rois_dict = {}
         for server_id, (_, array_view) in self.array_items.items():
             rois_dict[server_id] = array_view.roi.saveState()
 
-        self.saved_rois = rois_dict
-        with open('ROIS.pkl', 'wb') as f:
-            cPickle.dump(self.saved_rois, f)
+        with open(dst_path, 'wb') as f:
+            cPickle.dump(rois_dict, f)
             
-    def load_rois(self):
-        """Apply the save rois on the current arrays."""
+    def load_rois(self, path='./ROIS.pkl'):
+        """Apply the saved rois on the current arrays."""
         
-        if not self.saved_rois:
-            with open('ROIS.pkl', 'rb') as f:
-                self.saved_rois = cPickle.load(f)
-        
-        for server_id, roi in self.saved_rois.items():
-            if server_id not in self.array_items:
-                continue
+        try:
+            with open(path, 'rb') as f:
+                rois_dict = cPickle.load(f)
             
-            _, array_view = self.array_items[server_id]
-            try:
+            for server_id, roi in rois_dict.items():
+                if server_id not in self.array_items:
+                    continue
+                
+                _, array_view = self.array_items[server_id]
                 array_view.roi.setState(roi)
-            except Exception as e:
-                logging.error("Failed setting roi to camera {}".format(server_id))
+        except Exception as e:
+            logging.error(
+                "Failed setting rois to Arrays view:\n{}".format(
+                    traceback.format_exc()))
 
     ############################################################################
     # MDP Callbacks
@@ -896,4 +903,3 @@ if __name__ == '__main__':
     args = parser.parse_args()
     
     main(args.local)
-
