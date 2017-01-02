@@ -217,6 +217,38 @@ class ClientModel(Atom):
         
         return revisions
     
+    def _calcROIbounds(self, array_model, array_view):
+        """Calculate bounds of ROI in array_view
+        
+        Useful for debug visualization.
+        """
+        
+        #
+        # Get the ROI size
+        #
+        roi = array_view.roi
+        size = roi.state['size']
+
+        #
+        # Get the transform from the ROI to the data.
+        #
+        _, tr = roi.getArraySlice(array_view.img_array, array_view.image_widget.img_item)
+        
+        #
+        # Calculate the bounds.
+        #
+        center = float(array_view.img_array.shape[0])/2
+        pts = np.array(
+            [tr.map(x, y) for x, y in \
+             ((0, 0), (size.x(), 0), (0, size.y()), (size.x(), size.y()))]
+        )
+        pts = (pts - center) / center
+        X, Y = pts[:, 1], pts[:, 0]
+        bounding_phi = np.arctan2(X, Y)
+        bounding_psi = array_model.fov * np.sqrt(X**2 + Y**2)        
+        
+        return bounding_phi, bounding_psi
+        
     def reconstruct(self, lat, lon, alt):
         """Reconstruct selected regions."""
         
@@ -277,6 +309,12 @@ class ClientModel(Atom):
             PSIs[server_id] = array_view.image_widget.getArrayRegion(PSI)
         
             #
+            # Calculate bounding coords (useful for debug visualization)
+            #
+            bounding_phi, bounding_psi = self._calcROIbounds(
+                array_model, array_view)
+            
+            #
             # Extra data
             #
             sun_alt, sun_az = sun_direction(
@@ -289,7 +327,12 @@ class ClientModel(Atom):
                 dict(
                     at_time=array_model.img_data.name_time,
                     sun_alt=float(sun_alt),
-                    sun_az=float(sun_az)
+                    sun_az=float(sun_az),
+                    x=x,
+                    y=y,
+                    z=z,
+                    bounding_phi=bounding_phi,
+                    bounding_psi=bounding_psi
                 )
 
         #
