@@ -7,8 +7,7 @@ from CameraNetwork.image_utils import raw2RGB, RGB2raw
 import cPickle
 import os
 import numpy as np
-from sklearn.linear_model import (
-    LinearRegression, TheilSenRegressor, RANSACRegressor, HuberRegressor)
+from sklearn.linear_model import RANSACRegressor 
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import FunctionTransformer
 from sklearn.preprocessing import PolynomialFeatures
