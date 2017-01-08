@@ -871,17 +871,20 @@ enamldef MyDockArea(DockArea):
                     maximum = 1001
                     value = 301
 
+                CheckBox: HDR:
+                    tool_tip = "Return HDR image"
+                    checked = False
+                    text = "HDR"
+
                 PushButton: pb_seek:
                     text = 'Seek'
                     clicked ::
                         index = root_object().model.img_index
-                        print index
-                        #root_object().model.clear_arrays()
                         root_object().model.broadcast_message(
                             gs.MSG_TYPE_SEEK,
                             kwds=dict(
                                 seek_time=index[0],
-                                hdr_index=index[1],
+                                hdr_index=-1 if HDR.checked else index[1],
                                 normalize=True,
                                 resolution=resolution_seek.value
                             )
