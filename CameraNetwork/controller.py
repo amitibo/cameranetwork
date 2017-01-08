@@ -14,6 +14,7 @@ from CameraNetwork.utils import mean_with_outliers
 from CameraNetwork.utils import name_time
 from CameraNetwork.utils import object_direction
 from CameraNetwork.utils import RestartException
+import copy
 import cPickle
 import cv2
 from datetime import datetime
@@ -114,7 +115,7 @@ class Controller(object):
             self.start_camera()
             self._sunshader = SunShader()
         self._offline = offline
-        
+
         #
         # Try to load calibration data.
         #
@@ -223,7 +224,7 @@ class Controller(object):
             logging.error(
                 "Failed loading vignetting data:\n{}".format(
                     traceback.format_exc()))
-        
+
         #
         # Load radiometric calibration.
         #
@@ -898,7 +899,7 @@ class Controller(object):
                     img_data.exposure_us,
                     dark_images['exposures'],
                     dark_images['images'])
-                
+
                 logging.debug(
                     'Applying dark image, exposure: {} boost: {} shape: {}'.format(
                         img_data.exposure_us, img_data.gain_boost, dark_image.shape)
@@ -906,16 +907,16 @@ class Controller(object):
                 img_array = img_array.astype(np.float) - dark_image
                 img_array[img_array < 0] = 0
                 tmp_arrays.append(img_array)
-            
+
             img_arrays = tmp_arrays
-            
+
         if len(img_arrays) == 1:
             img_array = \
                 img_arrays[0].astype(np.float) / (img_datas[0].exposure_us / 1000)
         else:
             img_exposures = [img_data.exposure_us / 1000 for img_data in img_datas]
             img_array = calcHDR(img_arrays, img_exposures)
-            
+
         #
         # Apply vignetting.
         #
@@ -937,7 +938,7 @@ class Controller(object):
         # Scale to Watts.
         #
         img_array = self._radiometric.applyRadiometric(img_array)
-        
+
         return np.ascontiguousarray(img_array)
 
     @cmd_callback
@@ -997,10 +998,8 @@ class Controller(object):
         # Nothing should be done in case the camera is already in large size.
         self._camera.large_size()
 
-        mat_names = []
-        jpg_names = []
-        data_names = []
-
+        img_arrays = []
+        img_datas = []
         capture_settings = capture_settings.copy()
         for hdr_i in range(hdr_mode):
             #
@@ -1028,14 +1027,11 @@ class Controller(object):
                 logging.debug('Averaged %d arrays' % frames_num)
 
             #
-            # Save the array and its data.
             #
-            mat_path, jpg_path, data_path = self.save_array(
-                img_array, img_data, hdr_i)
-
-            mat_names.append(mat_path)
-            jpg_names.append(jpg_path)
-            data_names.append(data_path)
+            # Copy the array and its data for a later saving.
+            #
+            img_arrays.append(img_array)
+            img_datas.append(copy.copy(img_data))
 
             if hdr_mode < 2:
                 #
@@ -1050,6 +1046,20 @@ class Controller(object):
                 break
 
             capture_settings['exposure_us'] = capture_settings['exposure_us'] * 2
+
+        mat_names = []
+        jpg_names = []
+        data_names = []
+        for img_array, img_data, hdr_i in zip(img_arrays, img_datas, range(hdr_mode)):
+            #
+            # Save the array and its data.
+            #
+            mat_path, jpg_path, data_path = self.save_array(
+                img_array, img_data, hdr_i)
+
+            mat_names.append(mat_path)
+            jpg_names.append(jpg_path)
+            data_names.append(data_path)
 
         #
         # Send back the image.
