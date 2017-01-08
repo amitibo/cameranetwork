@@ -178,25 +178,43 @@ class PyQtImageView(PyQtGraphLayoutWidget):
         # Setup the PrincipalPlane points
         #
         self.drawPrincipalPlane(plot_area)
-        
+
+        #
+        # Callback of mouse click (used for updating the epipolar lines).
+        #
         def mouseClicked(evt):
 
+            #
+            # Get the click position.
+            #
             pos = evt.scenePos()
             
             if plot_area.sceneBoundingRect().contains(pos):
+                #
+                # Map the click to the image.
+                #
                 mp = plot_area.vb.mapSceneToView(pos)
                 h, w = self.img_array.shape[:2]
                 x, y = np.clip((mp.x(), mp.y()), 0, h-1).astype(np.int)
         
+                #
+                # Update the epiploar line of this view.
+                #
                 self.updateEpipolar(
                     self.epipolar_points*[x],
                     self.epipolar_points*[y]
                 )
                 
+                #
+                # Update the epipolar line of all other views.
+                #
                 self.epipolar_signal.emit(
                     {'server_id': self.server_id, 'pos': (x, y)}
                 )
-                
+        
+        #
+        # Connect the click callback to the plot.
+        #
         plot_area.scene().sigMouseClicked.connect(mouseClicked)
         
         #
