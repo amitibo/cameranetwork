@@ -28,13 +28,13 @@ class Gimbal( object ):
     vignetting calibration, a camera is connected to the gimbal and placed
     infront of a light source. The Gimbal rotates the camera in all directions.
     This way the spatial response of the camera (vignetting) is captured.
-    
+
     Args:
         com (str, optional): The serial port of the Arduino that controls the
             gimbal.
         baudrate (int, optional): Baud rate of serial port.
         timeout (int, optional): timeout for tryingto connect to the Arduino.
-        
+
     Note:
         To use this class, one needs to first install the gimbal.ino file
         on the Arduino. The file is located in:
@@ -399,7 +399,7 @@ class VignettingCalibration():
                 #
                 path = os.path.join(base_path, 'measurements.pkl')
 
-            with open(path), 'rb') as f:
+            with open(path, 'rb') as f:
                 data = cPickle.load(f)
 
             #

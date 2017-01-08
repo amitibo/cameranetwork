@@ -13,8 +13,9 @@ Contents:
 
    introduction
    install
+   camera
    usage
-   api
+   modules
 
 Indices and tables
 ==================

@@ -710,7 +710,6 @@ class Server(MDPWorker):
             hdr_index=0,
             normalize=False,
             resolution=gs.DEFAULT_NORMALIZATION_SIZE):
-
         """Seek for a previously captured (loop) array.
 
         Args:
@@ -723,6 +722,7 @@ class Server(MDPWorker):
 
         Return:
             Compressed mat file in the form of a string.
+
         """
 
         if self.last_query_df is None:
