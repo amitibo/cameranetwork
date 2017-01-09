@@ -531,6 +531,30 @@ enamldef SunshaderControlPage(Page):
             figure << server_model_.sunshader_figure
 
 
+enamldef SprinklerControlPage(Page):
+    attr server_model_
+
+    GroupBox:
+        title = 'Sprinkler'
+
+        HGroup:
+            PushButton: pb_sprinkle:
+                text = 'Sprinkle'
+                clicked ::
+                    root_object().model.send_message(
+                        server_model_,
+                        gs.MSG_TYPE_SPRINKLER,
+                        kwds=dict(
+                            period=sprinkler_period.value
+                        )
+                    )
+
+            Label:
+                text = 'Period:'
+            FloatField: sprinkler_period:
+                value = gs.SPRINKLER_PERIOD
+        
+
 enamldef CalibrationControlPage(Page):
     attr server_model_
     
@@ -669,6 +693,11 @@ enamldef ServerItem(DockItem):
                 closable = False
                 server_model_ = server_model
                 sunshader_angle_value << server_model.sunshader_required_angle
+
+            SprinklerControlPage:
+                title = 'Sprinkle'
+                closable = False
+                server_model_ = server_model
 
             CalibrationControlPage:           
                 title = 'Calibration'

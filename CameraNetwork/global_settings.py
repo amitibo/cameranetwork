@@ -223,6 +223,7 @@ MSG_TYPE_SEEK = 'seek'
 MSG_TYPE_SET_SETTINGS = 'set_settings'
 MSG_TYPE_STATUS = 'status'
 MSG_TYPE_EXTRINSIC = 'extrinsic'
+MSG_TYPE_SPRINKLER = 'sprinkler'
 MSG_TYPE_SUNSHADER = 'sunshader'
 MSG_TYPE_SUNSHADER_SCAN = 'sunshader_scan'
 MSG_TYPE_THUMBNAIL = 'thumbnail'
@@ -269,6 +270,11 @@ SUNSHADER_MIN_MEASURED = 20
 SUNSHADER_MAX_MEASURED = 160
 
 #
+# Sprinkler parameters
+#
+SPRINKLER_PERIOD = 1
+
+#
 # Sun Mask parameters
 #
 MASK_PERIOD = 300
@@ -287,6 +293,7 @@ RESET_CAMERA_CMD = 'reset_camera'
 SEEK_CMD = 'seek'
 EXTRINSIC_CMD = 'extrinsic'
 RESTART_CMD = 'restart'
+SPRINKLER_CMD = 'sprinkler'
 SUNSHADER_CMD = 'sunshader'
 SUNSHADER_UPDATE_CMD = 'sunshader_update'
 SUNSHADER_SCAN_CMD = 'sunshader_scan'
@@ -304,7 +311,7 @@ SUN_ALTITUDE_EXPOSURE_THRESH = 0.001
 #
 def initPaths(HOME_PATH=None):
     """Delayed settings of paths. This allows settings path locally (on pc) or camera."""
-    
+
     if HOME_PATH is None:
         HOME_PATH = os.path.expanduser('~')
 
@@ -320,7 +327,7 @@ def initPaths(HOME_PATH=None):
     global UPLOAD_CMD
     global VIGNETTING_PATH
     global RADIOMETRIC_PATH
-    
+
     CAPTURE_PATH = os.path.join(HOME_PATH, 'captured_images')
     GENERAL_SETTINGS_PATH = os.path.join(HOME_PATH, '.camera_data.json')
     CAPTURE_SETTINGS_PATH = os.path.join(HOME_PATH, '.capture_data.json')
@@ -328,7 +335,7 @@ def initPaths(HOME_PATH=None):
     RADIOMETRIC_PATH = os.path.join(HOME_PATH, '.radiometric.pkl')
     DEFAULT_LOG_FOLDER = os.path.join(HOME_PATH, 'camera_logs')
     MASK_PATH = os.path.join(HOME_PATH, 'mask_img.mat')
-    
+
     #
     # Calibration parameters
     #
@@ -336,7 +343,7 @@ def initPaths(HOME_PATH=None):
     EXTRINSIC_SETTINGS_PATH = os.path.join(HOME_PATH, '.extrinsic_data.npy')
     SUN_POSITIONS_PATH = os.path.join(HOME_PATH, 'sun_positions')
     DARK_IMAGES_PATH = os.path.join(HOME_PATH, 'dark_images')
-    
+
     UPLOAD_CMD =  os.path.join(HOME_PATH, ".local/bin/dropbox_uploader.sh -k upload {capture_path} {upload_path}")
 
 
@@ -344,4 +351,3 @@ def initPaths(HOME_PATH=None):
 # Legacy stuff
 ####################################################################################
 PROXY_SERVER_KEY_FILE = os.path.expanduser(r'~/keys/cameranetwork.pem')
-
