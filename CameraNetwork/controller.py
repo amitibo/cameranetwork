@@ -6,7 +6,7 @@ from CameraNetwork.calibration import VignettingCalibration
 from CameraNetwork.cameras import IDSCamera
 import CameraNetwork.global_settings as gs
 from CameraNetwork.image_utils import calcHDR
-from CameraNetwork.sunshader import SunShader
+from CameraNetwork.arduino_utils import ArduinoAPI
 from CameraNetwork.utils import cmd_callback
 from CameraNetwork.utils import find_camera_orientation_ransac
 from CameraNetwork.utils import find_centroid
@@ -113,7 +113,7 @@ class Controller(object):
         #
         if not offline:
             self.start_camera()
-            self._sunshader = SunShader()
+            self._arduino_api = ArduinoAPI()
         self._offline = offline
 
         #
@@ -341,7 +341,7 @@ class Controller(object):
             #
             # The model is already fitting.
             #
-            current_angle = self._sunshader.getAngle()
+            current_angle = self._arduino_api.getAngle()
             sunshader_scan_min = max(
                 current_angle-gs.SUNSHADER_SCAN_DELTA_ANGLE, sunshader_min
             )
@@ -407,7 +407,7 @@ class Controller(object):
             logging.info("Either failed fitting or not enough measurements")
             if measured_angle is not None:
                 logging.info("Using measured angle: {}".format(measured_angle))
-                self._sunshader.setAngle(measured_angle)
+                self._arduino_api.setAngle(measured_angle)
             else:
                 logging.debug("Sunshader not moved.")
             return
@@ -419,7 +419,7 @@ class Controller(object):
         estimated_angle = self.sunshader_angle_model.predict(X)[0]
 
         logging.info("Interpolating angle: {}".format(estimated_angle))
-        self._sunshader.setAngle(estimated_angle)
+        self._arduino_api.setAngle(estimated_angle)
 
     @cmd_callback
     @run_on_executor
@@ -434,7 +434,7 @@ class Controller(object):
         #
         # 'Reset' the sunshader.
         #
-        self._sunshader.setAngle(sunshader_min)
+        self._arduino_api.setAngle(sunshader_min)
         time.sleep(1)
 
         #
@@ -456,7 +456,7 @@ class Controller(object):
         saturated_array = []
         centers = []
         for i in range(sunshader_min, sunshader_max):
-            self._sunshader.setAngle(i)
+            self._arduino_api.setAngle(i)
             time.sleep(0.1)
             img, e, g = self.safe_capture(
                 settings={
@@ -522,7 +522,7 @@ class Controller(object):
         #
         # Set the new angle of the sunshader.
         #
-        self._sunshader.setAngle(measured_angle)
+        self._arduino_api.setAngle(measured_angle)
 
         #
         # Send back the analysis.
@@ -613,7 +613,7 @@ class Controller(object):
         #
         # Put the sunshader away.
         #
-        self._sunshader.setAngle(sunshader_min)
+        self._arduino_api.setAngle(sunshader_min)
         time.sleep(1)
 
         #
@@ -621,7 +621,7 @@ class Controller(object):
         #
         imgs = []
         for i in range(imgs_num):
-            self._sunshader.setAngle(sunshader_min+2)
+            self._arduino_api.setAngle(sunshader_min+2)
             img, real_exposure_us, real_gain_db = self._camera.capture(
                 settings={
                     "exposure_us": exposure_us,
@@ -630,7 +630,7 @@ class Controller(object):
                     "color_mode": gs.COLOR_RGB
                 }
             )
-            self._sunshader.setAngle(sunshader_min)
+            self._arduino_api.setAngle(sunshader_min)
 
             imgs.append(img)
             logging.debug(
@@ -681,14 +681,23 @@ class Controller(object):
                 )
             )
 
-        self._sunshader.setAngle(angle)
+        self._arduino_api.setAngle(angle)
+
+    @cmd_callback
+    @gen.coroutine
+    def handle_sprinkler(self, period):
+        """Activate the sprinkler for a given period."""
+
+        self._arduino_api.setSprinkler(True)
+        yield gen.sleep(period)
+        self._arduino_api.setSprinkler(False)
 
     @cmd_callback
     @run_on_executor
     def handle_moon(self, sunshader_min):
         """Measure Moon position"""
 
-        self._sunshader.setAngle(sunshader_min)
+        self._arduino_api.setAngle(sunshader_min)
         time.sleep(0.1)
         img, _, _ = self.safe_capture(
             settings={
