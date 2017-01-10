@@ -21,7 +21,7 @@ IDS_MAX_PIXEL_CLOCK = 10
 class IDSCamera(object):
     """A wrapper for the IDS cameras"""
 
-    def __init__(self, *params, **kwds):
+    def __init__(self, callback=None):
 
         try:
             import ids
@@ -33,6 +33,11 @@ class IDSCamera(object):
             # Turn off white balance.
             #
             self.capture_dev.auto_white_balance = False
+
+            #
+            # Image callback.
+            #
+            self._callback = callback
 
         except Exception as e:
             logging.exception(
@@ -98,11 +103,11 @@ class IDSCamera(object):
 
     def large_size(self):
         """Set large frame size."""
-        
+
         if self.capture_dev.subsampling == ids.ids_core.SUBSAMPLING_DISABLE:
             logging.debug('Camera is already set to large size.')
             return
-        
+
         logging.debug('Setting camera to large size')
         self.capture_dev.subsampling = ids.ids_core.SUBSAMPLING_DISABLE
         logging.debug('Free up memory')
@@ -234,5 +239,16 @@ class IDSCamera(object):
             axis=img_arrays[0].ndim
         )
         img_arrays = np.squeeze(img_arrays)
+
+        if self._callback is not None:
+            #
+            # Image capture callback
+            #
+            if frames_num > 1:
+                img = np.mean(img_arrays, axis=img_arrays.ndim-1)
+            else:
+                img = img_arrays
+
+            self._callback(img, self.capture_dev.exposure * 1e3, self.capture_dev.gain)
 
         return img_arrays, self.capture_dev.exposure * 1e3, self.capture_dev.gain

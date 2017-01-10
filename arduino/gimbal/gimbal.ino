@@ -11,12 +11,12 @@
 //
 // Define the pins of the servos
 //
-MePort port3(PORT_3);
+MePort port(PORT_3);
 
 Servo myservo1;  // create servo object to control a servo 
 Servo myservo2;  // create servo object to control another servo
-int servo1pin =  port3.pin1();//attaches the servo on PORT_3 SLOT1 to the servo object
-int servo2pin =  port3.pin2();//attaches the servo on PORT_3 SLOT2 to the servo object
+int servo1pin =  port.pin1();//attaches the servo on PORT_1 SLOT1 to the servo object
+int servo2pin =  port.pin2();//attaches the servo on PORT_1 SLOT2 to the servo object
 
 const int BUFFER_SIZE = 100;
 const char* READY_REPLY = "READY";
