@@ -6,7 +6,7 @@ from CameraNetwork.calibration import VignettingCalibration
 from CameraNetwork.cameras import IDSCamera
 import CameraNetwork.global_settings as gs
 from CameraNetwork.image_utils import calcHDR
-from CameraNetwork.sunshader import SunShader
+from CameraNetwork.arduino_utils import ArduinoAPI
 from CameraNetwork.utils import cmd_callback
 from CameraNetwork.utils import find_camera_orientation_ransac
 from CameraNetwork.utils import find_centroid
@@ -14,6 +14,7 @@ from CameraNetwork.utils import mean_with_outliers
 from CameraNetwork.utils import name_time
 from CameraNetwork.utils import object_direction
 from CameraNetwork.utils import RestartException
+import copy
 import cPickle
 import cv2
 from datetime import datetime
@@ -112,9 +113,9 @@ class Controller(object):
         #
         if not offline:
             self.start_camera()
-            self._sunshader = SunShader()
+            self._arduino_api = ArduinoAPI()
         self._offline = offline
-        
+
         #
         # Try to load calibration data.
         #
@@ -223,7 +224,7 @@ class Controller(object):
             logging.error(
                 "Failed loading vignetting data:\n{}".format(
                     traceback.format_exc()))
-        
+
         #
         # Load radiometric calibration.
         #
@@ -340,7 +341,7 @@ class Controller(object):
             #
             # The model is already fitting.
             #
-            current_angle = self._sunshader.getAngle()
+            current_angle = self._arduino_api.getAngle()
             sunshader_scan_min = max(
                 current_angle-gs.SUNSHADER_SCAN_DELTA_ANGLE, sunshader_min
             )
@@ -406,7 +407,7 @@ class Controller(object):
             logging.info("Either failed fitting or not enough measurements")
             if measured_angle is not None:
                 logging.info("Using measured angle: {}".format(measured_angle))
-                self._sunshader.setAngle(measured_angle)
+                self._arduino_api.setAngle(measured_angle)
             else:
                 logging.debug("Sunshader not moved.")
             return
@@ -418,7 +419,7 @@ class Controller(object):
         estimated_angle = self.sunshader_angle_model.predict(X)[0]
 
         logging.info("Interpolating angle: {}".format(estimated_angle))
-        self._sunshader.setAngle(estimated_angle)
+        self._arduino_api.setAngle(estimated_angle)
 
     @cmd_callback
     @run_on_executor
@@ -433,7 +434,7 @@ class Controller(object):
         #
         # 'Reset' the sunshader.
         #
-        self._sunshader.setAngle(sunshader_min)
+        self._arduino_api.setAngle(sunshader_min)
         time.sleep(1)
 
         #
@@ -455,7 +456,7 @@ class Controller(object):
         saturated_array = []
         centers = []
         for i in range(sunshader_min, sunshader_max):
-            self._sunshader.setAngle(i)
+            self._arduino_api.setAngle(i)
             time.sleep(0.1)
             img, e, g = self.safe_capture(
                 settings={
@@ -521,7 +522,7 @@ class Controller(object):
         #
         # Set the new angle of the sunshader.
         #
-        self._sunshader.setAngle(measured_angle)
+        self._arduino_api.setAngle(measured_angle)
 
         #
         # Send back the analysis.
@@ -612,7 +613,7 @@ class Controller(object):
         #
         # Put the sunshader away.
         #
-        self._sunshader.setAngle(sunshader_min)
+        self._arduino_api.setAngle(sunshader_min)
         time.sleep(1)
 
         #
@@ -620,7 +621,7 @@ class Controller(object):
         #
         imgs = []
         for i in range(imgs_num):
-            self._sunshader.setAngle(sunshader_min+2)
+            self._arduino_api.setAngle(sunshader_min+2)
             img, real_exposure_us, real_gain_db = self._camera.capture(
                 settings={
                     "exposure_us": exposure_us,
@@ -629,7 +630,7 @@ class Controller(object):
                     "color_mode": gs.COLOR_RGB
                 }
             )
-            self._sunshader.setAngle(sunshader_min)
+            self._arduino_api.setAngle(sunshader_min)
 
             imgs.append(img)
             logging.debug(
@@ -680,14 +681,23 @@ class Controller(object):
                 )
             )
 
-        self._sunshader.setAngle(angle)
+        self._arduino_api.setAngle(angle)
+
+    @cmd_callback
+    @gen.coroutine
+    def handle_sprinkler(self, period):
+        """Activate the sprinkler for a given period."""
+
+        self._arduino_api.setSprinkler(True)
+        yield gen.sleep(period)
+        self._arduino_api.setSprinkler(False)
 
     @cmd_callback
     @run_on_executor
     def handle_moon(self, sunshader_min):
         """Measure Moon position"""
 
-        self._sunshader.setAngle(sunshader_min)
+        self._arduino_api.setAngle(sunshader_min)
         time.sleep(0.1)
         img, _, _ = self.safe_capture(
             settings={
@@ -898,7 +908,7 @@ class Controller(object):
                     img_data.exposure_us,
                     dark_images['exposures'],
                     dark_images['images'])
-                
+
                 logging.debug(
                     'Applying dark image, exposure: {} boost: {} shape: {}'.format(
                         img_data.exposure_us, img_data.gain_boost, dark_image.shape)
@@ -906,16 +916,16 @@ class Controller(object):
                 img_array = img_array.astype(np.float) - dark_image
                 img_array[img_array < 0] = 0
                 tmp_arrays.append(img_array)
-            
+
             img_arrays = tmp_arrays
-            
+
         if len(img_arrays) == 1:
             img_array = \
                 img_arrays[0].astype(np.float) / (img_datas[0].exposure_us / 1000)
         else:
             img_exposures = [img_data.exposure_us / 1000 for img_data in img_datas]
             img_array = calcHDR(img_arrays, img_exposures)
-            
+
         #
         # Apply vignetting.
         #
@@ -937,7 +947,7 @@ class Controller(object):
         # Scale to Watts.
         #
         img_array = self._radiometric.applyRadiometric(img_array)
-        
+
         return np.ascontiguousarray(img_array)
 
     @cmd_callback
@@ -997,10 +1007,8 @@ class Controller(object):
         # Nothing should be done in case the camera is already in large size.
         self._camera.large_size()
 
-        mat_names = []
-        jpg_names = []
-        data_names = []
-
+        img_arrays = []
+        img_datas = []
         capture_settings = capture_settings.copy()
         for hdr_i in range(hdr_mode):
             #
@@ -1028,14 +1036,11 @@ class Controller(object):
                 logging.debug('Averaged %d arrays' % frames_num)
 
             #
-            # Save the array and its data.
             #
-            mat_path, jpg_path, data_path = self.save_array(
-                img_array, img_data, hdr_i)
-
-            mat_names.append(mat_path)
-            jpg_names.append(jpg_path)
-            data_names.append(data_path)
+            # Copy the array and its data for a later saving.
+            #
+            img_arrays.append(img_array)
+            img_datas.append(copy.copy(img_data))
 
             if hdr_mode < 2:
                 #
@@ -1050,6 +1055,20 @@ class Controller(object):
                 break
 
             capture_settings['exposure_us'] = capture_settings['exposure_us'] * 2
+
+        mat_names = []
+        jpg_names = []
+        data_names = []
+        for img_array, img_data, hdr_i in zip(img_arrays, img_datas, range(hdr_mode)):
+            #
+            # Save the array and its data.
+            #
+            mat_path, jpg_path, data_path = self.save_array(
+                img_array, img_data, hdr_i)
+
+            mat_names.append(mat_path)
+            jpg_names.append(jpg_path)
+            data_names.append(data_path)
 
         #
         # Send back the image.

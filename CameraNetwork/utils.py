@@ -124,19 +124,13 @@ def setup_reverse_ssh_tunnel(
     ssh_cmd=gs.REVERSE_AUTOSSH_CMD,
     **kwds
     ):
-    """
-    Create the (reverse) ssh tunnel from camera to proxy server.
+    """Create the (reverse) ssh tunnel from camera to proxy server.
 
-    Params:
-    =======
-    ip : str
-        SERVER_IP of the proxy server.
-    user : str
-        User name to log on the proxy server.
-    local_port : int
-        Local port on which to connect to the proxy server.
-    tunnel_port : int
-        Tunnel port (on the remote server).
+    Args:
+        ip (str) : SERVER_IP of the proxy server.
+        user (str) : User name to log on the proxy server.
+        local_port (int) : Local port on which to connect to the proxy server.
+        tunnel_port (int) : Tunnel port (on the remote server).
     """
 
     autossh_monitor_port += random.randrange(1000)
@@ -182,16 +176,11 @@ def upload_file_to_proxy(
     """
     Upload a file from the camera to proxy server.
 
-    Params:
-    =======
-    ip : str
-        SERVER_IP of the proxy server.
-    user : str
-        User name to log on the proxy server.
-    local_port : int
-        Local port on which to connect to the proxy server.
-    tunnel_port : int
-        Tunnel port (on the remote server).
+    Args:
+        ip (str) : SERVER_IP of the proxy server.
+        user (str) : User name to log on the proxy server.
+        src_path (str) : Path to uploaded file.
+        dst_path (str) : Path to copy to on the remote server.
     """
 
     _scp_cmd = scp_cmd.format(
@@ -310,8 +299,7 @@ class QueueHandler(logging.Handler):
     """
 
     def __init__(self, queue):
-        """
-        Initialise an instance, using the passed queue.
+        """Initialise an instance, using the passed queue.
         """
         logging.Handler.__init__(self)
         self.queue = queue
@@ -373,8 +361,7 @@ def process_logger(log_queue, log_path, log_level):
 
 
 def logger_configurer(log_queue, log_level=logging.INFO):
-    """
-    The worker configuration is done at the start of the worker process run.
+    """The worker configuration is done at the start of the worker process run.
     Note that on Windows you can't rely on fork semantics, so each process
     will run the logging configuration code when it starts.
     """
@@ -386,8 +373,7 @@ def logger_configurer(log_queue, log_level=logging.INFO):
 
 
 def setup_logging(log_path, log_level):
-    """
-    Setup logging. The logging is done both to a file and to console.
+    """Setup logging. The logging is done both to a file and to console.
     """
     import multiprocessing
 
@@ -403,8 +389,7 @@ def setup_logging(log_path, log_level):
 
 
 def sbp_run(command, shell=False, working_directory=None):
-    """
-    Shortcut for running a command on the shell.
+    """Shortcut for running a command on the shell.
     """
 
     p = subprocess.Popen(
@@ -483,8 +468,8 @@ def sun_direction(
         longitude='34.9833',
         altitude=230,
         at_time=None):
-    """
-    Calculate the current altitude of the sun.
+    """Calculate the current altitude of the sun.
+    
     Default latitude and longitude given for haifa:
     Haifa. 32.8167 N, 34.9833 E
     """
@@ -534,8 +519,9 @@ def object_direction(
 
 
 def find_centroid(img, minus_level=THRESHOLD_MINUS):
-    """
-    Find the centroid of the strongest pixels in an image. Useful for finding the sun.
+    """Find the centroid of the strongest pixels in an image.
+    
+    Useful for finding the sun.
     """
 
     import cv2
@@ -581,20 +567,14 @@ def find_camera_orientation(calculated_directions, measured_directions):
     The inner calibration of the camera is given as a function that converts
     between the image coordinates and the camera coordinates.
 
-    Parameters:
-    -----------
-    calculated_directions -
-        The reference direction of the celestial object. Given as an nx3 matrix of [x, y, z] on the
-        unit hemisphere.
+    Args:
+        calculated_directions (array like): The reference direction of the celestial
+            object. Given as an nx3 matrix of [x, y, z] on the unit hemisphere.
+        measured_directions (array like): The measured directions of the celestial
+            objects. Given as an nx3 matrix of [x, y, z] on the unit hemisphere.
 
-    measured_directions -
-        The measured directions of the celestial objects. Given as an nx3 matrix of [x, y, z] on the
-        unit hemisphere.
-
-    Output:
-    ------
+    Returns:
         Euler angles for rotating the measured directions to match the calculated directions.
-
     """
     from scipy import optimize
 
@@ -645,18 +625,13 @@ def find_camera_orientation_ransac(calculated_directions, measured_directions):
     between the image coordinates and the camera coordinates.
     Uses Ransac to filter outliers.
 
-    Parameters:
-    -----------
-    calculated_directions -
-        The reference direction of the celestial object. Given as an nx3 matrix of [x, y, z] on the
-        unit hemisphere.
+    Args:
+        calculated_directions (array like): The reference direction of the celestial
+            object. Given as an nx3 matrix of [x, y, z] on the unit hemisphere.
+        measured_directions (array like): The measured directions of the celestial
+            objects. Given as an nx3 matrix of [x, y, z] on the unit hemisphere.
 
-    measured_directions -
-        The measured directions of the celestial objects. Given as an nx3 matrix of [x, y, z] on the
-        unit hemisphere.
-
-    Output:
-    ------
+    Returns:
         Euler angles for rotating the measured directions to match the calculated directions.
 
     """

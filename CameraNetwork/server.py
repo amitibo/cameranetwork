@@ -710,7 +710,6 @@ class Server(MDPWorker):
             hdr_index=0,
             normalize=False,
             resolution=gs.DEFAULT_NORMALIZATION_SIZE):
-
         """Seek for a previously captured (loop) array.
 
         Args:
@@ -723,6 +722,7 @@ class Server(MDPWorker):
 
         Return:
             Compressed mat file in the form of a string.
+
         """
 
         if self.last_query_df is None:
@@ -746,7 +746,7 @@ class Server(MDPWorker):
             mat_paths = self.last_query_df.loc[seek_time].values.flatten()
         else:
             mat_paths = self.last_query_df.loc[seek_time, hdr_index].values
-        
+
         img_arrays, img_datas = [], []
         for mat_path in mat_paths:
             print("Seeking: {}".format(mat_path))
@@ -775,7 +775,7 @@ class Server(MDPWorker):
                 #
                 with open(base_path+'.pkl', 'rb') as f:
                     img_data = cPickle.load(f)
-            
+
             img_arrays.append(img_array)
             img_datas.append(img_data)
 
@@ -790,6 +790,19 @@ class Server(MDPWorker):
         matfile = dict2buff(dict(img_array=img_array))
 
         raise gen.Return(((), dict(matfile=matfile, img_data=img_datas[0])))
+
+    @gen.coroutine
+    def handle_sprinkler(self, period):
+        """Activate the sprinkler for a given period."""
+
+        #
+        # Send command to the controller.
+        #
+        yield self.push_cmd(
+            gs.SPRINKLER_CMD,
+            priority=50,
+            period=period
+        )
 
     @gen.coroutine
     def handle_sunshader(self, angle):

@@ -37,8 +37,8 @@ def check_connection():
 # Functions called by the RaspberryPi
 # 
 def retrieve_proxy_parameters(local_mode=False):
-    """
-    Retrieve proxy parameters for the camera.
+    """Retrieve proxy parameters for the camera.
+    
     Proxy settings are stored as a json file.
     """
     
@@ -76,8 +76,9 @@ def retrieve_proxy_parameters(local_mode=False):
 def setup_config_server(
     **kwds
     ):
-    """
-    Setup up the configuration server that tells the cameras how to
+    """Setup up the configuration server
+    
+    This server tells the cameras how to
     connect to the proxy server. Proxy settings are stored as a json file.
     """
     
@@ -129,19 +130,13 @@ def setup_forward_ssh_tunnel(
     key=PROXY_SERVER_KEY_FILE,
     **kwds
     ):
-    """
-    Create the (forward) ssh tunnel from client to proxy server.
+    """Create the (forward) ssh tunnel from client to proxy server.
     
-    Params:
-    =======
-    server_ip : str
-        SERVER_IP of the proxy server.
-    server_user : str
-        User name to log on the proxy server.
-    local_port : int
-        Local port on which to connect to the proxy server.
-    tunnel_port : int
-        Tunnel port (on the remote server).
+    Args:
+        server_ip (str): SERVER_IP of the proxy server.
+        server_user (str): User name to log on the proxy server.
+        local_port (int): Local port on which to connect to the proxy server.
+        tunnel_port (int): Tunnel port (on the remote server).
     """
     
     import zmq.ssh.tunnel

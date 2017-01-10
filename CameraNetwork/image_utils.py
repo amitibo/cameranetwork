@@ -13,18 +13,19 @@ def calcHDR(img_arrays, img_exposures, low_limit=20, high_limit=230):
     Args:
         img_arrays (list of images): List of uint8 images.
         img_exposures (list of floats): Corresponding exposures (preferably in
-            ms). The images are expected to be sorted from shortest to longest
-            exposure.
+            ms).
+        The images are expected to be sorted from shortest to longest exposure.
         low_limit (float[optional]): low RGB value below which values are
             ignored except in the longest exposure.
         high_limit (float[optional]): high RGB value above which values are
             ignored except in the shortest exposure.
 
-    Retruns:
+    Returns:
         HDR image merged from the image arrays. There idea is that the shortest
         exposure is used for the high RGB values, and the longest for the low
         values. The other values are averaged from all images. The HDR image
         returned is float in units of [RGB/ms]
+        
     """
 
     hdr_imgs = []

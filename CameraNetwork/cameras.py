@@ -13,9 +13,9 @@ DEFAULT_IDS_SETTINGS = {
     "color_mode": gs.COLOR_RGB
 }
 #
-# On the Odroid U3 pixelclock above 10 starts throwing USB errors.
+# On the Odroid U3 pixelclock above 30 starts throwing USB errors.
 #
-IDS_MAX_PIXEL_CLOCK = 10
+IDS_MAX_PIXEL_CLOCK = 25
 
 
 class IDSCamera(object):
@@ -161,21 +161,20 @@ class IDSCamera(object):
             #
             # Set pixelclock. These values are empiric.
             #
-            if settings["exposure_us"] > 500:
+            if settings["exposure_us"] > 1000000:
                 #
                 # Set pixel rate to minimum to allow long exposure times.
                 #
-                logging.info("Setting pixel clock to {}.".format(
-                    self.capture_dev.pixelclock_range[0]))
                 self.capture_dev.pixelclock = \
                     self.capture_dev.pixelclock_range[0]
             else:
                 #
                 # Set pixel rate to maximum to allow short exposure times.
                 #
-                logging.info("Setting pixel clock to {}.".format(
-                    self.capture_dev.pixelclock_range[1]))
                 self.capture_dev.pixelclock = IDS_MAX_PIXEL_CLOCK
+
+            logging.info("Setting pixel clock to {}.".format(
+                self.capture_dev.pixelclock))
 
             self.capture_dev.framerate = min(100, 1e6 / settings["exposure_us"])
             self.capture_dev.auto_exposure = False

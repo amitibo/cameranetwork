@@ -52,7 +52,7 @@ class Client(MDPClient):
 
         #
         # Create a new instance of the ioloop.
-        # This is important for example when running from an ipython notebook (which 
+        # This is important for example when running from an ipython notebook (which
         # is itself an ioloop.)
         #
         ioloop.IOLoop.clear_current()
@@ -62,19 +62,19 @@ class Client(MDPClient):
         # Set the (Tornado) loop
         #
         self.loop = ioloop.IOLoop().instance()
-        
+
         #
         # Start the MDP client.
         #
         super(Client, self).start()
-        
+
         #
         # Start the ioloop.
         #
         time.sleep(delay_start)
         ioloop.PeriodicCallback(
             partial(self.send_mmi, service=MDP.MMI_SERVICES, msg=[]), self.mmi_period, self.loop
-            ).start()        
+            ).start()
         self.loop.start()
 
     def send(self, server_address, cmd, msg_extra=MDP.STANDARD, args=(), kwds={}):
@@ -82,7 +82,7 @@ class Client(MDPClient):
 
         msg = (cmd, args, kwds)
         msg_out = cPickle.dumps(msg)
-        
+
         self.request(
             service=server_address,
             msg_extra=msg_extra,
@@ -99,7 +99,7 @@ class Client(MDPClient):
 
     def handle_receive(self, msg_extra, service, status, cmd, args, kwds):
         """Callback to handle receive. This is called only if there are no other callbacks to handle the message. Derived classes should override this method."""
-        
+
         raise Warning('Unattended message: ', str((status, cmd, args, kwds)))
 
     def on_message(self, msg):
@@ -107,14 +107,14 @@ class Client(MDPClient):
 
         # 1st part is msg type
         msg_extra = ord(msg.pop(0))
-        
+
         # 2nd part is empty
         msg.pop(0)
 
         # 3nd part is protocol version
         # TODO: version check
         proto = msg.pop(0)
-        
+
         # 4rd part is service type
         service = msg.pop(0)
         if service.startswith(b'mmi.'):
@@ -142,7 +142,7 @@ class Client(MDPClient):
 
     def on_mmi(self, service, msg):
         """handle mmi requests"""
-        
+
         if service == MDP.MMI_SERVICES:
             self.calculate_server_changes(msg)
         elif service == MDP.MMI_TUNNELS:
@@ -151,10 +151,10 @@ class Client(MDPClient):
             raise Warning('Unknown mmi msg: %s, %s' % (service, str(msg)))
 
         return
-    
+
     def tunnels_cb(self, tunnels_dict):
         raise NotImplementedError("'tunnels_cb' should be implemented by a subclass.")
-    
+
     def calculate_server_changes(self, updated_servers_list):
         """
         Send a ping to all servers connected to the client. This is used for checking
@@ -175,45 +175,45 @@ class Client(MDPClient):
 
     def _handle_new_server(self, server):
         """Handling the connection of a new server"""
-        
+
         logging.debug("yay, got new server {}!".format(server))
-        
+
         #
         # Update server list
         #
         self._servers_set.add(server)
-        
+
         #
         # Call callback
         #
         self.handle_new_server(server)
-    
+
     def handle_new_server(self, server):
         """Callback on connection of a new server. Derived classes should override this method."""
         pass
-        
+
     def _handle_server_failure(self, server):
         """Handling the disconnection of a server"""
-        
+
         logging.debug("Server {} failed :(".format(server))
-        
+
         #
         # Update server list
-        #        
+        #
         self.handle_server_failure(server)
-        
+
         #
         # Call callback
         #
         self._servers_set.remove(server)
-        
+
     def handle_server_failure(self, server):
         """Callback on disconnection of a server. Derived classes should override this method."""
         pass
-        
+
     @property
     def servers(self):
-        
+
         return list(self._servers_set)
 
 
@@ -225,18 +225,18 @@ class ServerProxy(object):
 
         self._client = client
         self._server_id = server_id
-        
+
     def __getattr__(self, name):
         """Dynamically create messages."""
-        
+
         if not hasattr(Server, 'handle_{}'.format(name)):
             raise AttributeError("Unkown server command: {}".format(name))
-        
+
         #
-        # Create sendmessage method. 
+        # Create sendmessage method.
         #
         def autocmd(*args, **kwds):
-            
+
             #
             # Send message
             #
@@ -247,23 +247,23 @@ class ServerProxy(object):
                     args=args,
                     kwds=kwds
                 )
-            
+
             #
             # Check the reply status
             #
             if status != gs.MSG_STATUS_OK:
                 raise gs.MSG_EXCEPTION_MAP[status](args_answer[0])
-            
+
             return kwds_answer
-        
+
         autocmd.__doc__ = getattr(Server, 'handle_{}'.format(name)).__doc__
-        
+
         return autocmd
 
-    
+
 class CLIclient(object):
     """'Command Line' client.
-    
+
     Useful for interfacing with cameras from Ipython or from scripts.
     """
 
@@ -272,27 +272,27 @@ class CLIclient(object):
         self.futures = {}
 
     def __getitem__(self, i):
-        
+
         if i not in self.client_instance.servers:
             raise IndexError(
                 'Unkown server: {}. List of known servers: {}.'.format(
                     i, self.client_instance.servers
                 )
             )
-        
+
         return ServerProxy(self, i)
-                
+
     def start(self, proxy_params):
-        
+
         client_instance = Client(proxy_params)
-        
+
         #
         # Bind callbacks
         #
         client_instance.handle_new_server = self.add_server
         client_instance.handle_server_failure = self.remove_server
         client_instance.handle_receive = self.receive_message
-        
+
         self.client_instance = client_instance
 
         #
@@ -303,23 +303,23 @@ class CLIclient(object):
         thread.start()
 
     def send_message(self, server_id, cmd, args=(), kwds={}, timeout=30):
-        
+
         future = futures.Future()
         self.futures[server_id] = future
-        
+
         loop = ioloop.IOLoop.instance()
         loop.add_callback(self.client_instance.send, server_address=server_id, cmd=cmd, args=args, kwds=kwds)
-        
+
         return future.result(timeout=timeout)
-    
+
     def add_server(self, server_id):
         print 'Adding the new server: {}'.format(server_id)
-                
+
     def remove_server(self, server_id):
         print 'Removing server: {}'.format(server_id)
-    
+
     def receive_message(self, msg_extra, server_id, status, cmd, args, kwds):
-        
+
         if server_id in self.futures.keys():
             self.futures[server_id].set_result((status, cmd, args, kwds))
 
@@ -350,7 +350,7 @@ class CLIclient(object):
         )
         if status == gs.MSG_STATUS_ERROR:
             raise Exception(args[0])
-        
+
         img_array = np.ascontiguousarray(buff2dict(kwds['matfile'])['img_array'])
         img_data = kwds['img_data']
 
@@ -373,7 +373,7 @@ class CLIclient(object):
         )
         if status == gs.MSG_STATUS_ERROR:
             raise Exception(args[0])
-        
+
     def query(
         self,
         server_id,
@@ -389,9 +389,9 @@ class CLIclient(object):
         )
         if status == gs.MSG_STATUS_ERROR:
             raise Exception(args[0])
-        
+
         images_df = kwds['images_df']
-        
+
         return images_df
 
     def seek(
@@ -414,10 +414,10 @@ class CLIclient(object):
         )
         if status == gs.MSG_STATUS_ERROR:
             raise Exception(args[0])
-        
+
         img_array = np.ascontiguousarray(buff2dict(kwds['matfile'])['img_array'])
         img_data = kwds['img_data']
-    
+
         return img_array, img_data
 
 
@@ -430,7 +430,7 @@ def main ():
     c.start(proxy_params)
 
     qdf_102 = c.query('102', '2016-10-23')
-    closest_time = findClosestImageTime(qdf_102, '2016-10-23 05:13:07', hdr='2')    
+    closest_time = findClosestImageTime(qdf_102, '2016-10-23 05:13:07', hdr='2')
     img, img_data = c.seek('102', closest_time, -1, 301)
 
 

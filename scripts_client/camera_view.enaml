@@ -531,6 +531,30 @@ enamldef SunshaderControlPage(Page):
             figure << server_model_.sunshader_figure
 
 
+enamldef SprinklerControlPage(Page):
+    attr server_model_
+
+    GroupBox:
+        title = 'Sprinkler'
+
+        HGroup:
+            PushButton: pb_sprinkle:
+                text = 'Sprinkle'
+                clicked ::
+                    root_object().model.send_message(
+                        server_model_,
+                        gs.MSG_TYPE_SPRINKLER,
+                        kwds=dict(
+                            period=sprinkler_period.value
+                        )
+                    )
+
+            Label:
+                text = 'Period:'
+            FloatField: sprinkler_period:
+                value = gs.SPRINKLER_PERIOD
+        
+
 enamldef CalibrationControlPage(Page):
     attr server_model_
     
@@ -670,6 +694,11 @@ enamldef ServerItem(DockItem):
                 server_model_ = server_model
                 sunshader_angle_value << server_model.sunshader_required_angle
 
+            SprinklerControlPage:
+                title = 'Sprinkle'
+                closable = False
+                server_model_ = server_model
+
             CalibrationControlPage:           
                 title = 'Calibration'
                 closable = False
@@ -799,7 +828,9 @@ enamldef ArraysItem(DockItem):
                 style_class = 'gradient-button gb-yellow rounded'
                 
                 clicked ::
-                    root_object().model.load_rois()
+                    path = FileDialogEx.get_open_file_name()
+                    if path:
+                        root_object().model.load_rois(path)
 
 
 enamldef MyDockArea(DockArea):
@@ -869,17 +900,20 @@ enamldef MyDockArea(DockArea):
                     maximum = 1001
                     value = 301
 
+                CheckBox: HDR:
+                    tool_tip = "Return HDR image"
+                    checked = False
+                    text = "HDR"
+
                 PushButton: pb_seek:
                     text = 'Seek'
                     clicked ::
                         index = root_object().model.img_index
-                        print index
-                        #root_object().model.clear_arrays()
                         root_object().model.broadcast_message(
                             gs.MSG_TYPE_SEEK,
                             kwds=dict(
                                 seek_time=index[0],
-                                hdr_index=index[1],
+                                hdr_index=-1 if HDR.checked else index[1],
                                 normalize=True,
                                 resolution=resolution_seek.value
                             )
