@@ -50,7 +50,7 @@ class Gimbal( object ):
         #
         # Wait for the motor to finish the reset move
         #
-        #self._waitReady()
+        self._waitReady()
 
     def _finalize(self):
         """Finalize the serial port

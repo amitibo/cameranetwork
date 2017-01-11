@@ -1,0 +1,15 @@
+(dp1
+S'exposure_us'
+p2
+I120000
+sS'color_mode'
+p3
+S'raw'
+p4
+sS'gain_db'
+p5
+I0
+sS'gain_boost'
+p6
+I00
+s.

@@ -21,10 +21,13 @@ import traceback
 import cPickle
 
 SLEEP_TIME = 0.1
-SAMPLING_STEPS = 16
 
-DO_GEOMETRIC_CALIBRATION = False
-DO_BLACK_IMG = False
+DO_GEOMETRIC_CALIBRATION = True
+GEOMETRIC_STEPS = 12
+
+DO_BLACK_IMG = True
+
+VIGNETTING_STEPS = 32
 
 #
 # Calibration params
@@ -62,7 +65,7 @@ def main():
     spec = oceanoptics.get_a_random_spectrometer()
 
 
-    p = Gimbal(com="COM3")
+    p = Gimbal(com="COM5")
 
     #
     # Put here a break point if you want to adjust the focus.
@@ -73,7 +76,7 @@ def main():
     cv2.namedWindow("image", flags=cv2.WINDOW_NORMAL)
     cam = IDSCamera(callback=capture_callback)
 
-    base_path = os.path.join('radiometric_calibration', cam.info['serial_num'])
+    base_path = os.path.join('vignetting_calibration', cam.info['serial_num'])
     safe_mkdirs(base_path)
     safe_mkdirs(os.path.join(base_path, 'images'))
 
@@ -99,7 +102,10 @@ def main():
         #
         imgs = []
         imgsR = []
-        for i, (x, y) in enumerate(itertools.product(np.linspace(0, 120, 8), np.linspace(35, 165, 8))):
+        for i, (x, y) in \
+            enumerate(itertools.product(
+                np.linspace(0, 120, GEOMETRIC_STEPS),
+                np.linspace(35, 165, GEOMETRIC_STEPS))):
             print x, y
             p.move(int(x), int(y))
             time.sleep(1.5)
@@ -179,8 +185,8 @@ def main():
     print("Maximal color values: {}".format([c.max() for c in raw2RGB(img)]))
 
     X_grid, Y_grid = np.meshgrid(
-        np.linspace(0, 180, SAMPLING_STEPS),
-        np.linspace(0, 180, SAMPLING_STEPS),
+        np.linspace(0, 180, VIGNETTING_STEPS),
+        np.linspace(0, 180, VIGNETTING_STEPS),
         indexing='xy')
     X_grid = X_grid.astype(np.int32)
     Y_grid = Y_grid.astype(np.int32)
