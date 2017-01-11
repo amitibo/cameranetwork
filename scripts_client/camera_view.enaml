@@ -291,7 +291,7 @@ enamldef MainControlsPage(Page):
 
         VGroup:
             PushButton: pb_settings:
-                text = 'Settings'
+                text = "Settings"
                 clicked :: 
                     root_object().model.send_message(server_model_, gs.MSG_TYPE_GET_SETTINGS)
 
@@ -934,18 +934,23 @@ enamldef Main(MainWindow): main:
    
     MenuBar:
         Menu:
-            title = '&File'
+            title = "&Global Actions"
             Action:
-                text = 'Get Tunnels\tCtrl+N'
+                text = "Update Tunnels\tCtrl+N"
                 triggered :: model.send_mmi(MDP.MMI_TUNNELS)
             
             Menu:
-                title = 'Tunnels List'
+                title = "Tunnels"
                 Looper: column_looper:
                     iterable << sorted(model.tunnels_dict.items())
                     Action:
                         text = "Camera {}, port {}".format(loop_item[0], loop_item[1]['tunnel_port'])
                         triggered :: model.open_tunnel(loop_item[1])
+
+            Action:
+                text = "Settings\tCtrl+U"
+                triggered :: 
+                    print("Hello")
 
     Container:
         MyDockArea: dock_area:
