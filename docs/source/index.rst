@@ -13,7 +13,7 @@ Contents:
 
    introduction
    install
-   camera
+   calibration
    usage
    modules
 
