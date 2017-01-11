@@ -1,22 +1,11 @@
 #include <SoftwareSerial.h>
-#include <Makeblock.h>
+#include "MeOrion.h"
 #include <Wire.h>
 
-//Parts required:Me RJ25 Adapter and two servo   
-//Me RJ25 Adapter SLOT1 connect servo1, SLOT2connect servo2,
-//The Me RJ25 Adapter module can connect to the port with yellow tag (PORT_3 to PROT_8). 
-
-#include <Servo.h> //include the Servo library;
-
-//
-// Define the pins of the servos
-//
-MePort port(PORT_3);
-
-Servo myservo1;  // create servo object to control a servo 
+Servo myservo1;  // create servo object to control a servo
 Servo myservo2;  // create servo object to control another servo
-int servo1pin =  port.pin1();//attaches the servo on PORT_1 SLOT1 to the servo object
-int servo2pin =  port.pin2();//attaches the servo on PORT_1 SLOT2 to the servo object
+int servo1pin =  mePort[4].s1; //attaches the servo on PORT_1 SLOT1 to the servo object
+int servo2pin =  mePort[4].s2; //attaches the servo on PORT_1 SLOT2 to the servo object
 
 const int BUFFER_SIZE = 100;
 const char* READY_REPLY = "READY";
@@ -40,8 +29,8 @@ void initServos()
     }
     myservo1.attach(servo1pin);  // attaches the servo on servopin1
     myservo2.attach(servo2pin);  // attaches the servo on servopin2
-    
-    myservo1.write(90);                  // sets the servo position according to the scaled value 
+
+    myservo1.write(90);                  // sets the servo position according to the scaled value
     myservo2.write(90);
 }
 
@@ -133,7 +122,7 @@ void loop()
     char Buffer[BUFFER_SIZE];
     int ByteCount;
     byte rxBuf;
-    
+
     //
     // add main program code here
     //
