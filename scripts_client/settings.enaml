@@ -6,9 +6,9 @@ from CameraNetwork import global_settings as gs
 
 
 #
-# Settings popup window.
+# Server Settings popup window.
 #
-enamldef ServerConfigPopup(PopupView): SettingsPopup:
+enamldef ServerConfigPopup(PopupView): ServerSettingsPopup:
     foreground = 'white'
     background = 'rgba(30, 30, 30, 0.85)'
     window_type = 'window'
@@ -37,6 +37,7 @@ enamldef ServerConfigPopup(PopupView): SettingsPopup:
                     SpinBox: internet_failures:
                         minimum = 0
                         maximum = 5000
+                        value := server_model.camera_settings[gs.INTERNET_FAILURE_THRESH]
                     Label:
                         foreground = 'white'
                         text = 'SunShader Min'
@@ -82,32 +83,17 @@ enamldef ServerConfigPopup(PopupView): SettingsPopup:
                         foreground = 'white'
                         text = 'Start Loop'
                     CheckBox: start_loop:
-                        checked := server_model.camera_settings[gs.START_LOOP]
-                    Label:
-                        foreground = 'white'
-                        text = 'Loop Delay'
-                    SpinBox: loop_delay:
-                        minimum = 2
-                        maximum = 3600
-                        value := server_model.camera_settings[gs.LOOP_DELAY]
-                    Label:
-                        foreground = 'white'
-                        text = 'Calib delay'
-                    SpinBox: calib_delay:
-                        minimum = 2
-                        maximum = 100
-                        value := server_model.camera_settings[gs.CALIBRATION_DELAY]
-                        value := server_model.camera_settings[gs.INTERNET_FAILURE_THRESH]
+                        checked := server_model.capture_settings[gs.START_LOOP]
                     Label:
                         foreground = 'white'
                         text = 'Upload Jpeg'
                     CheckBox: upload_jpg:
-                        checked := server_model.camera_settings[gs.UPLOAD_JPG_FILE]
+                        checked := server_model.capture_settings[gs.UPLOAD_JPG_FILE]
                     Label:
                         foreground = 'white'
                         text = 'Upload Mat'
                     CheckBox: upload_mat:
-                        checked := server_model.camera_settings[gs.UPLOAD_MAT_FILE]
+                        checked := server_model.capture_settings[gs.UPLOAD_MAT_FILE]
                     Label:
                         foreground = 'white'
                         text = 'Period'
@@ -116,29 +102,36 @@ enamldef ServerConfigPopup(PopupView): SettingsPopup:
                         items = [gs.DAY_SETTINGS, gs.NIGHT_SETTINGS]
                     Label:
                         foreground = 'white'
+                        text = 'Loop Delay'
+                    SpinBox: loop_delay:
+                        minimum = 2
+                        maximum = 3600
+                        value := server_model.capture_settings[daynight.selected_item][gs.LOOP_DELAY]
+                    Label:
+                        foreground = 'white'
                         text = 'Shutter [uS]'
                     IntField: shutter:
-                        value := server_model.camera_settings[daynight.selected_item][gs.IMAGE_EXPOSURE]
+                        value := server_model.capture_settings[daynight.selected_item][gs.IMAGE_EXPOSURE]
                     Label:
                         foreground = 'white'
                         text = 'GAIN'
                     IntField: gain:
                         minimum = 0
                         maximum = 100
-                        value << int(server_model.camera_settings[daynight.selected_item][gs.IMAGE_GAIN])
-                        value >> server_model.camera_settings[daynight.selected_item][gs.IMAGE_GAIN]
+                        value << int(server_model.capture_settings[daynight.selected_item][gs.IMAGE_GAIN])
+                        value >> server_model.capture_settings[daynight.selected_item][gs.IMAGE_GAIN]
                     Label:
                         foreground = 'white'
                         text = 'Gain Boost'
                     CheckBox: gain_boost:
-                        checked := server_model.camera_settings[daynight.selected_item][gs.GAIN_BOOST]
+                        checked := server_model.capture_settings[daynight.selected_item][gs.GAIN_BOOST]
                     Label:
                         foreground = 'white'
                         text = 'Frames #'
                     SpinBox: frames_num_1:
                         minimum = 1
                         maximum = 30
-                        value := server_model.camera_settings[daynight.selected_item][gs.FRAMES_NUM]
+                        value := server_model.capture_settings[daynight.selected_item][gs.FRAMES_NUM]
                     Label:
                         foreground = 'white'
                         text = 'HDR frames'
@@ -146,14 +139,14 @@ enamldef ServerConfigPopup(PopupView): SettingsPopup:
                     SpinBox: hdr_mode:
                         minimum = 1
                         maximum = 8
-                        value := server_model.camera_settings[daynight.selected_item][gs.HDR_MODE]
+                        value := server_model.capture_settings[daynight.selected_item][gs.HDR_MODE]
                     Label:
                         foreground = 'white'
                         text = 'Mode'
                     ComboBox: cmode:
-                        index << cmode.items.index(server_model.camera_settings[daynight.selected_item][gs.COLOR_MODE])
+                        index << cmode.items.index(server_model.capture_settings[daynight.selected_item][gs.COLOR_MODE])
                         index ::
-                            server_model.camera_settings[daynight.selected_item][gs.COLOR_MODE] = cmode.items[cmode.index]
+                            server_model.capture_settings[daynight.selected_item][gs.COLOR_MODE] = cmode.items[cmode.index]
                         items = [gs.COLOR_RAW, gs.COLOR_RGB]
 
         GroupBox:
@@ -163,11 +156,121 @@ enamldef ServerConfigPopup(PopupView): SettingsPopup:
                     client_model.send_message(
                         server_model,
                         gs.MSG_TYPE_SET_SETTINGS,
-                        kwds=dict(capture_settings=server_model.camera_settings)
+                        kwds=dict(
+                            camera_settings=server_model.camera_settings,
+                            capture_settings=server_model.capture_settings
+                        )
                     )
-                    SettingsPopup.close()
+                    ServerSettingsPopup.close()
 
 
+#
+# Client Settings popup window.
+# Note:
+# The difference between client and server (above) settings is that the
+# server settings dialog allows changing both camera and capture settings.
+# The client settings allow changing only the capture settings.
+#
+enamldef ClientConfigPopup(PopupView): ClientSettingsPopup:
+    foreground = 'white'
+    background = 'rgba(30, 30, 30, 0.85)'
+    window_type = 'window'
+
+    attr client_model
+
+    VGroup:
+        Form:
+            padding = 20
+
+            Label:
+                foreground = 'white'
+                text = 'Start Loop'
+            CheckBox: start_loop:
+                checked := client_model.capture_settings[gs.START_LOOP]
+            Label:
+                foreground = 'white'
+                text = 'Upload Jpeg'
+            CheckBox: upload_jpg:
+                checked := client_model.capture_settings[gs.UPLOAD_JPG_FILE]
+            Label:
+                foreground = 'white'
+                text = 'Upload Mat'
+            CheckBox: upload_mat:
+                checked := client_model.capture_settings[gs.UPLOAD_MAT_FILE]
+            Label:
+                foreground = 'white'
+                text = 'Period'
+            ComboBox: daynight:
+                index = 0
+                items = [gs.DAY_SETTINGS, gs.NIGHT_SETTINGS]
+            Label:
+                foreground = 'white'
+                text = 'Loop Delay'
+            SpinBox: loop_delay:
+                minimum = 2
+                maximum = 3600
+                value := client_model.capture_settings[daynight.selected_item][gs.LOOP_DELAY]
+            Label:
+                foreground = 'white'
+                text = 'Shutter [uS]'
+            IntField: shutter:
+                value := client_model.capture_settings[daynight.selected_item][gs.IMAGE_EXPOSURE]
+            Label:
+                foreground = 'white'
+                text = 'GAIN'
+            IntField: gain:
+                minimum = 0
+                maximum = 100
+                value << int(client_model.capture_settings[daynight.selected_item][gs.IMAGE_GAIN])
+                value >> client_model.capture_settings[daynight.selected_item][gs.IMAGE_GAIN]
+            Label:
+                foreground = 'white'
+                text = 'Gain Boost'
+            CheckBox: gain_boost:
+                checked := client_model.capture_settings[daynight.selected_item][gs.GAIN_BOOST]
+            Label:
+                foreground = 'white'
+                text = 'Frames #'
+            SpinBox: frames_num_1:
+                minimum = 1
+                maximum = 30
+                value := client_model.capture_settings[daynight.selected_item][gs.FRAMES_NUM]
+            Label:
+                foreground = 'white'
+                text = 'HDR frames'
+                tool_tip = 'Number of HDR exposures (1 for no HDR)'
+            SpinBox: hdr_mode:
+                minimum = 1
+                maximum = 8
+                value := client_model.capture_settings[daynight.selected_item][gs.HDR_MODE]
+            Label:
+                foreground = 'white'
+                text = 'Mode'
+            ComboBox: cmode:
+                index << cmode.items.index(client_model.capture_settings[daynight.selected_item][gs.COLOR_MODE])
+                index ::
+                    client_model.capture_settings[daynight.selected_item][gs.COLOR_MODE] = cmode.items[cmode.index]
+                items = [gs.COLOR_RAW, gs.COLOR_RGB]
+
+        GroupBox:
+            PushButton:
+                text = 'Update'
+                clicked ::
+                    client_model.broadcast_message(
+                        gs.MSG_TYPE_SET_SETTINGS,
+                        kwds=dict(
+                            camera_settings=None,
+                            capture_settings=client_model.capture_settings
+                        )
+                    )
+                    ClientSettingsPopup.close()
+
+
+#
+# Reconstruction settings popup.
+# Allows setting the center of the local reconstruction
+# framework.
+#
 enamldef ReconstructionConfigPopup(PopupView): popup:
     foreground = 'white'
     background = 'rgba(30, 30, 30, 0.85)'

@@ -109,6 +109,11 @@ class ClientModel(Atom):
     longitude = Float(35.024963)
     altitude = Int(229)
 
+    #
+    # Global (broadcast) capture settings.
+    #
+    capture_settings = Dict(default=gs.CAPTURE_SETTINGS)
+
     def _default_images_df(self):
         """Initialize an empty data frame."""
 
@@ -549,7 +554,8 @@ class ServerModel(Atom):
     sunshader_figure = Value()
     extrinsic_figure = Value()
     sunshader_required_angle = Int()
-    camera_settings = Dict(default=gs.CAPTURE_SETTINGS)
+    camera_settings = Dict(default=gs.CAMERA_SETTINGS)
+    capture_settings = Dict(default=gs.CAPTURE_SETTINGS)
 
     client_model = Typed(ClientModel)
 
@@ -636,16 +642,24 @@ class ServerModel(Atom):
 
         subprocess.Popen(putty_cmd)
 
-    def reply_get_settings(self, settings):
+    def reply_get_settings(self, camera_settings, capture_settings):
         """Handle reply of settings."""
 
         #
         # Start with temp settings incase the camera is not updated with new
         # settings.
         #
-        temp_settings = gs.CAPTURE_SETTINGS
-        temp_settings.update(settings)
+        temp_settings = gs.CAMERA_SETTINGS
+        temp_settings.update(camera_settings)
         self.camera_settings = temp_settings
+
+        temp_settings = gs.CAPTURE_SETTINGS
+        temp_settings.update(capture_settings)
+        self.capture_settings = temp_settings
+
+        #
+        # Open the settings popup.
+        #
         self.client_model.settings_signal.emit(self)
 
     def reply_thumbnail(self, thumbnail):

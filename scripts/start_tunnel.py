@@ -21,7 +21,7 @@ def main():
     # Initialize paths.
     #
     gs.initPaths()
-    
+
     #
     # Initialize the logger
     #
@@ -34,7 +34,7 @@ def main():
 
     camera_settings, capture_settings = CameraNetwork.load_camera_data(
         gs.GENERAL_SETTINGS_PATH, gs.CAPTURE_SETTINGS_PATH
-    )        
+    )
     identity = str(camera_settings[gs.CAMERA_IDENTITY])
 
     #
@@ -58,7 +58,7 @@ def main():
                 #
                 failures_num += 1
 
-                if failures_num > capture_settings[gs.INTERNET_FAILURE_THRESH]:
+                if failures_num > camera_settings[gs.INTERNET_FAILURE_THRESH]:
                     logging.error('Failed to connect 3G modem. Will reboot...')
                     os.system('sudo reboot')
 

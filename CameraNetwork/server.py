@@ -346,9 +346,9 @@ class Server(MDPWorker):
                 # The day/night status is determined by the altitude of the sun.
                 #
                 sun_alt, _ = sun_direction(
-                    longitude=self.capture_settings[gs.CAMERA_LONGITUDE],
-                    latitude=self.capture_settings[gs.CAMERA_LATITUDE],
-                    altitude=self.capture_settings[gs.CAMERA_ALTITUDE],
+                    longitude=self.camera_settings[gs.CAMERA_LONGITUDE],
+                    latitude=self.camera_settings[gs.CAMERA_LATITUDE],
+                    altitude=self.camera_settings[gs.CAMERA_ALTITUDE],
                 )
 
                 if sun_alt > gs.SUN_ALTITUDE_SUNSHADER_THRESH:
@@ -357,8 +357,8 @@ class Server(MDPWorker):
                     #
                     yield self.push_cmd(
                         gs.SUNSHADER_UPDATE_CMD,
-                        sunshader_min=self.capture_settings[gs.SUNSHADER_MIN_ANGLE],
-                        sunshader_max=self.capture_settings[gs.SUNSHADER_MAX_ANGLE]
+                        sunshader_min=self.camera_settings[gs.SUNSHADER_MIN_ANGLE],
+                        sunshader_max=self.camera_settings[gs.SUNSHADER_MAX_ANGLE]
                     )
                 else:
                     #
@@ -366,7 +366,7 @@ class Server(MDPWorker):
                     #
                     yield self.push_cmd(
                         gs.MOON_CMD,
-                        sunshader_min=self.capture_settings[gs.SUNSHADER_MIN_ANGLE]
+                        sunshader_min=self.camera_settings[gs.SUNSHADER_MIN_ANGLE]
                     )
             except Exception as e:
                 logging.error('Error while processing the sunshder timer:\n{}'.format(
@@ -377,26 +377,14 @@ class Server(MDPWorker):
     @gen.coroutine
     def loop_timer(self):
         while self.capture_state:
-
-            #
-            # Create next time timer.
-            #
-            capture_delay = max(1, self.capture_settings[gs.LOOP_DELAY])
-
-            next_capture_time = (
-                int(time.time() / capture_delay) + 1
-                ) * capture_delay - time.time()
-
-            nxt = gen.sleep(next_capture_time)
-
             #
             # Select capture settings according day night.
             # The day/night status is determined by the altitude of the sun.
             #
             sun_alt, _ = sun_direction(
-                longitude=self.capture_settings[gs.CAMERA_LONGITUDE],
-                latitude=self.capture_settings[gs.CAMERA_LATITUDE],
-                altitude=self.capture_settings[gs.CAMERA_ALTITUDE],
+                longitude=self.camera_settings[gs.CAMERA_LONGITUDE],
+                latitude=self.camera_settings[gs.CAMERA_LATITUDE],
+                altitude=self.camera_settings[gs.CAMERA_ALTITUDE],
             )
 
             if sun_alt > gs.SUN_ALTITUDE_DAY_THRESH:
@@ -410,7 +398,6 @@ class Server(MDPWorker):
                 #
                 sin_a = math.sin(max(sun_alt, gs.SUN_ALTITUDE_EXPOSURE_THRESH))
                 exposure = int(capture_settings['exposure_us'] / sin_a)
-                logging.debug('Capturing using exposure: {} uS'.format(exposure))
             else:
                 #
                 # Night shot
@@ -423,12 +410,25 @@ class Server(MDPWorker):
                 exposure = capture_settings['exposure_us']
 
             #
+            # Create next time timer.
+            #
+            capture_delay = max(1, capture_settings[gs.LOOP_DELAY])
+
+            next_capture_time = (
+                int(time.time() / capture_delay) + 1
+                ) * capture_delay - time.time()
+
+            nxt = gen.sleep(next_capture_time)
+
+            logging.debug('Capturing using exposure: {} uS'.format(exposure))
+
+            #
             # Create the image data object.
             #
             img_data = DataObj(
-                longitude=self.capture_settings[gs.CAMERA_LONGITUDE],
-                latitude=self.capture_settings[gs.CAMERA_LATITUDE],
-                altitude=self.capture_settings[gs.CAMERA_ALTITUDE],
+                longitude=self.camera_settings[gs.CAMERA_LONGITUDE],
+                latitude=self.camera_settings[gs.CAMERA_LATITUDE],
+                altitude=self.camera_settings[gs.CAMERA_ALTITUDE],
                 name_time=datetime.utcnow()
             )
 
@@ -514,18 +514,35 @@ class Server(MDPWorker):
     def handle_get_settings(self):
         """Get camera settings"""
 
-        raise gen.Return(((), {'settings':self.capture_settings}))
+        raise gen.Return(
+            (
+                (),
+                {
+                    'camera_settings': self.camera_settings,
+                    'capture_settings': self.capture_settings
+                }
+            )
+        )
 
     @gen.coroutine
-    def handle_set_settings(self, capture_settings):
+    def handle_set_settings(self, camera_settings, capture_settings):
         """Get camera settings"""
 
         #
         # Copy the input settings camera data without the CAMERA_IDENTITY field.
         #
-        self.capture_settings.update(capture_settings.copy())
+        if camera_settings is not None:
+            del camera_settings[gs.CAMERA_IDENTITY]
+            self.camera_settings.update(camera_settings.copy())
+
+        if capture_settings is not None:
+            self.capture_settings.update(capture_settings.copy())
+
+        #
+        # Save the updated settings
+        #
         save_camera_data(gs.GENERAL_SETTINGS_PATH, gs.CAPTURE_SETTINGS_PATH,
-            None, self.capture_settings)
+            self.camera_settings, self.capture_settings)
 
     @gen.coroutine
     def handle_update(self, rev):
@@ -615,9 +632,9 @@ class Server(MDPWorker):
         # Create the image data object.
         #
         img_data = DataObj(
-            longitude=self.capture_settings[gs.CAMERA_LONGITUDE],
-            latitude=self.capture_settings[gs.CAMERA_LATITUDE],
-            altitude=self.capture_settings[gs.CAMERA_ALTITUDE],
+            longitude=self.camera_settings[gs.CAMERA_LONGITUDE],
+            latitude=self.camera_settings[gs.CAMERA_LATITUDE],
+            altitude=self.camera_settings[gs.CAMERA_ALTITUDE],
             name_time=datetime.utcnow()
         )
 
@@ -759,9 +776,9 @@ class Server(MDPWorker):
                 # Support old json data files.
                 #
                 img_data = DataObj(
-                    longitude=self.capture_settings[gs.CAMERA_LONGITUDE],
-                    latitude=self.capture_settings[gs.CAMERA_LATITUDE],
-                    altitude=self.capture_settings[gs.CAMERA_ALTITUDE],
+                    longitude=self.camera_settings[gs.CAMERA_LONGITUDE],
+                    latitude=self.camera_settings[gs.CAMERA_LATITUDE],
+                    altitude=self.camera_settings[gs.CAMERA_ALTITUDE],
                     name_time=seek_time.to_datetime()
                 )
 
@@ -815,8 +832,8 @@ class Server(MDPWorker):
             gs.SUNSHADER_CMD,
             priority=50,
             angle=angle,
-            sunshader_min=self.capture_settings[gs.SUNSHADER_MIN_ANGLE],
-            sunshader_max=self.capture_settings[gs.SUNSHADER_MAX_ANGLE]
+            sunshader_min=self.camera_settings[gs.SUNSHADER_MIN_ANGLE],
+            sunshader_max=self.camera_settings[gs.SUNSHADER_MAX_ANGLE]
         )
 
     @gen.coroutine
@@ -866,8 +883,8 @@ class Server(MDPWorker):
             yield self.push_cmd(
                 gs.SUNSHADER_SCAN_CMD,
                 reply=True,
-                sunshader_min=self.capture_settings[gs.SUNSHADER_MIN_ANGLE],
-                sunshader_max=self.capture_settings[gs.SUNSHADER_MAX_ANGLE]
+                sunshader_min=self.camera_settings[gs.SUNSHADER_MIN_ANGLE],
+                sunshader_max=self.camera_settings[gs.SUNSHADER_MAX_ANGLE]
             )
 
         #
@@ -917,7 +934,7 @@ class Server(MDPWorker):
                 exposure_us=exposure_us,
                 gain_db=gain_db,
                 gain_boost=gain_boost,
-                sunshader_min=self.capture_settings[gs.SUNSHADER_MIN_ANGLE]
+                sunshader_min=self.camera_settings[gs.SUNSHADER_MIN_ANGLE]
             )
 
         #

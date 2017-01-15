@@ -17,6 +17,7 @@ from extra import GradientButtonSheet
 from extra import MsgDataPopup
 from extra import SliderText
 from extra import ThumbPopup
+from settings import ClientConfigPopup
 from settings import ServerConfigPopup
 from settings import ReconstructionConfigPopup
 
@@ -949,7 +950,11 @@ enamldef Main(MainWindow): main:
             Action:
                 text = "Settings\tCtrl+S"
                 triggered ::
-                    print("Settings")
+                    conf_win = ClientConfigPopup(
+                        main,
+                        client_model=client_model,
+                    )
+                    conf_win.show()
 
         Menu:
             title = "&View"
