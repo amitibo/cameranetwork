@@ -937,19 +937,19 @@ enamldef Main(MainWindow): main:
                         triggered :: client_model.open_tunnel(loop_item[1])
 
             Action:
-                text = "Settings\tCtrl+S"
-                triggered ::
-                    print("Settings")
-
-            Action:
                 text = "Loop\tCtrl+L"
                 triggered ::
-                    print("Loop")
+                    client_model.broadcast_message(gs.MSG_TYPE_LOOP)
 
             Action:
                 text = "Unloop\tCtrl+U"
                 triggered ::
-                    print("UnLoop")
+                    client_model.broadcast_message(gs.MSG_TYPE_HALT)
+
+            Action:
+                text = "Settings\tCtrl+S"
+                triggered ::
+                    print("Settings")
 
         Menu:
             title = "&View"
