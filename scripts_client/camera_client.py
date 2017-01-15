@@ -13,6 +13,7 @@ import enaml.qt
 import argparse
 from atom.api import Atom, Bool, Enum, Signal, Float, Int, Str, Unicode, \
      Typed, observe, Dict, Value, List, Tuple, Instance
+import copy
 import cPickle
 from datetime import datetime
 from enaml.application import deferred_call, is_main_thread
@@ -649,11 +650,11 @@ class ServerModel(Atom):
         # Start with temp settings incase the camera is not updated with new
         # settings.
         #
-        temp_settings = gs.CAMERA_SETTINGS
+        temp_settings = copy.copy(gs.CAMERA_SETTINGS)
         temp_settings.update(camera_settings)
         self.camera_settings = temp_settings
 
-        temp_settings = gs.CAPTURE_SETTINGS
+        temp_settings = copy.copy(gs.CAPTURE_SETTINGS)
         temp_settings.update(capture_settings)
         self.capture_settings = temp_settings
 

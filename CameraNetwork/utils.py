@@ -3,6 +3,7 @@
 from __future__ import division
 import CameraNetwork.global_settings as gs
 from CameraNetwork.transformation_matrices import euler_matrix
+import copy
 from datetime import datetime
 from datetime import timedelta
 import ephem
@@ -216,7 +217,7 @@ def load_camera_data(general_settings_path, capture_settings_path):
     with open(general_settings_path, 'rb') as f:
         camera_settings = json.load(f)
 
-    capture_settings = gs.CAPTURE_SETTINGS
+    capture_settings = copy.copy(gs.CAPTURE_SETTINGS)
     try:
         with open(capture_settings_path, 'rb') as f:
             capture_settings.update(json.load(f))
@@ -469,7 +470,7 @@ def sun_direction(
         altitude=230,
         at_time=None):
     """Calculate the current altitude of the sun.
-    
+
     Default latitude and longitude given for haifa:
     Haifa. 32.8167 N, 34.9833 E
     """
@@ -520,7 +521,7 @@ def object_direction(
 
 def find_centroid(img, minus_level=THRESHOLD_MINUS):
     """Find the centroid of the strongest pixels in an image.
-    
+
     Useful for finding the sun.
     """
 
@@ -681,10 +682,10 @@ def buff2dict(buff):
 
 def safe_make_dirs(path):
     """Safely create path"""
-    
+
     if os.path.exists(path):
         return
-    
+
     os.makedirs(path)
 
 
