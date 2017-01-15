@@ -7,7 +7,7 @@ from __future__ import division
 
 #
 # We need to import enaml.qt before matplotlib to avoid some qt errors
-# 
+#
 import enaml.qt
 
 import argparse
@@ -97,9 +97,17 @@ class ClientModel(Atom):
     settings_signal = Signal()
 
     array_items = Dict()
-    
+
     images_df = Typed(pd.DataFrame)
     img_index = Tuple()
+
+    #
+    # Reconstruction parameters
+    # The default values are the Technion lidar position
+    #
+    latitude = Float(32.775776)
+    longitude = Float(35.024963)
+    altitude = Int(229)
 
     def _default_images_df(self):
         """Initialize an empty data frame."""
@@ -218,26 +226,26 @@ class ClientModel(Atom):
         repo_log = local_repo.log('-l', '10', '--template', '{rev}***{desc}***{node}||||')
         temp = [rev.strip().split('***') for rev in repo_log.strip().split('||||')[:-1]]
         revisions = [(rev_num+': '+desc, node) for rev_num, desc, node in temp]
-        
+
         return revisions
-    
+
     def _calcROIbounds(self, array_model, array_view):
         """Calculate bounds of ROI in array_view
-        
+
         Useful for debug visualization.
         """
-        
+
         #
         # Get the ROI size
         #
-        roi = array_view.roi
+        roi = array_view.ROI
         size = roi.state['size']
 
         #
         # Get the transform from the ROI to the data.
         #
         _, tr = roi.getArraySlice(array_view.img_array, array_view.image_widget.img_item)
-        
+
         #
         # Calculate the bounds.
         #
@@ -249,10 +257,10 @@ class ClientModel(Atom):
         pts = (pts - center) / center
         X, Y = pts[:, 1], pts[:, 0]
         bounding_phi = np.arctan2(X, Y)
-        bounding_psi = array_model.fov * np.sqrt(X**2 + Y**2)        
-        
+        bounding_psi = array_model.fov * np.sqrt(X**2 + Y**2)
+
         return bounding_phi, bounding_psi
-        
+
     def reconstruct(self, lat, lon, alt):
         """Reconstruct selected regions."""
 
@@ -283,11 +291,11 @@ class ClientModel(Atom):
             n, e, d = pymap3d.geodetic2ned(
                 array_model.latitude, array_model.longitude, array_model.altitude,
                 lat0=lat, lon0=lon, h0=alt)
-            
+
             logging.info(
                 "Saved reconstruction data of camera: {}.".format(server_id)
                 )
-            
+
             x, y, z = e, n, -d
             Xs[server_id] = np.ones_like(Rs[server_id]) * x
             Ys[server_id] = np.ones_like(Rs[server_id]) * y
@@ -305,19 +313,19 @@ class ClientModel(Atom):
                 np.linspace(-1, 1, img_array.shape[1]),
                 np.linspace(-1, 1, img_array.shape[0])
             )
-    
+
             PHI = np.arctan2(X_, Y_)
             PSI = array_model.fov * np.sqrt(X_**2 + Y_**2)
-            
+
             PHIs[server_id] = array_view.image_widget.getArrayRegion(PHI)
             PSIs[server_id] = array_view.image_widget.getArrayRegion(PSI)
-        
+
             #
             # Calculate bounding coords (useful for debug visualization)
             #
             bounding_phi, bounding_psi = self._calcROIbounds(
                 array_model, array_view)
-            
+
             #
             # Extra data
             #
@@ -362,37 +370,37 @@ class ClientModel(Atom):
         rs_df = load_radiosonde(date)
         rs_df[['HGHT', 'TEMP']].to_csv(
             os.path.join(base_path, 'radiosonde.csv'))
-        
+
         #
         # Save the ROIs
         #
         self.save_rois(base_path=base_path)
-        
+
     def save_rois(self, base_path='.'):
         """Save the current ROIS for later use."""
-        
+
         dst_path = os.path.join(base_path, 'ROIS.pkl')
-        
+
         rois_dict = {}
         for server_id, (_, array_view) in self.array_items.items():
-            rois_dict[server_id] = array_view.roi.saveState()
+            rois_dict[server_id] = array_view.ROI.saveState()
 
         with open(dst_path, 'wb') as f:
             cPickle.dump(rois_dict, f)
-            
+
     def load_rois(self, path='./ROIS.pkl'):
         """Apply the saved rois on the current arrays."""
-        
+
         try:
             with open(path, 'rb') as f:
                 rois_dict = cPickle.load(f)
-            
+
             for server_id, roi in rois_dict.items():
                 if server_id not in self.array_items:
                     continue
-                
+
                 _, array_view = self.array_items[server_id]
-                array_view.roi.setState(roi)
+                array_view.ROI.setState(roi)
         except Exception as e:
             logging.error(
                 "Failed setting rois to Arrays view:\n{}".format(
@@ -935,7 +943,7 @@ def main(local_mode):
     #
     app = QtApplication()
 
-    view = Main(model=client_model)
+    view = Main(client_model=client_model)
 
     controller = Controller(model=client_model, view=view)
 
