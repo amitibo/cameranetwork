@@ -267,7 +267,7 @@ class ClientModel(Atom):
 
         return bounding_phi, bounding_psi
 
-    def reconstruct(self, lat, lon, alt):
+    def reconstruct(self, lat, lon, alt, mask_ROI=False):
         """Reconstruct selected regions."""
 
         #
@@ -286,9 +286,9 @@ class ClientModel(Atom):
             # Extract the image values at the ROI
             #
             img_array = array_view.img_array
-            Rs[server_id] = array_view.image_widget.getArrayRegion(img_array[..., 0])
-            Gs[server_id] = array_view.image_widget.getArrayRegion(img_array[..., 1])
-            Bs[server_id] = array_view.image_widget.getArrayRegion(img_array[..., 2])
+            Rs[server_id] = array_view.image_widget.getArrayRegion(img_array[..., 0], mask_ROI)
+            Gs[server_id] = array_view.image_widget.getArrayRegion(img_array[..., 1], mask_ROI)
+            Bs[server_id] = array_view.image_widget.getArrayRegion(img_array[..., 2], mask_ROI)
 
             #
             # Calculate the center of the camera.
@@ -323,8 +323,8 @@ class ClientModel(Atom):
             PHI = np.arctan2(X_, Y_)
             PSI = array_model.fov * np.sqrt(X_**2 + Y_**2)
 
-            PHIs[server_id] = array_view.image_widget.getArrayRegion(PHI)
-            PSIs[server_id] = array_view.image_widget.getArrayRegion(PSI)
+            PHIs[server_id] = array_view.image_widget.getArrayRegion(PHI, mask_ROI)
+            PSIs[server_id] = array_view.image_widget.getArrayRegion(PSI, mask_ROI)
 
             #
             # Calculate bounding coords (useful for debug visualization)
@@ -388,18 +388,30 @@ class ClientModel(Atom):
         dst_path = os.path.join(base_path, 'ROIS.pkl')
 
         rois_dict = {}
+        masks_dict = {}
         for server_id, (_, array_view) in self.array_items.items():
             rois_dict[server_id] = array_view.ROI.saveState()
+            masks_dict[server_id] = array_view.mask_ROI.saveState()
 
         with open(dst_path, 'wb') as f:
-            cPickle.dump(rois_dict, f)
+            cPickle.dump((rois_dict, masks_dict), f)
 
     def load_rois(self, path='./ROIS.pkl'):
         """Apply the saved rois on the current arrays."""
 
         try:
             with open(path, 'rb') as f:
-                rois_dict = cPickle.load(f)
+                tmp = cPickle.load(f)
+
+            if type(tmp) is tuple:
+                rois_dict, masks_dict = tmp
+            else:
+                #
+                # Support older type ROI pickle that did not
+                # include the mask ROI.
+                #
+                rois_dict = tmp
+                masks_dict = None
 
             for server_id, roi in rois_dict.items():
                 if server_id not in self.array_items:
@@ -407,6 +419,10 @@ class ClientModel(Atom):
 
                 _, array_view = self.array_items[server_id]
                 array_view.ROI.setState(roi)
+
+                if masks_dict is not None:
+                    array_view.mask_ROI.setState(masks_dict[server_id])
+
         except Exception as e:
             logging.error(
                 "Failed setting rois to Arrays view:\n{}".format(

@@ -986,12 +986,23 @@ enamldef Main(MainWindow): main:
         Menu:
             title = "&Reconstruct"
             Action:
-                text = "Reconstruct\tCtrl+R"
+                text = "Reconstruct ROI\tCtrl+R"
                 triggered ::
                     client_model.reconstruct(
                         lat=client_model.latitude,
                         lon=client_model.longitude,
-                        alt=client_model.altitude
+                        alt=client_model.altitude,
+                        mask_ROI=False
+                    )
+
+            Action:
+                text = "Reconstruct Mask\tCtrl+M"
+                triggered ::
+                    client_model.reconstruct(
+                        lat=client_model.latitude,
+                        lon=client_model.longitude,
+                        alt=client_model.altitude,
+                        mask_ROI=True
                     )
 
             Action:

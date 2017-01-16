@@ -63,6 +63,12 @@ class PyQtImageView(PyQtGraphLayoutWidget):
     img_array = Instance(np.ndarray)
 
     #
+    # Mask array.
+    # This is used for removing the sunshader pixels.
+    #
+    mask_array = Instance(np.ndarray)
+
+    #
     # Different lines that can be displayed on the GUI
     #
     epipolar_scatter = Instance(pg.ScatterPlotItem)
@@ -94,13 +100,38 @@ class PyQtImageView(PyQtGraphLayoutWidget):
 
         self.epipolar_scatter.setData(xs, ys)
 
-    def getArrayRegion(self, data=None):
-        """Get the region selected by ROI"""
+    def getArrayRegion(self, data=None, mask_ROI=False, mask_sunshader=True):
+        """Get the region selected by ROI.
+
+        The function accepts an array in the size of the image.
+        It crops a region marked by a ROI (either the ROI or
+        mask_ROI).
+
+        Args:
+            data (array): The array to crop the ROI from. If None
+                the image will be croped.
+            mask_ROI (bool): If True the mask_ROI will be use. If False
+                the (rectangle) ROI will be used.
+            mask_sunshader (bool): If True, pixels of the sunshader are
+                 removed.
+        """
 
         if data is None:
             data = self.img_array[..., 0].astype(np.float)
 
-        return self.ROI.getArrayRegion(data, self.img_item)
+        #
+        # Get ROI region.
+        #
+        if mask_ROI:
+            roi = self.mask_ROI.getArrayRegion(data, self.img_item)
+        else:
+            roi = self.ROI.getArrayRegion(data, self.img_item)
+
+        #
+        # Remove sun shader region.
+        #
+
+        return roi
 
     def drawEpiploarPoints(self, plot_area):
         """Initialize the epipolar points on the plot."""
@@ -163,12 +194,23 @@ class PyQtImageView(PyQtGraphLayoutWidget):
 
         plot_area.vb.addItem(self.ROI)
 
+    def _calcMask(self):
+        """Calculate the sunshader mask.
+
+        .. note::
+            Currently not implemented.
+        """
+
+        pass
+
     @observe('img_array')
     def update_img_array(self, change):
         """Update the image array."""
 
         if self.img_item is not None:
             self.img_item.setImage(change['value'].astype(np.float))
+
+        self._calcMask()
 
     @observe('Almucantar_coords')
     def update_Almucantar_coords(self, change):
