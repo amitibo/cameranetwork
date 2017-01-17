@@ -15,6 +15,7 @@ from atom.api import Atom, Bool, Enum, Signal, Float, Int, Str, Unicode, \
      Typed, observe, Dict, Value, List, Tuple, Instance
 import copy
 import cPickle
+import cv2
 from datetime import datetime
 from enaml.application import deferred_call, is_main_thread
 import json
@@ -119,7 +120,13 @@ class ClientModel(Atom):
     dely = Float(100)
     delz = Float(100)
     TOG = Float(3000)
-    GRID_pts = Tuple()
+    GRID_ECEF = Tuple()
+    GRID_NED = Tuple()
+
+    #
+    # Sunshader mask threshold used in grabcut algorithm.
+    #
+    grabcut_threshold = Float(3)
 
     #
     # Global (broadcast) capture settings.
@@ -284,8 +291,8 @@ class ClientModel(Atom):
         #
         # Set the center of the axes
         #
-        Xs, Ys, Zs, PHIs, PSIs, Rs, Gs, Bs, Datas = \
-            {}, {}, {}, {}, {}, {}, {}, {}, {}
+        Xs, Ys, Zs, PHIs, PSIs, Rs, Gs, Bs, Masks, Datas = \
+            {}, {}, {}, {}, {}, {}, {}, {}, {}, {}
         for server_id, (array_model, array_view) in self.array_items.items():
             if not array_view.reconstruct_flag.checked:
                 logging.info(
@@ -334,14 +341,37 @@ class ClientModel(Atom):
             PHI = np.arctan2(X_, Y_)
             PSI = array_model.fov * np.sqrt(X_**2 + Y_**2)
 
-            PHIs[server_id] = array_view.image_widget.getArrayRegion(PHI, mask_ROI)
-            PSIs[server_id] = array_view.image_widget.getArrayRegion(PSI, mask_ROI)
+            PHIs[server_id] = array_view.image_widget.getArrayRegion(PHI)
+            PSIs[server_id] = array_view.image_widget.getArrayRegion(PSI)
 
             #
             # Calculate bounding coords (useful for debug visualization)
             #
             bounding_phi, bounding_psi = self._calcROIbounds(
                 array_model, array_view)
+
+            #
+            # Calculate mask using grabcut. This is used for removing the
+            # sunshader.
+            #
+            mask = np.ones(img_array.shape[:2], np.uint8)*cv2.GC_PR_FGD
+            mask[img_array.max(axis=2) < self.grabcut_threshold] = cv2.GC_PR_BGD
+            img_u8 = (255 * np.clip(img_array, 0, 40) / 40).astype(np.uint8)
+            bgdModel = np.zeros((1, 65), np.float64)
+            fgdModel = np.zeros((1, 65), np.float64)
+            rect = (0, 0, 0, 0)
+            mask, bgdModel, fgdModel = cv2.grabCut(
+                img_u8, mask, rect, bgdModel, fgdModel,
+                5, cv2.GC_INIT_WITH_MASK)
+            mask = np.where(
+                (mask==cv2.GC_FGD) | (mask==cv2.GC_PR_FGD), 1, 0).astype('uint8')
+
+            Masks[server_id] = (
+                array_view.image_widget.getArrayRegion(mask),
+                array_view.image_widget.getArrayRegion(
+                    array_view.image_widget.getMask()
+                    ),
+            )
 
             #
             # Extra data
@@ -375,8 +405,8 @@ class ClientModel(Atom):
             os.makedirs(base_path)
 
         for f_name, obj in zip(
-            ('Rs', 'Gs', 'Bs', 'Xs', 'Ys', 'Zs', 'PHIs', 'PSIs', 'Datas'),
-            (Rs, Gs, Bs, Xs, Ys, Zs, PHIs, PSIs, Datas)):
+            ('Rs', 'Gs', 'Bs', 'Xs', 'Ys', 'Zs', 'PHIs', 'PSIs', 'Masks', 'Datas'),
+            (Rs, Gs, Bs, Xs, Ys, Zs, PHIs, PSIs, Masks, Datas)):
             with open(os.path.join(base_path, '{}.pkl'.format(f_name)), 'wb') as f:
                 cPickle.dump(obj, f)
 
@@ -392,6 +422,15 @@ class ClientModel(Atom):
         # Save the ROIs
         #
         self.save_rois(base_path=base_path)
+
+        #
+        # Save the GRIDs
+        #
+        sio.savemat(
+            os.path.join(base_path, 'grid.mat'),
+            dict(X=self.GRID_NED[0], Y=self.GRID_NED[1], Z=self.GRID_NED[2]),
+            do_compression=True
+        )
 
     def save_rois(self, base_path='.'):
         """Save the current ROIS for later use."""
@@ -609,7 +648,9 @@ class ClientModel(Atom):
             np.arange(s_pts[2], e_pts[2]+self.delz, self.delz),
         )
 
-        self.GRID_pts = pymap3d.ned2ecef(
+        self.GRID_NED = (X, Y, Z)
+
+        self.GRID_ECEF = pymap3d.ned2ecef(
             X, Y, Z, self.latitude, self.longitude, self.altitude)
 
 
@@ -1034,10 +1075,10 @@ class Controller(Atom):
         #
         # Create the projection of the LIDAR grid on the view.
         #
-        if self.model.GRID_pts == ():
+        if self.model.GRID_ECEF == ():
             self.model.updateLIDARgrid()
 
-        xs, ys = array_model.projectECEF(self.model.GRID_pts)
+        xs, ys = array_model.projectECEF(self.model.GRID_ECEF)
         array_view.image_widget.updateLIDARgridPts(xs=xs, ys=ys)
 
     @observe('model.settings_signal')
@@ -1087,7 +1128,7 @@ class Controller(Atom):
         # Update the view of the LIDAR grid on all images.
         #
         for _, (array_model, array_view) in self.model.array_items.items():
-            xs, ys = array_model.projectECEF(self.model.GRID_pts)
+            xs, ys = array_model.projectECEF(self.model.GRID_ECEF)
             array_view.image_widget.updateLIDARgridPts(xs=xs, ys=ys)
 
 

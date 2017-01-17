@@ -112,20 +112,15 @@ class PyQtImageView(PyQtGraphLayoutWidget):
 
         self.LIDAR_grid_scatter.setData(xs, ys)
 
-    def getArrayRegion(self, data=None, mask_ROI=False, mask_sunshader=True):
+    def getArrayRegion(self, data=None):
         """Get the region selected by ROI.
 
         The function accepts an array in the size of the image.
-        It crops a region marked by a ROI (either the ROI or
-        mask_ROI).
+        It crops a region marked by the ROI.
 
         Args:
             data (array): The array to crop the ROI from. If None
                 the image will be croped.
-            mask_ROI (bool): If True the mask_ROI will be use. If False
-                the (rectangle) ROI will be used.
-            mask_sunshader (bool): If True, pixels of the sunshader are
-                 removed.
         """
 
         if data is None:
@@ -134,18 +129,26 @@ class PyQtImageView(PyQtGraphLayoutWidget):
         #
         # Get ROI region.
         #
-        if mask_ROI:
-            roi = self.mask_ROI.getArrayRegion(data, self.img_item)
-        else:
-            roi = self.ROI.getArrayRegion(data, self.img_item)
-
-        #
-        # Remove sun shader region.
-        # TODO:
-        # implement this.
-        #
+        roi = self.ROI.getArrayRegion(data, self.img_item)
 
         return roi
+
+    def getMask(self):
+        """Get the mask as set by mask_ROI.
+        """
+
+        data = np.ones(self.img_array.shape[:2], np.uint8)
+
+        #
+        # Get ROI region.
+        #
+        sl = self.mask_ROI.getArraySlice(data, self.img_item, axes=(0, 1))
+        sl_mask = self.mask_ROI.getArrayRegion(data, self.img_item)
+
+        mask = np.zeros(self.img_array.shape[:2], np.uint8)
+        mask[sl[0]] = sl_mask
+
+        return mask
 
     def drawEpiploarPoints(self, plot_area):
         """Initialize the epipolar points on the plot."""
