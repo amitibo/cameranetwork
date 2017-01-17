@@ -295,6 +295,23 @@ class PyQtImageView(PyQtGraphLayoutWidget):
         if self.mask_ROI is not None:
             self.mask_ROI.setVisible(change['value'])
 
+    def applyGamma(self, apply_flag):
+        """Apply Gamma correction."""
+
+        if apply_flag:
+            lut = np.array([((i / 255.0) ** 0.4) * 255
+                            for i in np.arange(0, 256)]).astype(np.uint8)
+        else:
+            lut = np.arange(0, 256).astype(np.uint8)
+
+        self.img_item.setLookupTable(lut)
+
+    def setIntensity(self, intensity):
+        """Set the intensity of the image."""
+
+        self.img_item.setLevels((0, intensity))
+
+
     def create_widget(self, parent):
         """Create the PyQtGraph widget"""
 
@@ -376,15 +393,7 @@ class PyQtImageView(PyQtGraphLayoutWidget):
         #
         self.drawROIs(plot_area)
 
-        #
-        # Create histogram
-        #
-        hist = pg.HistogramLUTItem()
-        hist.setImageItem(self.img_item)
-        hist.gradient.hide()
-        win.addItem(hist)
-
-        win.resize(500, 400)
+        win.resize(400, 400)
 
         return win
 

@@ -757,7 +757,15 @@ enamldef ArraysItem(DockItem):
                     spacer,
                 ),
                 arrays,
-                hbox(load_pb, save_pb, spacer)
+                hbox(
+                    intensity_lbl,
+                    intensity_slider,
+                    intensity_txt,
+                    gamma_cb,
+                    spacer,
+                    load_pb,
+                    save_pb
+                )
             ),
         ]
 
@@ -796,6 +804,26 @@ enamldef ArraysItem(DockItem):
             text = 'Clear'
             clicked ::
                 root_object().client_model.clear_arrays()
+
+        Label: intensity_lbl:
+            text = 'Intensity Level'
+
+        Slider: intensity_slider:
+            tracking = False
+            tick_interval = 50
+            maximum = 1000
+            minimum = 1
+            value := root_object().client_model.intensity_value
+
+        Field: intensity_txt:
+            text << u'{}'.format(intensity_slider.value)
+            read_only = True
+
+        CheckBox: gamma_cb:
+            text = 'Gamma'
+            toggled ::
+                for array_view in array_views.objects:
+                    array_view.image_widget.applyGamma(checked)
 
         Container: arrays:
             FlowArea: arrays_area:

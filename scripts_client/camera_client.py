@@ -133,6 +133,11 @@ class ClientModel(Atom):
     #
     capture_settings = Dict(default=gs.CAPTURE_SETTINGS)
 
+    #
+    # Intensity level for displayed images.
+    #
+    intensity_value = Int(40)
+
     def _default_images_df(self):
         """Initialize an empty data frame."""
 
@@ -1115,6 +1120,11 @@ class Controller(Atom):
             xs, ys = array_model.projectECEF(LOS_pts)
 
             array_view.image_widget.updateEpipolar(xs=xs, ys=ys)
+
+    @observe('model.intensity_value')
+    def updateIntensity(self, change):
+        for _, (_, array_view) in self.model.array_items.items():
+            array_view.image_widget.setIntensity(change['value'])
 
     def updateReconstruction(self, *args, **kwds):
         """This function is used only for bridging."""
