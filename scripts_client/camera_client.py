@@ -111,6 +111,17 @@ class ClientModel(Atom):
     altitude = Int(229)
 
     #
+    # LIDAR Grid parameters.
+    # The LIDAR grid size is the cube that includes
+    # all cameras, and from 0 to Top Of Grid (TOG).
+    #
+    delx = Float(100)
+    dely = Float(100)
+    delz = Float(100)
+    TOG = Float(3000)
+    GRID_pts = Tuple()
+
+    #
     # Global (broadcast) capture settings.
     #
     capture_settings = Dict(default=gs.CAPTURE_SETTINGS)
@@ -267,7 +278,7 @@ class ClientModel(Atom):
 
         return bounding_phi, bounding_psi
 
-    def reconstruct(self, lat, lon, alt, mask_ROI=False):
+    def reconstruct(self, lat, lon, alt):
         """Reconstruct selected regions."""
 
         #
@@ -286,9 +297,9 @@ class ClientModel(Atom):
             # Extract the image values at the ROI
             #
             img_array = array_view.img_array
-            Rs[server_id] = array_view.image_widget.getArrayRegion(img_array[..., 0], mask_ROI)
-            Gs[server_id] = array_view.image_widget.getArrayRegion(img_array[..., 1], mask_ROI)
-            Bs[server_id] = array_view.image_widget.getArrayRegion(img_array[..., 2], mask_ROI)
+            Rs[server_id] = array_view.image_widget.getArrayRegion(img_array[..., 0])
+            Gs[server_id] = array_view.image_widget.getArrayRegion(img_array[..., 1])
+            Bs[server_id] = array_view.image_widget.getArrayRegion(img_array[..., 2])
 
             #
             # Calculate the center of the camera.
@@ -558,9 +569,52 @@ class ClientModel(Atom):
 
         self.clear_arrays_signal.emit()
 
+    def updateLIDARgrid(self):
+        """Update the LIDAR grid.
+
+        The LIDAR grid is calculate in ECEF coords.
+        """
+
+        #
+        # Calculate the bounding box of the cameras.
+        #
+        s_pts = np.array((-1000, -1000, -self.TOG))
+        e_pts = np.array((1000, 1000, 0))
+        for server_id, (array_model, array_view) in self.array_items.items():
+            if not array_view.reconstruct_flag.checked:
+                logging.info(
+                    "LIDAR Grid: Camera {} ignored.".format(server_id)
+                )
+                continue
+
+            #
+            # Convert the ECEF center of the camera to the grid center ccords.
+            #
+            cam_center = pymap3d.ecef2ned(
+                array_model.center[0], array_model.center[1], array_model.center[2],
+                self.latitude, self.longitude, 0)
+
+            #
+            # Accomulate tight bounding.
+            #
+            s_pts = np.array((s_pts, cam_center)).min(axis=0)
+            e_pts = np.array((e_pts, cam_center)).max(axis=0)
+
+        #
+        # Create the LIDAR grid.
+        #
+        X, Y, Z = np.meshgrid(
+            np.arange(s_pts[0], e_pts[0]+self.delx, self.delx),
+            np.arange(s_pts[1], e_pts[1]+self.dely, self.dely),
+            np.arange(s_pts[2], e_pts[2]+self.delz, self.delz),
+        )
+
+        self.GRID_pts = pymap3d.ned2ecef(
+            X, Y, Z, self.latitude, self.longitude, self.altitude)
+
 
 class ServerModel(Atom):
-    """The data model of the server."""
+    """The data model of the server (camera)."""
 
     server_id = Str()
     cmd = Str()
@@ -767,13 +821,28 @@ class ServerModel(Atom):
 
 
 class ArrayModel(Atom):
+    """Representation of an image."""
+
     resolution = Int()
+    img_data = Instance(DataObj)
+    fov = Float(math.pi/2)
+
+    #
+    # Epipolar line length.
+    #
+    line_length = Float(10000)
+
+    #
+    # Earth coords of the camera.
+    #
     longitude = Float()
     latitude = Float()
     altitude = Float()
-    line_length = Float(10000)
-    img_data = Instance(DataObj)
-    fov = Float(math.pi/2)
+
+    #
+    # The center of the camera in ECEF coords.
+    #
+    center = Tuple()
 
     def setEpipolar(self, x, y, N):
         """Create set of points in space.
@@ -789,57 +858,71 @@ class ArrayModel(Atom):
              Returns the LOS points in ECEF coords.
         """
 
-        pts = np.linspace(0, self.line_length, N)
-
+        #
+        # Center the click coords around image center.
+        #
         x = (x - self.resolution/2) / (self.resolution/2)
         y = (y - self.resolution/2) / (self.resolution/2)
 
+        #
+        # Calculate angle of click.
+        #
         phi = math.atan2(y, x)
         psi = self.fov * math.sqrt(x**2 + y**2)
 
+        #
+        # Calculate a LOS in this direction.
+        # The LOS is first calculate in local coords (NED) of the camera.
+        #
+        pts = np.linspace(0, self.line_length, N)
         Z = -math.cos(psi) * pts
         X = math.sin(psi) * math.cos(phi) * pts
         Y = math.sin(psi) * math.sin(phi) * pts
 
+        #
+        # Calculate the LOS in ECEF coords.
+        #
         LOS_pts = pymap3d.ned2ecef(
             X, Y, Z, self.latitude, self.longitude, self.altitude)
 
         return LOS_pts
 
-    def queryEpipolar(self, LOS_pts):
-        """Project set of LOS points to view.
+    def projectECEF(self, ECEF_pts):
+        """Project set of points in ECEF coords on the view.
 
         Args:
-            LOS_pts (tuple of arrays): LOS points (from another view)
-                in ecef coords.
+            ECEF_pts (tuple of arrays): points in ECEF coords.
 
         Returns:
-            LOS points project to the view of this server.
+            points projected to the view of this server.
         """
 
+        #
+        # Convert ECEF points to NED centered at camera.
+        #
         X, Y, Z = pymap3d.ecef2ned(
-            LOS_pts[0], LOS_pts[1], LOS_pts[2],
+            ECEF_pts[0], ECEF_pts[1], ECEF_pts[2],
             self.latitude, self.longitude, self.altitude)
 
-        epipolar_pts = np.array([X, Y, -Z]).T
+        neu_pts = np.array([X.flatten(), Y.flatten(), -Z.flatten()]).T
 
         #
         # Normalize the points
         #
-        epipolar_pts = \
-            epipolar_pts/np.linalg.norm(epipolar_pts, axis=1).reshape(-1, 1)
+        neu_pts = \
+            neu_pts/np.linalg.norm(neu_pts, axis=1).reshape(-1, 1)
 
         #
         # Zero points below the horizon.
         #
-        cosPSI = epipolar_pts[:,2].copy()
+        cosPSI = neu_pts[:,2].copy()
         cosPSI[cosPSI<0] = 0
 
-        normXY = np.linalg.norm(epipolar_pts[:, :2], axis=1)
-        PSI = np.arccos(epipolar_pts[:,2])
+        normXY = np.linalg.norm(neu_pts[:, :2], axis=1)
+        PSI = np.arccos(neu_pts[:,2])
         R = PSI / self.fov * self.resolution/2
-        xs = R * epipolar_pts[:,0]/(normXY+0.00000001) + self.resolution/2
-        ys = R * epipolar_pts[:,1]/(normXY+0.00000001) + self.resolution/2
+        xs = R * neu_pts[:,0]/(normXY+0.00000001) + self.resolution/2
+        ys = R * neu_pts[:,1]/(normXY+0.00000001) + self.resolution/2
 
         return xs[cosPSI>0], ys[cosPSI>0]
 
@@ -865,6 +948,15 @@ class Controller(Atom):
 
     @observe('model.new_array_signal')
     def array_signal(self, server_id, img_array, img_data):
+        """This callback is called when a new array is added to the display.
+
+        The callback creates all objects required to display the image.
+
+        Args:
+            server_id (str): ID of the server to which an array is added.
+            img_array (array): New image.
+            img_data (dict): Meta data of the image.
+        """
 
         #
         # Calculate the Almucantar and PrinciplePlanes
@@ -872,19 +964,29 @@ class Controller(Atom):
         Almucantar_coords, PrincipalPlane_coords = \
             calcSunphometerCoords(img_data, resolution=img_array.shape[0])
 
+        #
+        # Create the array model which handles the array view on the display.
+        #
         server_keys = self.model.array_items.keys()
         if server_id in server_keys:
             #
-            # Update the array model and view
+            # The specific Server/Camera is already displayed. Update the array
+            # model and view.
             #
             array_model, array_view = self.model.array_items[server_id]
 
+            #
+            # Update the view.
+            #
             array_view.img_array = img_array
             array_view.img_data = img_data
 
             array_view.Almucantar_coords = Almucantar_coords
             array_view.PrincipalPlane_coords = PrincipalPlane_coords
 
+            #
+            # Update the model.
+            #
             array_model.resolution = int(img_array.shape[0])
             array_model.longitude = float(img_data.longitude)
             array_model.latitude = float(img_data.latitude)
@@ -892,16 +994,27 @@ class Controller(Atom):
             array_model.img_data = img_data
 
         else:
+            #
+            # The specific camera is not displayed. Create it.
+            #
             view_index = sorted(server_keys+[server_id]).index(server_id)
 
+            #
+            # Create the view.
+            #
             array_view = new_array(
                 self.view.array_views,
                 server_id, img_array,
                 img_data, view_index,
-                Almucantar_coords, PrincipalPlane_coords
+                Almucantar_coords,
+                PrincipalPlane_coords
             )
             array_view.image_widget.observe('epipolar_signal', self.updateEpipolar)
+            array_view.image_widget.observe('use_reconstruction', self.updateReconstruction)
 
+            #
+            # Create the model.
+            #
             array_model = ArrayModel(
                 resolution=int(img_array.shape[0]),
                 longitude=float(img_data.longitude),
@@ -911,6 +1024,21 @@ class Controller(Atom):
             )
 
             self.model.array_items[server_id] = array_model, array_view
+
+        #
+        # Calculate the center of the camera in ECEF coords.
+        #
+        array_model.center = pymap3d.ned2ecef(
+            0, 0, 0, array_model.latitude, array_model.longitude, array_model.altitude)
+
+        #
+        # Create the projection of the LIDAR grid on the view.
+        #
+        if self.model.GRID_pts == ():
+            self.model.updateLIDARgrid()
+
+        xs, ys = array_model.projectECEF(self.model.GRID_pts)
+        array_view.image_widget.updateLIDARgridPts(xs=xs, ys=ys)
 
     @observe('model.settings_signal')
     def settings_signal(self, server_model):
@@ -943,9 +1071,24 @@ class Controller(Atom):
             if k == server_id:
                 continue
 
-            xs, ys = array_model.queryEpipolar(LOS_pts)
+            xs, ys = array_model.projectECEF(LOS_pts)
 
             array_view.image_widget.updateEpipolar(xs=xs, ys=ys)
+
+    def updateReconstruction(self, *args, **kwds):
+        """This function is used only for bridging."""
+
+        #
+        # Update the LIDAR grid according to new cameras setup.
+        #
+        self.model.updateLIDARgrid()
+
+        #
+        # Update the view of the LIDAR grid on all images.
+        #
+        for _, (array_model, array_view) in self.model.array_items.items():
+            xs, ys = array_model.projectECEF(self.model.GRID_pts)
+            array_view.image_widget.updateLIDARgridPts(xs=xs, ys=ys)
 
 
 def main(local_mode):

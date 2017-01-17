@@ -236,7 +236,7 @@ enamldef ArrayView(FlowItem):
 
             CheckBox: reconstruct_flag:
                 tool_tip = "Use for reconstruction"
-                checked = True
+                checked := image_widget.use_reconstruction
                 text = "Use in Recon."
 
 
@@ -983,26 +983,22 @@ enamldef Main(MainWindow): main:
                     for array_view in array_views.objects:
                         array_view.image_widget.show_ROI = checked
 
+            Action:
+                checkable = True
+                text = 'Show LIDAR grid'
+                toggled ::
+                    for array_view in array_views.objects:
+                        array_view.image_widget.show_LIDAR_grid = checked
+
         Menu:
             title = "&Reconstruct"
             Action:
-                text = "Reconstruct ROI\tCtrl+R"
+                text = "Reconstruct\tCtrl+R"
                 triggered ::
                     client_model.reconstruct(
                         lat=client_model.latitude,
                         lon=client_model.longitude,
                         alt=client_model.altitude,
-                        mask_ROI=False
-                    )
-
-            Action:
-                text = "Reconstruct Mask\tCtrl+M"
-                triggered ::
-                    client_model.reconstruct(
-                        lat=client_model.latitude,
-                        lon=client_model.longitude,
-                        alt=client_model.altitude,
-                        mask_ROI=True
                     )
 
             Action:

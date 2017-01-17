@@ -277,19 +277,51 @@ enamldef ReconstructionConfigPopup(PopupView): popup:
 
     attr client_model
 
-    Form:
-        Label:
-            text = 'Latitude:'
-        FloatField: latitude:
-            value := client_model.latitude
+    GroupBox:
+        title = 'Local Coords Center'
 
-        Label:
-            text = 'Longitude:'
-        FloatField: longitude:
-            value := client_model.longitude
+        Form:
+            Label:
+                text = 'Latitude:'
+            FloatField: latitude:
+                value := client_model.latitude
 
-        Label:
-            text = 'Altitude:'
-        IntField: altitude:
-            value := client_model.altitude
+            Label:
+                text = 'Longitude:'
+            FloatField: longitude:
+                value := client_model.longitude
+
+            Label:
+                text = 'Altitude:'
+            IntField: altitude:
+                value := client_model.altitude
+
+    GroupBox:
+        title = 'LIDAR Grid'
+
+        Form:
+            Label:
+                text = 'delx:'
+            FloatField: delx:
+                tool_tip = "Delta X of Lidar Grid [m]"
+                value := client_model.delx
+
+            Label:
+                text = 'dely:'
+            FloatField: dely:
+                tool_tip = "Delta Y of Lidar Grid [m]"
+                value := client_model.dely
+
+            Label:
+                text = 'delz:'
+            FloatField: delz:
+                tool_tip = "Delta X of Lidar Grid [m]"
+                value := client_model.delz
+
+            Label:
+                text = 'TOG:'
+            FloatField: TOG:
+                tool_tip = "Top of Lidar Grid [m]"
+                value := client_model.TOG
+
 
