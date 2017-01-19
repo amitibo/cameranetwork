@@ -19,7 +19,7 @@ from extra import SliderText
 from extra import ThumbPopup
 from settings import GlobalSettingsDialog
 from settings import SettingsDialog
-from settings import ReconstructionConfigPopup
+from settings import ReconstructDialog
 
 from data_frame_table import DataFrameTable
 
@@ -1039,19 +1039,19 @@ enamldef Main(MainWindow): main:
         Menu:
             title = "&Reconstruct"
             Action:
-                text = "Reconstruct\tCtrl+R"
+                text = "Export\tCtrl+R"
                 triggered ::
-                    client_model.reconstruct(
-                        lat=client_model.latitude,
-                        lon=client_model.longitude,
-                        alt=client_model.altitude,
-                    )
+                    hresult = ReconstructDialog(
+                        client_model=client_model
+                    ).exec_()
 
-            Action:
-                text = 'Config'
-                triggered ::
-                    config = ReconstructionConfigPopup(client_model=client_model)
-                    config.show()
+                    if hresult:
+                        client_model.reconstruct(
+                            lat=client_model.latitude,
+                            lon=client_model.longitude,
+                            alt=client_model.altitude,
+                        )
+
 
     Container:
         MyDockArea: dock_area:
