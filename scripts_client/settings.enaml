@@ -147,10 +147,6 @@ enamldef GlobalSettingsDialog(Dialog): ClientSettingsPopup:
             padding = 20
 
             Label:
-                text = 'Start Loop'
-            CheckBox: start_loop:
-                checked := client_model.capture_settings[gs.START_LOOP]
-            Label:
                 text = 'Upload Jpeg'
             CheckBox: upload_jpg:
                 checked := client_model.capture_settings[gs.UPLOAD_JPG_FILE]

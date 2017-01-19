@@ -152,14 +152,14 @@ CAMERA_SETTINGS = {
 }
 
 CAPTURE_SETTINGS = {
-    START_LOOP: False,
+    START_LOOP: True,
     DAY_PERIOD_START: 9,
     DAY_PERIOD_END: 19,
     UPLOAD_JPG_FILE: True,
     UPLOAD_MAT_FILE: False,
     DAY_SETTINGS: {
         LOOP_DELAY: 60,
-        IMAGE_EXPOSURE: 500,
+        IMAGE_EXPOSURE: 50,
         IMAGE_GAIN: 0,
         GAIN_BOOST: False,
         FRAMES_NUM: 5,
@@ -168,7 +168,7 @@ CAPTURE_SETTINGS = {
         },
     NIGHT_SETTINGS: {
         LOOP_DELAY: 1800,
-        IMAGE_EXPOSURE: 250000,
+        IMAGE_EXPOSURE: 8000000,
         IMAGE_GAIN: 0,
         GAIN_BOOST: True,
         FRAMES_NUM: 1,

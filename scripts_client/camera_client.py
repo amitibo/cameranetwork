@@ -84,6 +84,165 @@ def calcSunphometerCoords(img_data, resolution):
     return Almucantar_coords[::-1, ...].T.tolist(), PrincipalPlane_coords[::-1, ...].T.tolist()
 
 
+def calcROIbounds(array_model, array_view):
+    """Calculate bounds of ROI in array_view
+
+    Useful for debug visualization.
+    """
+
+    #
+    # Get the ROI size
+    #
+    roi = array_view.ROI
+    size = roi.state['size']
+
+    #
+    # Get the transform from the ROI to the data.
+    #
+    _, tr = roi.getArraySlice(array_view.img_array, array_view.image_widget.img_item)
+
+    #
+    # Calculate the bounds.
+    #
+    center = float(array_view.img_array.shape[0])/2
+    pts = np.array(
+        [tr.map(x, y) for x, y in \
+         ((0, 0), (size.x(), 0), (0, size.y()), (size.x(), size.y()))]
+    )
+    pts = (pts - center) / center
+    X, Y = pts[:, 1], pts[:, 0]
+    bounding_phi = np.arctan2(X, Y)
+    bounding_psi = array_model.fov * np.sqrt(X**2 + Y**2)
+
+    return bounding_phi, bounding_psi
+
+
+def processExport(base_path, array_items, lat, lon, alt, grabcut_threshold, progress_callback):
+    """Process export of reconstruction data on separate thread."""
+
+    #
+    #
+    #
+    progress_cnt = len(array_items)
+    deferred_call(progress_callback, 0)
+
+    #
+    # Set the center of the axes
+    #
+    Xs, Ys, Zs, PHIs, PSIs, Rs, Gs, Bs, Masks, Datas = \
+        {}, {}, {}, {}, {}, {}, {}, {}, {}, {}
+
+    for i, (server_id, (array_model, array_view)) in enumerate(array_items):
+        if not array_view.reconstruct_flag.checked:
+            logging.info(
+                "Reconstruction: Camera {} ignored.".format(server_id)
+            )
+            continue
+
+        #
+        # Extract the image values at the ROI
+        #
+        img_array = array_view.img_array
+        Rs[server_id] = array_view.image_widget.getArrayRegion(img_array[..., 0])
+        Gs[server_id] = array_view.image_widget.getArrayRegion(img_array[..., 1])
+        Bs[server_id] = array_view.image_widget.getArrayRegion(img_array[..., 2])
+
+        #
+        # Calculate the center of the camera.
+        # Note that the coords are stored as ENU (in contrast to NED)
+        #
+        n, e, d = pymap3d.geodetic2ned(
+            array_model.latitude, array_model.longitude, array_model.altitude,
+            lat0=lat, lon0=lon, h0=alt)
+
+        logging.info(
+            "Saved reconstruction data of camera: {}.".format(server_id)
+            )
+
+        x, y, z = e, n, -d
+        Xs[server_id] = np.ones_like(Rs[server_id]) * x
+        Ys[server_id] = np.ones_like(Rs[server_id]) * y
+        Zs[server_id] = np.ones_like(Rs[server_id]) * z
+
+        #
+        # Calculate azimuth and elevation.
+        # TODO:
+        # The azimuth and elevation here are calculated assuming
+        # that the cameras are near. If they are far, the azimuth
+        # and elevation should take into account the earth carvature.
+        # I.e. relative to the center of axis the angles are rotated.
+        #
+        X_, Y_ = np.meshgrid(
+            np.linspace(-1, 1, img_array.shape[1]),
+            np.linspace(-1, 1, img_array.shape[0])
+        )
+
+        PHI = np.arctan2(X_, Y_)
+        PSI = array_model.fov * np.sqrt(X_**2 + Y_**2)
+
+        PHIs[server_id] = array_view.image_widget.getArrayRegion(PHI)
+        PSIs[server_id] = array_view.image_widget.getArrayRegion(PSI)
+
+        #
+        # Calculate bounding coords (useful for debug visualization)
+        #
+        bounding_phi, bounding_psi = calcROIbounds(array_model, array_view)
+
+        #
+        # Calculate mask using grabcut. This is used for removing the
+        # sunshader.
+        #
+        mask = np.ones(img_array.shape[:2], np.uint8)*cv2.GC_PR_FGD
+        mask[img_array.max(axis=2) < grabcut_threshold] = cv2.GC_PR_BGD
+        img_u8 = (255 * np.clip(img_array, 0, 40) / 40).astype(np.uint8)
+        bgdModel = np.zeros((1, 65), np.float64)
+        fgdModel = np.zeros((1, 65), np.float64)
+        rect = (0, 0, 0, 0)
+        mask, bgdModel, fgdModel = cv2.grabCut(
+            img_u8, mask, rect, bgdModel, fgdModel,
+            5, cv2.GC_INIT_WITH_MASK)
+        mask = np.where(
+            (mask==cv2.GC_FGD) | (mask==cv2.GC_PR_FGD), 1, 0).astype('uint8')
+
+        Masks[server_id] = (
+            array_view.image_widget.getArrayRegion(mask),
+            array_view.image_widget.getArrayRegion(
+                array_view.image_widget.getMask()
+                ),
+        )
+
+        #
+        # Extra data
+        #
+        sun_alt, sun_az = sun_direction(
+            latitude=str(array_model.latitude),
+            longitude=str(array_model.longitude),
+            altitude=array_model.altitude,
+            at_time=array_model.img_data.name_time)
+
+        Datas[server_id] = \
+            dict(
+                at_time=array_model.img_data.name_time,
+                sun_alt=float(sun_alt),
+                sun_az=float(sun_az),
+                x=x,
+                y=y,
+                z=z,
+                bounding_phi=bounding_phi,
+                bounding_psi=bounding_psi
+            )
+
+        deferred_call(progress_callback, i / progress_cnt)
+
+    for f_name, obj in zip(
+        ('Rs', 'Gs', 'Bs', 'Xs', 'Ys', 'Zs', 'PHIs', 'PSIs', 'Masks', 'Datas'),
+        (Rs, Gs, Bs, Xs, Ys, Zs, PHIs, PSIs, Masks, Datas)):
+        with open(os.path.join(base_path, '{}.pkl'.format(f_name)), 'wb') as f:
+            cPickle.dump(obj, f)
+
+    deferred_call(progress_callback, 0)
+
+
 class ClientModel(Atom):
     """The data model of the client."""
 
@@ -137,6 +296,11 @@ class ClientModel(Atom):
     # Intensity level for displayed images.
     #
     intensity_value = Int(40)
+
+    #
+    # Progress bar value for export status
+    #
+    export_progress = Int()
 
     def _default_images_df(self):
         """Initialize an empty data frame."""
@@ -258,162 +422,22 @@ class ClientModel(Atom):
 
         return revisions
 
-    def _calcROIbounds(self, array_model, array_view):
-        """Calculate bounds of ROI in array_view
+    def exportData(self):
+        """Export data for reconstruction."""
 
-        Useful for debug visualization.
-        """
-
-        #
-        # Get the ROI size
-        #
-        roi = array_view.ROI
-        size = roi.state['size']
-
-        #
-        # Get the transform from the ROI to the data.
-        #
-        _, tr = roi.getArraySlice(array_view.img_array, array_view.image_widget.img_item)
-
-        #
-        # Calculate the bounds.
-        #
-        center = float(array_view.img_array.shape[0])/2
-        pts = np.array(
-            [tr.map(x, y) for x, y in \
-             ((0, 0), (size.x(), 0), (0, size.y()), (size.x(), size.y()))]
-        )
-        pts = (pts - center) / center
-        X, Y = pts[:, 1], pts[:, 0]
-        bounding_phi = np.arctan2(X, Y)
-        bounding_psi = array_model.fov * np.sqrt(X**2 + Y**2)
-
-        return bounding_phi, bounding_psi
-
-    def reconstruct(self, lat, lon, alt):
-        """Reconstruct selected regions."""
-
-        #
-        # Set the center of the axes
-        #
-        Xs, Ys, Zs, PHIs, PSIs, Rs, Gs, Bs, Masks, Datas = \
-            {}, {}, {}, {}, {}, {}, {}, {}, {}, {}
-        for server_id, (array_model, array_view) in self.array_items.items():
-            if not array_view.reconstruct_flag.checked:
-                logging.info(
-                    "Reconstruction: Camera {} ignored.".format(server_id)
-                )
-                continue
-
-            #
-            # Extract the image values at the ROI
-            #
-            img_array = array_view.img_array
-            Rs[server_id] = array_view.image_widget.getArrayRegion(img_array[..., 0])
-            Gs[server_id] = array_view.image_widget.getArrayRegion(img_array[..., 1])
-            Bs[server_id] = array_view.image_widget.getArrayRegion(img_array[..., 2])
-
-            #
-            # Calculate the center of the camera.
-            # Note that the coords are stored as ENU (in contrast to NED)
-            #
-            n, e, d = pymap3d.geodetic2ned(
-                array_model.latitude, array_model.longitude, array_model.altitude,
-                lat0=lat, lon0=lon, h0=alt)
-
-            logging.info(
-                "Saved reconstruction data of camera: {}.".format(server_id)
-                )
-
-            x, y, z = e, n, -d
-            Xs[server_id] = np.ones_like(Rs[server_id]) * x
-            Ys[server_id] = np.ones_like(Rs[server_id]) * y
-            Zs[server_id] = np.ones_like(Rs[server_id]) * z
-
-            #
-            # Calculate azimuth and elevation.
-            # TODO:
-            # The azimuth and elevation here are calculated assuming
-            # that the cameras are near. If they are far, the azimuth
-            # and elevation should take into account the earth carvature.
-            # I.e. relative to the center of axis the angles are rotated.
-            #
-            X_, Y_ = np.meshgrid(
-                np.linspace(-1, 1, img_array.shape[1]),
-                np.linspace(-1, 1, img_array.shape[0])
-            )
-
-            PHI = np.arctan2(X_, Y_)
-            PSI = array_model.fov * np.sqrt(X_**2 + Y_**2)
-
-            PHIs[server_id] = array_view.image_widget.getArrayRegion(PHI)
-            PSIs[server_id] = array_view.image_widget.getArrayRegion(PSI)
-
-            #
-            # Calculate bounding coords (useful for debug visualization)
-            #
-            bounding_phi, bounding_psi = self._calcROIbounds(
-                array_model, array_view)
-
-            #
-            # Calculate mask using grabcut. This is used for removing the
-            # sunshader.
-            #
-            mask = np.ones(img_array.shape[:2], np.uint8)*cv2.GC_PR_FGD
-            mask[img_array.max(axis=2) < self.grabcut_threshold] = cv2.GC_PR_BGD
-            img_u8 = (255 * np.clip(img_array, 0, 40) / 40).astype(np.uint8)
-            bgdModel = np.zeros((1, 65), np.float64)
-            fgdModel = np.zeros((1, 65), np.float64)
-            rect = (0, 0, 0, 0)
-            mask, bgdModel, fgdModel = cv2.grabCut(
-                img_u8, mask, rect, bgdModel, fgdModel,
-                5, cv2.GC_INIT_WITH_MASK)
-            mask = np.where(
-                (mask==cv2.GC_FGD) | (mask==cv2.GC_PR_FGD), 1, 0).astype('uint8')
-
-            Masks[server_id] = (
-                array_view.image_widget.getArrayRegion(mask),
-                array_view.image_widget.getArrayRegion(
-                    array_view.image_widget.getMask()
-                    ),
-            )
-
-            #
-            # Extra data
-            #
-            sun_alt, sun_az = sun_direction(
-                latitude=str(array_model.latitude),
-                longitude=str(array_model.longitude),
-                altitude=array_model.altitude,
-                at_time=array_model.img_data.name_time)
-
-            Datas[server_id] = \
-                dict(
-                    at_time=array_model.img_data.name_time,
-                    sun_alt=float(sun_alt),
-                    sun_az=float(sun_az),
-                    x=x,
-                    y=y,
-                    z=z,
-                    bounding_phi=bounding_phi,
-                    bounding_psi=bounding_psi
-                )
+        if len(self.array_items.items()) == 0:
+            return
 
         #
         # Unique base path
         #
+        array_model = self.array_items.values()[0][0]
         base_path = os.path.join(
             'reconstruction',
             array_model.img_data.name_time.strftime("%Y_%m_%d_%H_%M_%S")
         )
         if not os.path.exists(base_path):
             os.makedirs(base_path)
-
-        for f_name, obj in zip(
-            ('Rs', 'Gs', 'Bs', 'Xs', 'Ys', 'Zs', 'PHIs', 'PSIs', 'Masks', 'Datas'),
-            (Rs, Gs, Bs, Xs, Ys, Zs, PHIs, PSIs, Masks, Datas)):
-            with open(os.path.join(base_path, '{}.pkl'.format(f_name)), 'wb') as f:
-                cPickle.dump(obj, f)
 
         #
         # Get the radiosonde
@@ -436,6 +460,34 @@ class ClientModel(Atom):
             dict(X=self.GRID_NED[0], Y=self.GRID_NED[1], Z=self.GRID_NED[2]),
             do_compression=True
         )
+
+        #
+        # Start export on separate thread.
+        #
+        thread = Thread(
+            target=processExport,
+            kwargs=dict(
+                base_path=base_path,
+                array_items=self.array_items.items(),
+                lat=self.latitude,
+                lon=self.longitude,
+                alt=self.altitude,
+                grabcut_threshold=self.grabcut_threshold,
+                progress_callback=self.updateExportProgress
+            )
+        )
+        thread.daemon = True
+        thread.start()
+
+    def updateExportProgress(self, progress_ratio):
+        """Update the status of the progress bar.
+
+        Args:
+            progress_ratio (float): Progress ratio (0 to 1).
+
+        """
+
+        self.export_progress = int(100*progress_ratio)
 
     def save_rois(self, base_path='.'):
         """Save the current ROIS for later use."""
@@ -646,14 +698,21 @@ class ClientModel(Atom):
 
         #
         # Create the LIDAR grid.
+        # Note GRID_NED is an open grid storing the requested
+        # grid resolution.
+        # GRID_ECEF is just for visualization.
         #
-        X, Y, Z = np.meshgrid(
+        self.GRID_NED = (
             np.arange(s_pts[0], e_pts[0]+self.delx, self.delx),
             np.arange(s_pts[1], e_pts[1]+self.dely, self.dely),
-            np.arange(s_pts[2], e_pts[2]+self.delz, self.delz),
+            np.arange(s_pts[2], e_pts[2]+self.delz, self.delz)
         )
 
-        self.GRID_NED = (X, Y, Z)
+        X, Y, Z = np.meshgrid(
+            np.linspace(s_pts[0], e_pts[0], 10),
+            np.linspace(s_pts[1], e_pts[1], 10),
+            np.linspace(s_pts[2], e_pts[2], 10),
+        )
 
         self.GRID_ECEF = pymap3d.ned2ecef(
             X, Y, Z, self.latitude, self.longitude, self.altitude)

@@ -1,8 +1,4 @@
-import sys
-if sys.platform == 'win32':
-    from enaml import winutil
 
-from enaml.image import Image
 from enaml.layout.api import *
 from enaml.core.api import Include, Conditional, Looper
 from enaml.stdlib.fields import IntField, FloatField
@@ -15,11 +11,12 @@ from enaml.stdlib.message_box import (MessageBox, about, critical, information,
 
 from extra import GradientButtonSheet
 from extra import MsgDataPopup
-from extra import SliderText
 from extra import ThumbPopup
 from settings import GlobalSettingsDialog
 from settings import SettingsDialog
 from settings import ReconstructDialog
+from server_pages import (MainControlsPage, ImageControlPage, SeekControlPage,
+    SunshaderControlPage, SprinklerControlPage, CalibrationControlPage)
 
 from data_frame_table import DataFrameTable
 
@@ -139,71 +136,29 @@ def open_settings(main_view, client_model, server_model):
         )
 
 
-def restart_server(button, client_model, server_model):
-    if button is not None:
-        if button.text == 'Restart':
-            client_model.send_message(server_model, gs.MSG_TYPE_RESTART)
-
-
-def reboot_server(button, client_model, server_model):
-    if button is not None:
-        if button.text == 'Reboot':
-            client_model.send_message(server_model, gs.MSG_TYPE_REBOOT)
-
-
-enamldef UpdateTaskDialog(Dialog):
-    title = 'Update Camera Fimware'
-
-    attr revisions
-    alias selected_revision: combo.selected
-
-    TaskDialogStyleSheet:
-            pass
-    TaskDialogBody:
-        TaskDialogInstructionArea:
-            Label:
-                style_class = 'task-dialog-instructions'
-                text = 'Available Revisions'
-        TaskDialogContentArea:
-            ObjectCombo: combo:
-                items = revisions
-        TaskDialogCommandArea:
-            DialogButtonBox: bbox:
-                buttons = [
-                    DialogButton('Update', 'accept'),
-                    DialogButton('Cancel', 'reject'),
-                ]
-
-
 enamldef ImageDataPopup(PopupView):
-    foreground = 'white'
-    background = 'rgba(30, 30, 30, 0.85)'
-    window_type = 'window'
+    window_type = 'popup'
 
     attr img_data_
 
     Form:
         padding = 20
         Label:
-            foreground = 'white'
             text = 'Exposure [us]'
         Field:
             text = repr(img_data_.exposure_us)
             read_only = True
         Label:
-            foreground = 'white'
             text = 'Gain'
         Field:
             text = repr(img_data_.gain_db)
             read_only = True
         Label:
-            foreground = 'white'
             text = 'Gain Boost'
         Field:
             text = repr(img_data_.gain_boost)
             read_only = True
         Label:
-            foreground = 'white'
             text = 'Time'
         Field:
             text = str(img_data_.name_time)
@@ -247,426 +202,6 @@ enamldef ArrayView(FlowItem):
                 tool_tip = "Use for reconstruction"
                 checked := image_widget.use_reconstruction
                 text = "Use in Recon."
-
-
-################################################################################
-# Panels
-################################################################################
-enamldef MainControlsPage(Page):
-    attr server_model_
-
-    HGroup:
-        VGroup:
-            GroupBox:
-                title = 'Capture Mode'
-
-                PushButton: pb_loop:
-                    text = 'Loop'
-                    clicked ::
-                        root_object().client_model.send_message(server_model_, gs.MSG_TYPE_LOOP)
-
-                PushButton: pb_calib:
-                    text = 'Calib Imgs'
-                    clicked :: root_object().client_model.send_message(server_model_, gs.MSG_TYPE_CALIB_IMGS)
-
-                PushButton: pb_halt:
-                    text = 'Halt'
-                    clicked :: root_object().client_model.send_message(server_model_, gs.MSG_TYPE_HALT)
-
-            GroupBox:
-                title = 'SSH'
-
-                PushButton: pb_tunnel_on:
-                    text = 'Tunnel On'
-                    clicked :: root_object().client_model.send_message(
-                        server_model_,
-                        gs.MSG_TYPE_TUNNEL,
-                        kwds=dict(tunnel_state=True)
-                        )
-
-                PushButton: pb_tunnel_off:
-                    text = 'Tunnel Off'
-                    clicked :: root_object().client_model.send_message(
-                        server_model_,
-                        gs.MSG_TYPE_TUNNEL,
-                        kwds=dict(tunnel_state=False)
-                        )
-
-                PushButton: pb_putty:
-                    text = 'Putty'
-                    clicked :: root_object().client_model.send_message(server_model_, gs.MSG_TYPE_TUNNEL_CHECK)
-
-                PushButton: pb_local:
-                    text = 'Local'
-                    clicked :: root_object().client_model.send_message(server_model_, gs.MSG_TYPE_LOCAL)
-
-        VGroup:
-            PushButton: pb_settings:
-                text = "Settings"
-                clicked ::
-                    root_object().client_model.send_message(server_model_, gs.MSG_TYPE_GET_SETTINGS)
-
-            PushButton: pb_restart:
-                text = 'Software Restart'
-                style_class = 'gradient-button gb-yellow rounded'
-                clicked ::
-                    btns = [DialogButton('Restart', 'accept'),
-                            DialogButton('Cancel', 'reject')]
-                    restart_server(
-                        warning(self, 'Restart Camera Software', 'Are you sure you want to restart the camera?', btns),
-                        root_object().client_model,
-                        server_model_
-                    )
-
-            PushButton: pb_reboot:
-                text = 'Reboot'
-                style_class = 'gradient-button gb-blue rounded'
-                clicked ::
-                    btns = [DialogButton('Reboot', 'accept'),
-                            DialogButton('Cancel', 'reject')]
-                    reboot_server(
-                        warning(self, 'Reboot Camera', 'Are you sure you want to reboot the camera?', btns),
-                        root_object().client_model,
-                        server_model_
-                    )
-
-            PushButton: pb_update:
-                text = 'Update'
-                style_class = 'gradient-button gb-red rounded'
-                clicked ::
-                    revisions = root_object().client_model.get_revisions_list()
-                    if revisions == []:
-                        warning(self, 'Warning', 'Your local repository is not synced with remote.\nPlease pull/push before trying to update the cameras.')
-                    else:
-                        descriptions, nodes = zip(*revisions)
-                        td = UpdateTaskDialog(
-                            self,
-                            revisions=list(descriptions)
-                        )
-                        if td.exec_():
-                            root_object().client_model.send_message(
-                                server_model_,
-                                gs.MSG_TYPE_UPDATE,
-                                kwds=dict(
-                                    rev=nodes[descriptions.index(td.selected_revision)]
-                                )
-                            )
-
-
-enamldef ImageControlPage(Page):
-    attr server_model_
-
-    alias settings_form
-
-    alias ff_exposure: ff_exposure.value
-    alias ff_gain: ff_gain.value
-    alias ff_gain_boost: ff_gain_boost.checked
-
-    GroupBox:
-        title = 'Image Sample'
-
-        HGroup:
-            Form: settings_form:
-                Label:
-                    text = 'Exp[us]:'
-                IntField: ff_exposure:
-                    minimum = 0
-                    value = 500
-                Label:
-                    text = 'Gain[%]:'
-                IntField: ff_gain:
-                    minimum = 0
-                    maximum = 100
-                    value = 0
-                Label:
-                    text = 'Gain Boost:'
-                CheckBox: ff_gain_boost:
-                    pass
-                Label:
-                    text = 'Frames:'
-                IntField: ff_frames_num:
-                    minimum = 1
-                    value = 1
-                Label:
-                    text = 'Color Mode:'
-                ComboBox: cmode:
-                    index = 0
-                    items = [gs.COLOR_RAW, gs.COLOR_RGB]
-                Label:
-                    text = 'Resolution:'
-                IntField: ff_resolution:
-                    minimum = 64
-                    maximum = 1001
-                    value = 301
-
-            VGroup:
-                PushButton: pb_array:
-                    text = 'Get Array'
-                    clicked ::
-                        root_object().client_model.send_message(
-                            server_model_,
-                            gs.MSG_TYPE_ARRAY,
-                            kwds=dict(
-                                exposure_us=ff_exposure.value if ff_exposure.value>0 else None,
-                                gain_db=ff_gain.value if ff_gain.value>0 else None,
-                                frames_num=ff_frames_num.value,
-                                color_mode=cmode.items[cmode.index],
-                                gain_boost=ff_gain_boost.checked,
-                                normalize=ff_normalized_array.checked,
-                                resolution=ff_resolution.value
-                            )
-                        )
-                PushButton: pb_thumb:
-                    text = 'Thumb'
-                    clicked ::
-                        root_object().client_model.send_message(
-                            server_model_,
-                            gs.MSG_TYPE_THUMBNAIL,
-                            kwds=dict(
-                                exposure_us=ff_exposure.value if ff_exposure.value>0 else None,
-                                gain_db=ff_gain.value if ff_gain.value>0 else None,
-                                color_mode=cmode.items[cmode.index],
-                                gain_boost=ff_gain_boost.checked,
-                                normalize=ff_normalized_array.checked
-                            )
-                        )
-                PushButton: pb_auto_thumb:
-                    text = 'Auto Thumb'
-                    clicked ::
-                        root_object().client_model.send_message(
-                            server_model_,
-                            gs.MSG_TYPE_THUMBNAIL,
-                            kwds=dict(
-                                normalize=ff_normalized_array.checked
-                            )
-                        )
-                Form:
-                    Label:
-                        text = 'Normalized:'
-                    CheckBox: ff_normalized_array:
-                        checked = True
-                PushButton: pb_reset_camera:
-                    text = 'Reset Camera'
-                    clicked ::
-                        root_object().client_model.send_message(
-                            server_model_,
-                            gs.MSG_TYPE_RESET_CAMERA,
-                        )
-
-
-enamldef SeekControlPage(Page):
-    attr server_model_
-
-    GroupBox:
-        title = 'Seek Array'
-
-        VGroup:
-            HGroup:
-                DateSelector: query_day:
-                    pass
-                PushButton: pb_query:
-                    text = 'Query'
-                    clicked ::
-                        root_object().client_model.send_message(
-                            server_model_,
-                            gs.MSG_TYPE_QUERY,
-                            kwds=dict(query_date=query_day.date)
-                        )
-
-            DataFrameTable: df:
-                data_frame << server_model_.images_df
-                selected_index >> server_model_.img_index
-
-            HGroup:
-                PushButton: pb_seek:
-                    text = 'Seek'
-                    clicked ::
-                        index = server_model_.img_index
-                        print index
-                        root_object().client_model.send_message(
-                            server_model_,
-                            gs.MSG_TYPE_SEEK,
-                            kwds=dict(
-                                seek_time=index[0],
-                                hdr_index=index[1],
-                                normalize=ff_normalized_seek.checked,
-                                resolution=ff_resolution_seek.value
-                            )
-                        )
-                Label:
-                    text = 'Resolution:'
-                IntField: ff_resolution_seek:
-                    minimum = 64
-                    maximum = 1001
-                    value = 301
-                Form:
-                    Label:
-                        text = 'Normalized:'
-                    CheckBox: ff_normalized_seek:
-                        checked = True
-
-
-enamldef SunshaderControlPage(Page):
-    attr server_model_
-
-    alias sunshader_angle_value : sunshader_angle.value
-
-    GroupBox:
-        title = 'Sun Shader'
-
-        SliderText: slider_sunshader:
-            label.text = 'Angle'
-
-            slider.value ::
-                root_object().client_model.send_message(
-                    server_model_,
-                    gs.MSG_TYPE_SUNSHADER,
-                    kwds=dict(
-                        angle=slider.value
-                    )
-                )
-
-        HGroup:
-            PushButton: pb_scan:
-                text = 'Scan'
-                clicked ::
-                    root_object().client_model.send_message(
-                        server_model_,
-                        gs.MSG_TYPE_SUNSHADER_SCAN,
-                    )
-
-            IntField: sunshader_angle:
-                read_only = True
-
-        MPLCanvas: canvas:
-            figure << server_model_.sunshader_figure
-
-
-enamldef SprinklerControlPage(Page):
-    attr server_model_
-
-    GroupBox:
-        title = 'Sprinkler'
-
-        HGroup:
-            PushButton: pb_sprinkle:
-                text = 'Sprinkle'
-                clicked ::
-                    root_object().client_model.send_message(
-                        server_model_,
-                        gs.MSG_TYPE_SPRINKLER,
-                        kwds=dict(
-                            period=sprinkler_period.value
-                        )
-                    )
-
-            Label:
-                text = 'Period:'
-            FloatField: sprinkler_period:
-                value = gs.SPRINKLER_PERIOD
-
-
-enamldef CalibrationControlPage(Page):
-    attr server_model_
-
-    attr exposure_us
-    attr gain_db
-    attr gain_boost
-
-    GroupBox:
-        title = 'Calibration'
-
-        Form:
-            Label:
-                text = 'nx:'
-            IntField: calib_nx:
-               minimum = 6
-               maximum = 12
-               value = 9
-            Label:
-                text = 'ny:'
-            IntField: calib_ny:
-                minimum = 5
-                maximum = 10
-                value = 6
-            Label:
-                text = 'imgs num:'
-            IntField: calib_imgs:
-                minimum = 10
-                maximum = 50
-                value = 40
-            Label:
-                text = 'imgs dely:'
-            IntField: calib_delay:
-                minimum = 1
-                maximum = 3
-                value = 2
-
-        PushButton: pb_calibration:
-            text = 'Calibrate'
-            clicked ::
-                box = MessageBox()
-                box.title = 'Geometric Calibration'
-                box.content = 'Do you want to do geometric calibration?'
-                box.buttons = [DialogButton('Accept', 'accept'),
-                               DialogButton('Cancel', 'reject')]
-                if sys.platform == 'win32':
-                    data, size = winutil.load_icon(winutil.OIC_INFORMATION)
-                    box.image = Image(data=data, raw_size=size, format='argb32')
-                box.set_parent(root_object())
-                box.exec_()
-                if box.buttons[0].was_clicked:
-                    root_object().client_model.send_message(
-                        server_model_,
-                        gs.MSG_TYPE_CALIBRATION,
-                        kwds=dict(
-                            nx=calib_nx.value,
-                            ny=calib_ny.value,
-                            imgs_num=calib_imgs.value,
-                            delay=calib_delay.value,
-                            exposure_us=exposure_us if exposure_us>0 else None,
-                            gain_db=gain_db if gain_db>0 else None,
-                            gain_boost=gain_boost
-                        )
-                    )
-
-        PushButton: pb_dark_image:
-            text = 'Dark Images'
-            clicked ::
-                box = MessageBox()
-                box.title = 'Dark Images'
-                box.content = 'Do you want to measure dark images?'
-                box.buttons = [DialogButton('Accept', 'accept'),
-                               DialogButton('Cancel', 'reject')]
-                if sys.platform == 'win32':
-                    data, size = winutil.load_icon(winutil.OIC_INFORMATION)
-                    box.image = Image(data=data, raw_size=size, format='argb32')
-                box.set_parent(root_object())
-                box.exec_()
-                if box.buttons[0].was_clicked:
-                    root_object().client_model.send_message(
-                        server_model_,
-                        gs.MSG_TYPE_DARK_IMAGES
-                    )
-
-        VGroup:
-            HGroup:
-                DateSelector: extrinsic_day:
-                    pass
-                PushButton: pb_extrinsic:
-                    text = 'Extrinsic'
-                    clicked ::
-                        root_object().client_model.send_message(
-                            server_model_,
-                            gs.MSG_TYPE_EXTRINSIC,
-                            kwds=dict(
-                                date=extrinsic_day.date,
-                                save=True
-                            )
-                        )
-
-            MPLCanvas: canvas:
-                figure << server_model_.extrinsic_figure
 
 
 ################################################################################
@@ -1001,7 +536,6 @@ enamldef Main(MainWindow): main:
                             )
                         )
 
-
         Menu:
             title = "&View"
             Action:
@@ -1039,20 +573,22 @@ enamldef Main(MainWindow): main:
         Menu:
             title = "&Reconstruct"
             Action:
-                text = "Export\tCtrl+R"
+                text = "Export\tCtrl+E"
                 triggered ::
                     hresult = ReconstructDialog(
                         client_model=client_model
                     ).exec_()
 
                     if hresult:
-                        client_model.reconstruct(
-                            lat=client_model.latitude,
-                            lon=client_model.longitude,
-                            alt=client_model.altitude,
-                        )
-
+                        client_model.exportData()
 
     Container:
         MyDockArea: dock_area:
             pass
+
+    StatusBar:
+        StatusItem:
+            Label:
+                text = "Status"
+            ProgressBar: progress:
+                value := client_model.export_progress
