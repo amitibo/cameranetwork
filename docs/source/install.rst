@@ -17,7 +17,7 @@ There can be multiple *Servers* and *Clients* but only one *proxy*.
 
 The ``CameraNetwork`` pacakge contains the code for both the *Server*, *Client* and *Proxy* subsystems.
 This simplifies the deployment and enables code reuse. The installation procedures is similar for the
-three components but differs due to the different platforms. 
+three components but differs due to the different platforms.
 
 The ``CameraNetwork`` is implemented completely in `Python <http://www.python.org/>_`.
 
@@ -39,20 +39,20 @@ Prerequisites
 To use *CameraNetwork* several software package are needed. This can be installed using the following
 commands. Copy paste these to a commandline::
 
-    $> sudo apt-get install pip
-    $> sudo pip install paramiko
-    $> sudo pip install cython
-    $> pip install pyzmq --install-option="--zmq=bundled"
-    $> pip install tornado
-    $> pip install futures
-    $> sudo apt-get install numpy scipy matplotlib
-    $> sudo apt-get install opencv3
-    $> pip install beautifulsoup4
+    > sudo apt-get install pip
+    > sudo pip install paramiko
+    > sudo pip install cython
+    > pip install pyzmq --install-option="--zmq=bundled"
+    > pip install tornado
+    > pip install futures
+    > sudo apt-get install numpy scipy matplotlib
+    > sudo apt-get install opencv3
+    > pip install beautifulsoup4
 
 Some platforms might require the installation of modem software::
 
-    $> sudo apt-get install network-manager
-    $> sudo apt-get install network-manager-gnome
+    > sudo apt-get install network-manager
+    > sudo apt-get install network-manager-gnome
 
 The first instal *nmcli* (used for activating the connection). The second intalls *nmcli-connection-editor*
 used for defining the mobile network connection.
@@ -60,21 +60,21 @@ used for defining the mobile network connection.
 Install a recent version of usb_modeswitch (required on raspberryPi). Follow the `usb_modeswitch tutorial <http://www.draisberghof.de/usb_modeswitch/>`_.
 To compile the above code you will need to install the *libusb-1* dev files::
 
-    $> sudo apt-get install libusb-1.0-0-dev
+    > sudo apt-get install libusb-1.0-0-dev
 
 Prepare a device reference file from the following `device reference file <http://www.draisberghof.de/usb_modeswitch/device_reference.txt>`_ and run
 it using the command::
 
-    $> sudo usb_modeswitch -c <path to device file>
+    > sudo usb_modeswitch -c <path to device file>
 
 CameraNetwork Installation
 --------------------------
 
 Download and install the package::
 
-    $> git clone -b user --single-branch https://amitibo@bitbucket.org/amitibo/cameranetwork_git.git cameranetwork
-    $> cd cameranetwork
-    $> python setup.py develop --user
+    > git clone https://amitibo@bitbucket.org/amitibo/cameranetwork_git.git cameranetwork
+    > cd cameranetwork
+    > python setup.py develop --user
 
 .. note::
 
@@ -82,36 +82,42 @@ Download and install the package::
 
 To make the system start automatically at boot time, we use the *rc.local* script::
 
-    $> sudo cp cameranetwork/scripts/rc.local/rc.local /etc/rc.local
+    > sudo cp cameranetwork/scripts/rc.local/rc.local /etc/rc.local
 
 Run the camera setup script to setup the camera environment.
 
-    $> setup_camera.py
+    > setup_camera.py
 
 You will be asked for a camera id. Enter a unique camera id number.
-
 
 Installing the Proxy
 ====================
 
 Currently the code assumes that the proxy server is run on an ec2 instance.
 Installation on the proxy follows the same steps of installation on the
-client. 
+client.
 
 To run the proxy program, do:
 
-    $> start_proxy.py
+    > start_proxy.py
 
 
 Installing the Client
 =====================
 
+It is recommended to install python using the `Anaconda <https://www.continuum.io/downloads>`_ distribution.
+Install the ``CameraNetwork`` package::
 
+    > git clone https://amitibo@bitbucket.org/amitibo/cameranetwork_git.git cameranetwork
+    > cd cameranetwork
+    > python setup.py develop --user
 
 Installing the Calibration Station
 ==================================
 
-.. note::
-   
-    The arduino sketch requires the 'old' makeblock `libraries <https://github.com/Makeblock-official/Makeblock-Library>`_.
+It is recommended to install python using the `Anaconda <https://www.continuum.io/downloads>`_ distribution.
+Install the ``CameraNetwork`` package::
 
+    > git clone https://amitibo@bitbucket.org/amitibo/cameranetwork_git.git cameranetwork
+    > cd cameranetwork
+    > python setup.py develop --user

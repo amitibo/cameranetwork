@@ -1,4 +1,5 @@
 from enaml.layout.api import *
+from enaml.stdlib.dialog_buttons import DialogButtonBox, DialogButton
 from enaml.stdlib.fields import IntField, FloatField
 from enaml.widgets.api import *
 
@@ -6,64 +7,51 @@ from CameraNetwork import global_settings as gs
 
 
 #
-# Server Settings popup window.
+# Server Settings dialog.
 #
-enamldef ServerConfigPopup(PopupView): ServerSettingsPopup:
-    foreground = 'white'
-    background = 'rgba(30, 30, 30, 0.85)'
-    window_type = 'window'
-
+enamldef SettingsDialog(Dialog): ServerSettingsPopup:
+    title = 'Server Settings {}'.format(server_model.server_id)
     attr client_model
     attr server_model
 
     VGroup:
         Notebook:
             tab_style = 'preferences'
-            foreground = 'white'
-            background = 'rgba(30, 30, 30, 0.85)'
 
             Page:
                 title = 'General'
                 closable = False
-                foreground = 'white'
-                background = 'rgba(30, 30, 30, 0.85)'
 
                 Form:
                     padding = 20
 
                     Label:
-                        foreground = 'white'
                         text = 'Internet Fails'
                     SpinBox: internet_failures:
                         minimum = 0
                         maximum = 5000
                         value := server_model.camera_settings[gs.INTERNET_FAILURE_THRESH]
                     Label:
-                        foreground = 'white'
                         text = 'SunShader Min'
                     SpinBox: sunshader_min:
                         minimum = 0
                         maximum = 30
                         value := server_model.camera_settings[gs.SUNSHADER_MIN_ANGLE]
                     Label:
-                        foreground = 'white'
                         text = 'SunShader Max'
                     SpinBox: sunshader_max:
                         minimum = 150
                         maximum = 180
                         value := server_model.camera_settings[gs.SUNSHADER_MAX_ANGLE]
                     Label:
-                        foreground = 'white'
                         text = 'Longitude'
                     FloatField: longitude:
                         value := server_model.camera_settings[gs.CAMERA_LONGITUDE]
                     Label:
-                        foreground = 'white'
                         text = 'Latitude'
                     FloatField: latitude:
                         value := server_model.camera_settings[gs.CAMERA_LATITUDE]
                     Label:
-                        foreground = 'white'
                         text = 'Altitude'
                     SpinBox: altitude:
                         minimum = -200
@@ -73,47 +61,38 @@ enamldef ServerConfigPopup(PopupView): ServerSettingsPopup:
             Page:
                 title = 'Capture'
                 closable = False
-                foreground = 'white'
-                background = 'rgba(30, 30, 30, 0.85)'
 
                 Form:
                     padding = 20
 
                     Label:
-                        foreground = 'white'
                         text = 'Start Loop'
                     CheckBox: start_loop:
                         checked := server_model.capture_settings[gs.START_LOOP]
                     Label:
-                        foreground = 'white'
                         text = 'Upload Jpeg'
                     CheckBox: upload_jpg:
                         checked := server_model.capture_settings[gs.UPLOAD_JPG_FILE]
                     Label:
-                        foreground = 'white'
                         text = 'Upload Mat'
                     CheckBox: upload_mat:
                         checked := server_model.capture_settings[gs.UPLOAD_MAT_FILE]
                     Label:
-                        foreground = 'white'
                         text = 'Period'
                     ComboBox: daynight:
                         index = 0
                         items = [gs.DAY_SETTINGS, gs.NIGHT_SETTINGS]
                     Label:
-                        foreground = 'white'
                         text = 'Loop Delay'
                     SpinBox: loop_delay:
                         minimum = 2
                         maximum = 3600
                         value := server_model.capture_settings[daynight.selected_item][gs.LOOP_DELAY]
                     Label:
-                        foreground = 'white'
                         text = 'Shutter [uS]'
                     IntField: shutter:
                         value := server_model.capture_settings[daynight.selected_item][gs.IMAGE_EXPOSURE]
                     Label:
-                        foreground = 'white'
                         text = 'GAIN'
                     IntField: gain:
                         minimum = 0
@@ -121,19 +100,16 @@ enamldef ServerConfigPopup(PopupView): ServerSettingsPopup:
                         value << int(server_model.capture_settings[daynight.selected_item][gs.IMAGE_GAIN])
                         value >> server_model.capture_settings[daynight.selected_item][gs.IMAGE_GAIN]
                     Label:
-                        foreground = 'white'
                         text = 'Gain Boost'
                     CheckBox: gain_boost:
                         checked := server_model.capture_settings[daynight.selected_item][gs.GAIN_BOOST]
                     Label:
-                        foreground = 'white'
                         text = 'Frames #'
                     SpinBox: frames_num_1:
                         minimum = 1
                         maximum = 30
                         value := server_model.capture_settings[daynight.selected_item][gs.FRAMES_NUM]
                     Label:
-                        foreground = 'white'
                         text = 'HDR frames'
                         tool_tip = 'Number of HDR exposures (1 for no HDR)'
                     SpinBox: hdr_mode:
@@ -141,7 +117,6 @@ enamldef ServerConfigPopup(PopupView): ServerSettingsPopup:
                         maximum = 8
                         value := server_model.capture_settings[daynight.selected_item][gs.HDR_MODE]
                     Label:
-                        foreground = 'white'
                         text = 'Mode'
                     ComboBox: cmode:
                         index << cmode.items.index(server_model.capture_settings[daynight.selected_item][gs.COLOR_MODE])
@@ -149,33 +124,22 @@ enamldef ServerConfigPopup(PopupView): ServerSettingsPopup:
                             server_model.capture_settings[daynight.selected_item][gs.COLOR_MODE] = cmode.items[cmode.index]
                         items = [gs.COLOR_RAW, gs.COLOR_RGB]
 
-        GroupBox:
-            PushButton:
-                text = 'Update'
-                clicked ::
-                    client_model.send_message(
-                        server_model,
-                        gs.MSG_TYPE_SET_SETTINGS,
-                        kwds=dict(
-                            camera_settings=server_model.camera_settings,
-                            capture_settings=server_model.capture_settings
-                        )
-                    )
-                    ServerSettingsPopup.close()
+        DialogButtonBox: bbox:
+            buttons = [
+                DialogButton('Update', 'accept'),
+                DialogButton('Cancel', 'reject'),
+            ]
 
 
 #
-# Client Settings popup window.
+# Client Settings dialog window.
 # Note:
 # The difference between client and server (above) settings is that the
 # server settings dialog allows changing both camera and capture settings.
 # The client settings allow changing only the capture settings.
 #
-enamldef ClientConfigPopup(PopupView): ClientSettingsPopup:
-    foreground = 'white'
-    background = 'rgba(30, 30, 30, 0.85)'
-    window_type = 'window'
-
+enamldef GlobalSettingsDialog(Dialog): ClientSettingsPopup:
+    title = 'Global Capture Settings'
     attr client_model
 
     VGroup:
@@ -183,40 +147,33 @@ enamldef ClientConfigPopup(PopupView): ClientSettingsPopup:
             padding = 20
 
             Label:
-                foreground = 'white'
                 text = 'Start Loop'
             CheckBox: start_loop:
                 checked := client_model.capture_settings[gs.START_LOOP]
             Label:
-                foreground = 'white'
                 text = 'Upload Jpeg'
             CheckBox: upload_jpg:
                 checked := client_model.capture_settings[gs.UPLOAD_JPG_FILE]
             Label:
-                foreground = 'white'
                 text = 'Upload Mat'
             CheckBox: upload_mat:
                 checked := client_model.capture_settings[gs.UPLOAD_MAT_FILE]
             Label:
-                foreground = 'white'
                 text = 'Period'
             ComboBox: daynight:
                 index = 0
                 items = [gs.DAY_SETTINGS, gs.NIGHT_SETTINGS]
             Label:
-                foreground = 'white'
                 text = 'Loop Delay'
             SpinBox: loop_delay:
                 minimum = 2
                 maximum = 3600
                 value := client_model.capture_settings[daynight.selected_item][gs.LOOP_DELAY]
             Label:
-                foreground = 'white'
                 text = 'Shutter [uS]'
             IntField: shutter:
                 value := client_model.capture_settings[daynight.selected_item][gs.IMAGE_EXPOSURE]
             Label:
-                foreground = 'white'
                 text = 'GAIN'
             IntField: gain:
                 minimum = 0
@@ -224,19 +181,16 @@ enamldef ClientConfigPopup(PopupView): ClientSettingsPopup:
                 value << int(client_model.capture_settings[daynight.selected_item][gs.IMAGE_GAIN])
                 value >> client_model.capture_settings[daynight.selected_item][gs.IMAGE_GAIN]
             Label:
-                foreground = 'white'
                 text = 'Gain Boost'
             CheckBox: gain_boost:
                 checked := client_model.capture_settings[daynight.selected_item][gs.GAIN_BOOST]
             Label:
-                foreground = 'white'
                 text = 'Frames #'
             SpinBox: frames_num_1:
                 minimum = 1
                 maximum = 30
                 value := client_model.capture_settings[daynight.selected_item][gs.FRAMES_NUM]
             Label:
-                foreground = 'white'
                 text = 'HDR frames'
                 tool_tip = 'Number of HDR exposures (1 for no HDR)'
             SpinBox: hdr_mode:
@@ -244,7 +198,6 @@ enamldef ClientConfigPopup(PopupView): ClientSettingsPopup:
                 maximum = 8
                 value := client_model.capture_settings[daynight.selected_item][gs.HDR_MODE]
             Label:
-                foreground = 'white'
                 text = 'Mode'
             ComboBox: cmode:
                 index << cmode.items.index(client_model.capture_settings[daynight.selected_item][gs.COLOR_MODE])
@@ -252,18 +205,11 @@ enamldef ClientConfigPopup(PopupView): ClientSettingsPopup:
                     client_model.capture_settings[daynight.selected_item][gs.COLOR_MODE] = cmode.items[cmode.index]
                 items = [gs.COLOR_RAW, gs.COLOR_RGB]
 
-        GroupBox:
-            PushButton:
-                text = 'Update'
-                clicked ::
-                    client_model.broadcast_message(
-                        gs.MSG_TYPE_SET_SETTINGS,
-                        kwds=dict(
-                            camera_settings=None,
-                            capture_settings=client_model.capture_settings
-                        )
-                    )
-                    ClientSettingsPopup.close()
+        DialogButtonBox: bbox:
+            buttons = [
+                DialogButton('Update', 'accept'),
+                DialogButton('Cancel', 'reject'),
+            ]
 
 
 #
@@ -272,9 +218,6 @@ enamldef ClientConfigPopup(PopupView): ClientSettingsPopup:
 # framework.
 #
 enamldef ReconstructionConfigPopup(PopupView): popup:
-    foreground = 'white'
-    background = 'rgba(30, 30, 30, 0.85)'
-
     attr client_model
 
     Container:

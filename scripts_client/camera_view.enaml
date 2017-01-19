@@ -17,8 +17,8 @@ from extra import GradientButtonSheet
 from extra import MsgDataPopup
 from extra import SliderText
 from extra import ThumbPopup
-from settings import ClientConfigPopup
-from settings import ServerConfigPopup
+from settings import GlobalSettingsDialog
+from settings import SettingsDialog
 from settings import ReconstructionConfigPopup
 
 from data_frame_table import DataFrameTable
@@ -122,12 +122,21 @@ def new_thumbnail(img):
 def open_settings(main_view, client_model, server_model):
     """Open settings popup window."""
 
-    conf_win = ServerConfigPopup(
+    hresult = SettingsDialog(
         main_view,
         client_model=client_model,
-        server_model=server_model)
+        server_model=server_model
+    ).exec_()
 
-    conf_win.show()
+    if hresult:
+        client_model.send_message(
+            server_model,
+            gs.MSG_TYPE_SET_SETTINGS,
+            kwds=dict(
+                camera_settings=server_model.camera_settings,
+                capture_settings=server_model.capture_settings
+            )
+        )
 
 
 def restart_server(button, client_model, server_model):
@@ -748,7 +757,7 @@ enamldef ArraysItem(DockItem):
             vbox(
                 hbox(
                     exposure_lbl,
-                    exposure_pb,
+                    exposure_fld,
                     gain_cb,
                     resolution_lbl,
                     resolution_fld,
@@ -771,7 +780,7 @@ enamldef ArraysItem(DockItem):
 
         Label: exposure_lbl:
             text = 'Exp[us]:'
-        IntField: exposure_pb:
+        IntField: exposure_fld:
             minimum = 0
             value = 500
 
@@ -790,13 +799,13 @@ enamldef ArraysItem(DockItem):
                 root_object().client_model.broadcast_message(
                     gs.MSG_TYPE_ARRAY,
                     kwds=dict(
-                        exposure_us=exposure.value,
+                        exposure_us=exposure_fld.value,
                         gain_db=0,
                         frames_num=1,
                         color_mode=gs.COLOR_RAW,
                         gain_boost=gain_boost.checked,
                         normalize=True,
-                        resolution=resolution.value
+                        resolution=resolution_fld.value
                     )
                 )
 
@@ -978,11 +987,20 @@ enamldef Main(MainWindow): main:
             Action:
                 text = "Settings\tCtrl+S"
                 triggered ::
-                    conf_win = ClientConfigPopup(
+                    hresult = GlobalSettingsDialog(
                         main,
                         client_model=client_model,
-                    )
-                    conf_win.show()
+                    ).exec_()
+
+                    if hresult:
+                        client_model.broadcast_message(
+                            gs.MSG_TYPE_SET_SETTINGS,
+                            kwds=dict(
+                                camera_settings=None,
+                                capture_settings=client_model.capture_settings
+                            )
+                        )
+
 
         Menu:
             title = "&View"

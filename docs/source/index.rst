@@ -14,6 +14,7 @@ Contents:
    introduction
    install
    calibration
+   camera
    usage
    modules
 
