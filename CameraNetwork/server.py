@@ -378,6 +378,12 @@ class Server(MDPWorker):
     def loop_timer(self):
         while self.capture_state:
             #
+            # Store time here so that hopefully it will be as synchronized
+            # as possible.
+            #
+            name_time=datetime.utcnow()
+
+            #
             # Select capture settings according day night.
             # The day/night status is determined by the altitude of the sun.
             #
@@ -429,7 +435,7 @@ class Server(MDPWorker):
                 longitude=self.camera_settings[gs.CAMERA_LONGITUDE],
                 latitude=self.camera_settings[gs.CAMERA_LATITUDE],
                 altitude=self.camera_settings[gs.CAMERA_ALTITUDE],
-                name_time=datetime.utcnow()
+                name_time=name_time
             )
 
             #

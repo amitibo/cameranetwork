@@ -142,40 +142,7 @@ class Controller(object):
         if not os.path.exists(gs.SUN_POSITIONS_PATH):
             os.makedirs(gs.SUN_POSITIONS_PATH)
         else:
-            #
-            # Check past measurements.
-            #
-            past_measurements_paths = sorted(
-                glob.glob(os.path.join(gs.SUN_POSITIONS_PATH, '*.csv')))
-
-            if past_measurements_paths:
-                angles = []
-                for path in past_measurements_paths[-2:]:
-                    print path
-                    data = pd.read_csv(path, index_col=0, parse_dates=True)
-
-                    #
-                    # Limit the data to sun measurements only.
-                    #
-                    data = data[data['object']=='Sun']
-
-                    #
-                    # Limit the data to angles between a range of "valid"
-                    # angles.
-                    #
-                    data = data[
-                        (data['sunshader_angle']>gs.SUNSHADER_MIN_MEASURED)&\
-                        (data['sunshader_angle']<gs.SUNSHADER_MAX_MEASURED)
-                    ]
-
-                    data.index = data.index.time
-                    angles.append(data['sunshader_angle'])
-
-                self.sunshader_angles_df = pd.concat(
-                    angles, axis=1
-                ).mean(axis=1).to_frame(name='angle')
-            else:
-                self.sunshader_angles_df = pd.DataFrame(dict(angle=[]))
+            self.loadPastMeasurements()
 
         self.sunshader_angle_model = make_pipeline(
             PolynomialFeatures(2),
@@ -249,6 +216,57 @@ class Controller(object):
             self.sky_mask_base = sio.loadmat(gs.MASK_PATH)['mask_base']
         else:
             self.sky_mask_base = None
+
+    def loadPastMeasurements(self):
+        """Load previously stored sun measurements."""
+
+        try:
+            #
+            # Check past measurements.
+            # TODO:
+            # Add filtering based on date (i.e. not look too further back).
+            #
+            past_measurements_paths = sorted(
+                glob.glob(os.path.join(gs.SUN_POSITIONS_PATH, '*.csv')))
+
+            if past_measurements_paths:
+                angles = []
+                for path in past_measurements_paths[-2:]:
+                    try:
+                        data = pd.read_csv(path, index_col=0, parse_dates=True)
+                    except Exception as e:
+                        logging.error('Error parsing sun measurements file. The file will be deleted:\n{}'.format(
+                            traceback.format_exc()))
+                        os.remove(path)
+                        continue
+
+                    #
+                    # Limit the data to sun measurements only.
+                    #
+                    data = data[data['object']=='Sun']
+
+                    #
+                    # Limit the data to angles between a range of "valid"
+                    # angles.
+                    #
+                    data = data[
+                        (data['sunshader_angle']>gs.SUNSHADER_MIN_MEASURED)&\
+                        (data['sunshader_angle']<gs.SUNSHADER_MAX_MEASURED)
+                    ]
+
+                    data.index = data.index.time
+                    angles.append(data['sunshader_angle'])
+
+                self.sunshader_angles_df = pd.concat(
+                    angles, axis=1
+                ).mean(axis=1).to_frame(name='angle')
+            else:
+                self.sunshader_angles_df = pd.DataFrame(dict(angle=[]))
+
+        except Exception as e:
+            logging.error('Error while loading past sun measurements:\n{}'.format(
+                traceback.format_exc()))
+            self.sunshader_angles_df = pd.DataFrame(dict(angle=[]))
 
     def __del__(self):
         self.delete_camera()
