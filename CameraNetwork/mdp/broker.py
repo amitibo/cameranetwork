@@ -74,12 +74,12 @@ class MDPBroker(object):
     def __init__(self, context, main_ep, opt_ep=None, service_q=None):
         """Init MDPBroker instance.
         """
-        
+
         if service_q is None:
             self.service_q = ServiceQueue
         else:
             self.service_q = service_q
-        
+
         #
         # Setup the zmq socket.
         #
@@ -94,14 +94,14 @@ class MDPBroker(object):
             self.client_stream.on_recv(self.on_message)
         else:
             self.client_stream = self.main_stream
-            
+
         self._workers = {}
-        
+
         #
         # services contain the service queue and the request queue
         #
         self._services = {}
-        
+
         #
         # Mapping of worker commands and callbacks.
         #
@@ -111,7 +111,7 @@ class MDPBroker(object):
             W_HEARTBEAT: self.on_heartbeat,
             W_DISCONNECT: self.on_disconnect,
         }
-        
+
         #
         # 'Cleanup' timer for workers without heartbeat.
         #
@@ -130,15 +130,15 @@ class MDPBroker(object):
 
         :rtype: None
         """
-        
+
         if wid in self._workers:
-            logging.debug('Worker %s already registered' % service)            
+            logging.debug('Worker %s already registered' % service)
             return
-        
-        logging.debug('Registering new worker %s' % service)                    
+
+        logging.debug('Registering new worker %s' % service)
 
         self._workers[wid] = WorkerRep(self.WORKER_PROTO, wid, service, self.main_stream)
-        
+
         if service in self._services:
             wq, wr = self._services[service]
             wq.put(wid)
@@ -159,7 +159,7 @@ class MDPBroker(object):
 
         :rtype: None
         """
-        
+
         try:
             wrep = self._workers[wid]
         except KeyError:
@@ -167,16 +167,16 @@ class MDPBroker(object):
             # Not registered, ignore
             #
             return
-        
-        logging.debug('Unregistering worker %s' % wrep.service)                    
+
+        logging.debug('Unregistering worker %s' % wrep.service)
 
         wrep.shutdown()
-        
+
         service = wrep.service
         if service in self._services:
             wq, wr = self._services[service]
             wq.remove(wid)
-            
+
         del self._workers[wid]
 
     def disconnect(self, wid):
@@ -189,7 +189,7 @@ class MDPBroker(object):
 
         :rtype: None
         """
-        
+
         try:
             wrep = self._workers[wid]
         except KeyError:
@@ -197,12 +197,12 @@ class MDPBroker(object):
             # Not registered, ignore
             #
             return
-        
-        logging.debug('Disconnecting worker %s' % wrep.service)                    
+
+        logging.debug('Disconnecting worker %s' % wrep.service)
 
         to_send = [wid, self.WORKER_PROTO, W_DISCONNECT]
         self.main_stream.send_multipart(to_send)
-        
+
         self.unregister_worker(wid)
 
     def client_response(self, rp, service, msg):
@@ -235,9 +235,9 @@ class MDPBroker(object):
 
         :rtype: None
         """
-        
+
         logging.debug('Shutting down')
-        
+
         if self.client_stream == self.main_stream:
             self.client_stream = None
 
@@ -246,14 +246,14 @@ class MDPBroker(object):
         self.main_stream.socket.close()
         self.main_stream.close()
         self.main_stream = None
-        
+
         if self.client_stream:
             self.client_stream.on_recv(None)
             self.client_stream.socket.setsockopt(zmq.LINGER, 0)
             self.client_stream.socket.close()
             self.client_stream.close()
             self.client_stream = None
-            
+
         self._workers = {}
         self._services = {}
 
@@ -264,7 +264,7 @@ class MDPBroker(object):
 
         :rtype: None
         """
-        
+
         #
         #  Remove 'dead' (not responding to heartbeats) workers.
         #
@@ -284,7 +284,7 @@ class MDPBroker(object):
 
         :rtype: None
         """
-        
+
         ret_id = rp[0]
         logging.debug('Worker sent ready msg: {} ,{}'.format(rp, msg))
         self.register_worker(ret_id, msg[0])
@@ -301,24 +301,24 @@ class MDPBroker(object):
 
         :rtype: None
         """
-        
+
         ret_id = rp[0]
         wrep = self._workers.get(ret_id)
-        
+
         if not wrep:
             #
             # worker not found, ignore message
             #
             return
-        
+
         service = wrep.service
-        
+
         try:
             wq, wr = self._services[service]
-            
+
             #
             # Send response to client
-            #            
+            #
             cp, msg = split_address(msg)
             self.client_response(cp, service, msg)
 
@@ -326,7 +326,7 @@ class MDPBroker(object):
             # make worker available again
             #
             wq.put(wrep.id)
-            
+
             if wr:
                 proto, rp, msg = wr.pop(0)
                 self.on_client(proto, rp, msg)
@@ -346,7 +346,7 @@ class MDPBroker(object):
 
         :rtype: None
         """
-        
+
         ret_id = rp[0]
         try:
             worker = self._workers[ret_id]
@@ -370,7 +370,7 @@ class MDPBroker(object):
 
         :rtype: None
         """
-        
+
         wid = rp[0]
         self.unregister_worker(wid)
 
@@ -389,22 +389,22 @@ class MDPBroker(object):
 
         :rtype: None
         """
-        
+
         if service == MMI_SERVICE:
             s = msg[0]
             ret = [UNKNOWN_SERVICE]
-            
+
             for wr in self._workers.values():
                 if s == wr.service:
                     ret = [KNOWN_SERVICE]
                     break
-                
+
         elif service == MMI_SERVICES:
             #
             # Return list of services
             #
             ret = [wr.service for wr in self._workers.values()]
-            
+
         elif service == MMI_TUNNELS:
             #
             # Read the tunnel files, and send back the network info.
@@ -413,7 +413,7 @@ class MDPBroker(object):
             tunnels_data = {}
             for path in tunnel_paths:
                 filename = os.path.split(path)[-1]
-                service_name = filename[13:-4]
+                service_name = filename[-7:-4]
                 with open(path, 'r') as f:
                     tunnels_data[service_name] = json.load(f)
             ret = [cPickle.dumps(tunnels_data)]
@@ -459,7 +459,7 @@ class MDPBroker(object):
 
         :rtype: None
         """
- 
+
         service = msg.pop(0)
 
         if service.startswith(b'mmi.'):
@@ -469,7 +469,7 @@ class MDPBroker(object):
         try:
             wq, wr = self._services[service]
             wid = wq.get()
-            
+
             if not wid:
                 #
                 # No worker ready. Queue message
@@ -477,14 +477,14 @@ class MDPBroker(object):
                 msg.insert(0, service)
                 wr.append((proto, rp, msg))
                 return
-            
+
             wrep = self._workers[wid]
             to_send = [wrep.id, EMPTY_FRAME, self.WORKER_PROTO, W_REQUEST]
             to_send.extend(rp)
             to_send.append(EMPTY_FRAME)
             to_send.extend(msg)
             self.main_stream.send_multipart(to_send)
-            
+
         except KeyError:
             #
             # Unknwon service. Ignore request
@@ -510,7 +510,7 @@ class MDPBroker(object):
 
         :rtype: None
         """
-        
+
         cmd = msg.pop(0)
         if cmd in self._worker_cmds:
             fnc = self._worker_cmds[cmd]
@@ -533,9 +533,9 @@ class MDPBroker(object):
 
         :rtype: None
         """
-        
+
         rp, msg = split_address(msg)
-        
+
         #
         # Dispatch on first frame after path
         #
@@ -573,7 +573,7 @@ class WorkerRep(object):
         self.service = service
         self.curr_liveness = HB_LIVENESS
         self.stream = stream
-        
+
         self.hb_out_timer = PeriodicCallback(self.send_hb, HB_INTERVAL)
         self.hb_out_timer.start()
 
@@ -584,10 +584,10 @@ class WorkerRep(object):
 
         Sends heartbeat to worker.
         """
-        
+
         self.curr_liveness -= 1
         logging.debug('Broker to Worker %s HB tick, current liveness: %d' % (self.service, self.curr_liveness))
-        
+
         msg = [self.id, EMPTY_FRAME, self.proto, W_HEARTBEAT]
         self.stream.send_multipart(msg)
 
@@ -596,15 +596,15 @@ class WorkerRep(object):
 
         Sets current liveness to HB_LIVENESS.
         """
-        
+
         logging.debug('Received HB from worker %s' % self.service)
-        
+
         self.curr_liveness = HB_LIVENESS
-        
+
     def is_alive(self):
         """Returns True when the worker is considered alive.
         """
-        
+
         return self.curr_liveness > 0
 
     def shutdown(self):
@@ -612,9 +612,9 @@ class WorkerRep(object):
 
         Stops timer.
         """
-        
+
         logging.debug('Shuting down worker %s' % self.service)
-        
+
         self.hb_out_timer.stop()
         self.hb_out_timer = None
         self.stream = None
@@ -639,7 +639,7 @@ class ServiceQueue(object):
         :type wid:     str
         :rtype:        bool
         """
-        
+
         return wid in self.q
 
     def __len__(self):
@@ -658,5 +658,5 @@ class ServiceQueue(object):
     def get(self):
         if not self.q:
             return None
-        
+
         return self.q.pop(0)
