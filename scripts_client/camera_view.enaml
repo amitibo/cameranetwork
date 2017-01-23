@@ -485,6 +485,12 @@ enamldef MyDockArea(DockArea):
 ################################################################################
 # The Main View
 ################################################################################
+def reboot_servers(button, client_model):
+    if button is not None:
+        if button.text == 'Reboot':
+            client_model.broadcast_message(gs.MSG_TYPE_REBOOT)
+
+
 enamldef Main(MainWindow): main:
     initial_size = (200, 200)
     title = 'Camera Client'
@@ -535,6 +541,16 @@ enamldef Main(MainWindow): main:
                                 capture_settings=client_model.capture_settings
                             )
                         )
+
+            Action:
+                text = "Reboot\tCtrl+R"
+                triggered ::
+                    btns = [DialogButton('Reboot', 'accept'),
+                            DialogButton('Cancel', 'reject')]
+                    reboot_servers(
+                        warning(main, 'Reboot Cameras', 'Are you sure you want to reboot all cameras?', btns),
+                        client_model
+                    )
 
         Menu:
             title = "&View"
