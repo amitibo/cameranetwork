@@ -117,23 +117,49 @@ def calcROIbounds(array_model, array_view):
     return bounding_phi, bounding_psi
 
 
-def processExport(base_path, array_items, lat, lon, alt, grabcut_threshold, progress_callback):
-    """Process export of reconstruction data on separate thread."""
+def processExport(
+    base_path,
+    array_items,
+    grid,
+    lat,
+    lon,
+    alt,
+    grabcut_threshold,
+    progress_callback):
+    """Process export of reconstruction data on separate thread.
+
+    Args:
+        base_path (str): Path to store export data.
+        array_items (list): List of array items.
+        grid (list): List of grid array. This is the grid to reconstruct.
+        lat, lon, lat (float): The latitude, longitude and altitude of the center
+            of the grid.
+        grabcut_threshold (float): Threshold for grabcut algorithm applied for
+            sunshader segmentation.
+        progress_callback (function): Callback function to update the (GUI) with
+            the progress of the export.
+    """
 
     #
-    #
+    # Reset the progress indicatort.
     #
     progress_cnt = len(array_items)
     deferred_call(progress_callback, 0)
 
     #
+    # Convert the grid to ECEF
+    #
+    X, Y, Z = np.meshgrid(*grid)
+    ecef_grid = pymap3d.ned2ecef(X, Y, Z, lat, lon, alt)
+
+    #
     # Set the center of the axes
     #
-    Xs, Ys, Zs, PHIs, PSIs, Rs, Gs, Bs, Masks, Datas = \
-        {}, {}, {}, {}, {}, {}, {}, {}, {}, {}
+    Xs, Ys, Zs, PHIs, PSIs, Rs, Gs, Bs, Masks, Datas, Visibility = \
+        {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}
 
     for i, (server_id, (array_model, array_view)) in enumerate(array_items):
-        if not array_view.reconstruct_flag.checked:
+        if not array_view.export_flag.checked:
             logging.info(
                 "Reconstruction: Camera {} ignored.".format(server_id)
             )
@@ -192,24 +218,41 @@ def processExport(base_path, array_items, lat, lon, alt, grabcut_threshold, prog
         # Calculate mask using grabcut. This is used for removing the
         # sunshader.
         #
-        mask = np.ones(img_array.shape[:2], np.uint8)*cv2.GC_PR_FGD
-        mask[img_array.max(axis=2) < grabcut_threshold] = cv2.GC_PR_BGD
+        sunshader_mask = np.ones(img_array.shape[:2], np.uint8)*cv2.GC_PR_FGD
+        sunshader_mask[img_array.max(axis=2) < grabcut_threshold] = cv2.GC_PR_BGD
         img_u8 = (255 * np.clip(img_array, 0, 40) / 40).astype(np.uint8)
         bgdModel = np.zeros((1, 65), np.float64)
         fgdModel = np.zeros((1, 65), np.float64)
         rect = (0, 0, 0, 0)
-        mask, bgdModel, fgdModel = cv2.grabCut(
-            img_u8, mask, rect, bgdModel, fgdModel,
+        sunshader_mask, bgdModel, fgdModel = cv2.grabCut(
+            img_u8, sunshader_mask, rect, bgdModel, fgdModel,
             5, cv2.GC_INIT_WITH_MASK)
-        mask = np.where(
-            (mask==cv2.GC_FGD) | (mask==cv2.GC_PR_FGD), 1, 0).astype('uint8')
+        sunshader_mask = np.where(
+            (sunshader_mask==cv2.GC_FGD) | (sunshader_mask==cv2.GC_PR_FGD),
+            1,
+            0).astype('uint8')
+
+        #
+        # The (ROI) mask marked by the user.
+        #
+        manual_mask = array_view.image_widget.getMask()
 
         Masks[server_id] = (
-            array_view.image_widget.getArrayRegion(mask),
-            array_view.image_widget.getArrayRegion(
-                array_view.image_widget.getMask()
-                ),
+            array_view.image_widget.getArrayRegion(sunshader_mask),
+            array_view.image_widget.getArrayRegion(manual_mask),
         )
+
+        #
+        # Project the grid on the image and check viewed voxels.
+        #
+        xs, ys, fov_mask = array_model.projectECEF(ecef_grid, filter_fov=False)
+        xs = xs.astype(np.uint32).flatten()
+        ys = ys.astype(np.uint32).flatten()
+        joint_mask = (manual_mask * sunshader_mask).astype(np.uint8)
+        grid_visibility = np.zeros_like(xs, dtype=np.uint8)
+        grid_visibility[fov_mask] = \
+            joint_mask[ys[fov_mask], xs[fov_mask]].astype(np.uint8)
+        Visibility[server_id] = grid_visibility.reshape(*ecef_grid[0].shape)
 
         #
         # Extra data
@@ -235,8 +278,10 @@ def processExport(base_path, array_items, lat, lon, alt, grabcut_threshold, prog
         deferred_call(progress_callback, i / progress_cnt)
 
     for f_name, obj in zip(
-        ('Rs', 'Gs', 'Bs', 'Xs', 'Ys', 'Zs', 'PHIs', 'PSIs', 'Masks', 'Datas'),
-        (Rs, Gs, Bs, Xs, Ys, Zs, PHIs, PSIs, Masks, Datas)):
+        ('Rs', 'Gs', 'Bs', 'Xs', 'Ys', 'Zs', 'PHIs',
+         'PSIs', 'Masks', 'Datas', 'Visibility'),
+        (Rs, Gs, Bs, Xs, Ys, Zs, PHIs,
+         PSIs, Masks, Datas, Visibility)):
         with open(os.path.join(base_path, '{}.pkl'.format(f_name)), 'wb') as f:
             cPickle.dump(obj, f)
 
@@ -469,6 +514,7 @@ class ClientModel(Atom):
             kwargs=dict(
                 base_path=base_path,
                 array_items=self.array_items.items(),
+                grid=self.GRID_NED,
                 lat=self.latitude,
                 lon=self.longitude,
                 alt=self.altitude,
@@ -677,7 +723,7 @@ class ClientModel(Atom):
         s_pts = np.array((-1000, -1000, -self.TOG))
         e_pts = np.array((1000, 1000, 0))
         for server_id, (array_model, array_view) in self.array_items.items():
-            if not array_view.reconstruct_flag.checked:
+            if not array_view.export_flag.checked:
                 logging.info(
                     "LIDAR Grid: Camera {} ignored.".format(server_id)
                 )
@@ -992,11 +1038,14 @@ class ArrayModel(Atom):
 
         return LOS_pts
 
-    def projectECEF(self, ECEF_pts):
+    def projectECEF(self, ECEF_pts, filter_fov=True):
         """Project set of points in ECEF coords on the view.
 
         Args:
             ECEF_pts (tuple of arrays): points in ECEF coords.
+            fiter_fov (bool, optional): If True, points below the horizion
+               will not be returned. If false, the indices of these points
+               will be returned.
 
         Returns:
             points projected to the view of this server.
@@ -1029,7 +1078,10 @@ class ArrayModel(Atom):
         xs = R * neu_pts[:,0]/(normXY+0.00000001) + self.resolution/2
         ys = R * neu_pts[:,1]/(normXY+0.00000001) + self.resolution/2
 
-        return xs[cosPSI>0], ys[cosPSI>0]
+        if filter_fov:
+            return xs[cosPSI>0], ys[cosPSI>0]
+        else:
+            return xs, ys, cosPSI>0
 
 
 #
@@ -1115,7 +1167,7 @@ class Controller(Atom):
                 PrincipalPlane_coords
             )
             array_view.image_widget.observe('epipolar_signal', self.updateEpipolar)
-            array_view.image_widget.observe('use_reconstruction', self.updateReconstruction)
+            array_view.image_widget.observe('export_flag', self.updateExport)
 
             #
             # Create the model.
@@ -1185,7 +1237,7 @@ class Controller(Atom):
         for _, (_, array_view) in self.model.array_items.items():
             array_view.image_widget.setIntensity(change['value'])
 
-    def updateReconstruction(self, *args, **kwds):
+    def updateExport(self, *args, **kwds):
         """This function is used only for bridging."""
 
         #

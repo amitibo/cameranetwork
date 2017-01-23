@@ -175,7 +175,7 @@ enamldef ArrayView(FlowItem):
     alias PrincipalPlane_coords: image_widget.PrincipalPlane_coords
     alias ROI: image_widget.ROI
     alias mask_ROI: image_widget.mask_ROI
-    alias reconstruct_flag: reconstruct_flag
+    alias export_flag: export_flag
     attr img_data
 
     GroupBox: gb:
@@ -198,10 +198,10 @@ enamldef ArrayView(FlowItem):
                 clicked ::
                     ImageDataPopup(img_data_=img_data).show()
 
-            CheckBox: reconstruct_flag:
-                tool_tip = "Use for reconstruction"
-                checked := image_widget.use_reconstruction
-                text = "Use in Recon."
+            CheckBox: export_flag:
+                tool_tip = "Export for reconstruction"
+                checked := image_widget.export_flag
+                text = "Export"
 
 
 ################################################################################
