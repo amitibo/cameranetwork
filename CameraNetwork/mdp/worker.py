@@ -241,7 +241,7 @@ class MDPWorker(object):
             # Disconnect. Reconnection will be triggered by hb timer
             #
             self.curr_liveness = 0
-        elif mst_type == W_READY:
+        elif msg_type == W_READY:
             #
             # The message contains the unique id attahced to the worker.
             #
