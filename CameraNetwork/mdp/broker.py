@@ -59,19 +59,21 @@ class MDPBroker(object):
 
     :param context:    the context to use for socket creation.
     :type context:     zmq.Context
-    :param main_ep:    the primary endpoint for workers and clients.
+    :param main_ep:    the primary endpoint for workers.
     :type main_ep:     str
-    :param opt_ep:     is an optional 2nd endpoint.
-    :type opt_ep:      str
-    :param service_q:   the class to be used for the service worker-queue.
-    :type service_q:    class
+    :param client_ep:  the clients endpoint
+    :type client_ep:   str
+    :param hb_ep:      the heart beat endpoint for workers.
+    :type hb_ep:       str
+    :param service_q:  the class to be used for the service worker-queue.
+    :type service_q:   class
     """
 
     CLIENT_PROTO = C_CLIENT  #: Client protocol identifier
     WORKER_PROTO = W_WORKER  #: Worker protocol identifier
 
 
-    def __init__(self, context, main_ep, opt_ep=None, service_q=None):
+    def __init__(self, context, main_ep, client_ep, hb_ep, service_q=None):
         """Init MDPBroker instance.
         """
 
@@ -81,19 +83,22 @@ class MDPBroker(object):
             self.service_q = service_q
 
         #
-        # Setup the zmq socket.
+        # Setup the zmq sockets.
         #
         socket = context.socket(zmq.ROUTER)
         socket.bind(main_ep)
         self.main_stream = ZMQStream(socket)
         self.main_stream.on_recv(self.on_message)
-        if opt_ep:
-            socket = context.socket(zmq.ROUTER)
-            socket.bind(opt_ep)
-            self.client_stream = ZMQStream(socket)
-            self.client_stream.on_recv(self.on_message)
-        else:
-            self.client_stream = self.main_stream
+
+        socket = context.socket(zmq.ROUTER)
+        socket.bind(client_ep)
+        self.client_stream = ZMQStream(socket)
+        self.client_stream.on_recv(self.on_message)
+
+        socket = context.socket(zmq.ROUTER)
+        socket.bind(hb_ep)
+        self.hb_stream = ZMQStream(socket)
+        self.hb_stream.on_recv(self.on_message)
 
         self._workers = {}
 
@@ -137,7 +142,7 @@ class MDPBroker(object):
 
         logging.info('Registering new worker {}'.format(service))
 
-        self._workers[wid] = WorkerRep(self.WORKER_PROTO, wid, service, self.main_stream)
+        self._workers[wid] = WorkerRep(self.WORKER_PROTO, wid, service, self.hb_stream)
 
         if service in self._services:
             wq, wr = self._services[service]
@@ -218,7 +223,10 @@ class MDPBroker(object):
         :rtype: None
         """
 
-        logging.info('Send reply to client from worker {}'.format(service))
+        if service == MMI_SERVICE:
+            logging.debug('Send reply to client from worker {}'.format(service))
+        else:
+            logging.info('Send reply to client from worker {}'.format(service))
 
         to_send = rp[:]
         to_send.extend([EMPTY_FRAME, self.CLIENT_PROTO, service])
@@ -238,21 +246,23 @@ class MDPBroker(object):
 
         logging.debug('Shutting down')
 
-        if self.client_stream == self.main_stream:
-            self.client_stream = None
-
         self.main_stream.on_recv(None)
         self.main_stream.socket.setsockopt(zmq.LINGER, 0)
         self.main_stream.socket.close()
         self.main_stream.close()
         self.main_stream = None
 
-        if self.client_stream:
-            self.client_stream.on_recv(None)
-            self.client_stream.socket.setsockopt(zmq.LINGER, 0)
-            self.client_stream.socket.close()
-            self.client_stream.close()
-            self.client_stream = None
+        self.client_stream.on_recv(None)
+        self.client_stream.socket.setsockopt(zmq.LINGER, 0)
+        self.client_stream.socket.close()
+        self.client_stream.close()
+        self.client_stream = None
+
+        self.hb_stream.on_recv(None)
+        self.hb_stream.socket.setsockopt(zmq.LINGER, 0)
+        self.hb_stream.socket.close()
+        self.hb_stream.close()
+        self.hb_stream = None
 
         self._workers = {}
         self._services = {}

@@ -21,8 +21,11 @@ DEFAULT_PROXY_PARAMS = """
 {
     "autossh_monitor_port": 10000,
     #"ip": "52.59.36.61",
-    "ip": "10.40.0.220",
+    #"ip": "10.40.0.220",
+    "ip": "35.156.53.208",
     "proxy_port": 1980,
+    "client_port": 1985,
+    "hb_port": 1990,
     "tunnel_port": 20000,
     "user": "ubuntu"
 }
@@ -40,6 +43,8 @@ PROXY_SETTINGS_FILE_NAME = 'proxy_server_{timestamp}.json'
 PROXY_IP = 'ip'
 PROXY_USER = 'user'
 PROXY_PORT = 'proxy_port'
+CLIENT_PORT = 'client_port'
+HB_PORT = 'hb_port'
 TUNNEL_PORT = 'tunnel_port'
 MONITOR_PORT = 'autossh_monitor_port'
 PROXY_SETTINGS_DICT = {
@@ -58,6 +63,9 @@ PROXY_SETTINGS_DICT = {
     # All proxy ports should be higher then 1024 or else the zmq can't bind to them.
     #
     PROXY_PORT: 5550,
+    CLIENT_PORT: 5560,
+    HB_PORT: 5570,
+
     #
     # tunnel_port : Base of tunnels' remote side port numbers.
     #

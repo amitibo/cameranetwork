@@ -149,6 +149,7 @@ class Server(MDPWorker):
         super(Server, self).__init__(
             context=self.ctx,
             endpoint="tcp://{ip}:{proxy_port}".format(**self.proxy_params),
+            hb_endpoint="tcp://{ip}:{hb_port}".format(**self.proxy_params),
             service=identity,
             endpoint_callback=self.endpoint_callback
         )
@@ -257,7 +258,8 @@ class Server(MDPWorker):
 
         self.update_proxy_params()
 
-        return "tcp://{ip}:{proxy_port}".format(**self.proxy_params)
+        return ("tcp://{ip}:{proxy_port}".format(**self.proxy_params),
+                "tcp://{ip}:{hb_port}".format(**self.proxy_params))
 
     ###########################################################
     # Low level message handling.

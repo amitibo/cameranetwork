@@ -57,7 +57,7 @@ class MDPWorker(object):
     HB_LIVENESS = 5    # HBs to miss before connection counts as dead
     RECONNECT_PERIOD = 5000
 
-    def __init__(self, context, endpoint, service, endpoint_callback=None):
+    def __init__(self, context, endpoint, hb_endpoint, service, endpoint_callback=None):
         """Initialize the MDPWorker.
 
         context is the zmq context to create the socket from.
@@ -65,9 +65,11 @@ class MDPWorker(object):
         """
         self.context = context
         self.endpoint = endpoint
+        self.hb_endpoint = hb_endpoint
         self.service = service
         self.endpoint_callback = endpoint_callback
         self.stream = None
+        self.hb_stream = None
         self.ticker = None
         self._delayed_reconnect = None
         self._create_stream()
@@ -77,12 +79,21 @@ class MDPWorker(object):
         """
 
         logging.debug('Worker creating stream')
-        socket = self.context.socket(zmq.DEALER)
+
         ioloop = IOLoop.instance()
+
+        socket = self.context.socket(zmq.DEALER)
         self.stream = ZMQStream(socket, ioloop)
         self.stream.on_recv(self._on_message)
         self.stream.socket.setsockopt(zmq.LINGER, 0)
         self.stream.connect(self.endpoint)
+
+        socket = self.context.socket(zmq.DEALER)
+        self.hb_stream = ZMQStream(socket, ioloop)
+        self.hb_stream.on_recv(self._on_message)
+        self.hb_stream.socket.setsockopt(zmq.LINGER, 0)
+        self.hb_stream.connect(self.hb_endpoint)
+
         self.ticker = PeriodicCallback(self._tick, self.HB_INTERVAL)
         self._send_ready()
         self.ticker.start()
@@ -127,7 +138,7 @@ class MDPWorker(object):
             # Check, maybe the ip of the proxy changed.
             #
             try:
-                self.endpoint = self.endpoint_callback()
+                self.endpoint, self.hb_endpoint = self.endpoint_callback()
             except:
                 #
                 # Probably some problem in accessing the server.
@@ -143,7 +154,7 @@ class MDPWorker(object):
         """
 
         msg = [EMPTY_FRAME, self._proto_version, W_HEARTBEAT]
-        self.stream.send_multipart(msg)
+        self.hb_stream.send_multipart(msg)
 
     def shutdown(self):
         """Method to deactivate the worker connection completely.
@@ -166,6 +177,11 @@ class MDPWorker(object):
         self.stream.socket.close()
         self.stream.close()
         self.stream = None
+
+        self.hb_stream.socket.close()
+        self.hb_stream.close()
+        self.hb_stream = None
+
         self.timed_out = False
         self.connected = False
 

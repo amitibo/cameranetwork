@@ -4,6 +4,11 @@ This code uses the ``fabric`` library to run remote commands on the cameras
 To use it run::
 
    >  fab -f git_pull.py set_hosts git_pull -p odroid
+
+To use a specific remote/branch:
+
+   >  fab -f git_pull.py set_hosts git_pull:remote=origin,branch=dev -p odroid
+
 """
 from __future__ import division
 import CameraNetwork
@@ -40,13 +45,15 @@ def set_hosts():
     env.hosts = hosts_map.keys()
 
 
-def git_pull():
+def git_pull(remote="origin", branch="master"):
     """Run git pull on CameraNetwork code."""
 
     logging.info("Accessing camera: {}".format(hosts_map[env.host_string]))
 
     with cd('code/cameranetwork'):
-        result = run("git pull origin master")
+        result = run(
+            "git pull {remote} {branch}".format(remote=remote, branch=branch)
+        )
         print result
         if result.failed:
             abort("Failed connecting.")
