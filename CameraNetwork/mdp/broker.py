@@ -132,10 +132,10 @@ class MDPBroker(object):
         """
 
         if wid in self._workers:
-            logging.debug('Worker {} already registered'.format(service))
+            logging.info('Worker {} already registered'.format(service))
             return
 
-        logging.debug('Registering new worker {}'.format(service))
+        logging.info('Registering new worker {}'.format(service))
 
         self._workers[wid] = WorkerRep(self.WORKER_PROTO, wid, service, self.main_stream)
 
@@ -168,7 +168,7 @@ class MDPBroker(object):
             #
             return
 
-        logging.debug('Unregistering worker {}'.format(wrep.service))
+        logging.info('Unregistering worker {}'.format(wrep.service))
 
         wrep.shutdown()
 
@@ -198,7 +198,7 @@ class MDPBroker(object):
             #
             return
 
-        logging.debug('Disconnecting worker {}'.format(wrep.service))
+        logging.info('Disconnecting worker {}'.format(wrep.service))
 
         to_send = [wid, self.WORKER_PROTO, W_DISCONNECT]
         self.main_stream.send_multipart(to_send)
@@ -218,7 +218,7 @@ class MDPBroker(object):
         :rtype: None
         """
 
-        logging.debug('Send reply to client from worker {}'.format(service))
+        logging.info('Send reply to client from worker {}'.format(service))
 
         to_send = rp[:]
         to_send.extend([EMPTY_FRAME, self.CLIENT_PROTO, service])
@@ -541,13 +541,13 @@ class MDPBroker(object):
         #
         t = msg.pop(0)
         if t.startswith(b'MDPW'):
-            logging.debug('Recieved message from worker {}'.format(rp))
+            logging.info('Recieved message from worker {}'.format(rp))
             self.on_worker(t, rp, msg)
         elif t.startswith(b'MDPC'):
-            logging.debug('Recieved message from client {}'.format(rp))
+            logging.info('Recieved message from client {}'.format(rp))
             self.on_client(t, rp, msg)
         else:
-            logging.info('Broker unknown Protocol: "{}"'.format(t))
+            logging.error('Broker unknown Protocol: "{}"'.format(t))
 
 
 class WorkerRep(object):
@@ -614,7 +614,7 @@ class WorkerRep(object):
         Stops timer.
         """
 
-        logging.debug('Shuting down worker {}'.format(self.service))
+        logging.info('Shuting down worker {}'.format(self.service))
 
         self.hb_out_timer.stop()
         self.hb_out_timer = None
