@@ -309,9 +309,13 @@ class MDPBroker(object):
             #
             # worker not found, ignore message
             #
+            logging.error(
+                "Worker with return id {} not found. Ignore message.".format(
+                    ret_id))
             return
 
         service = wrep.service
+        logging.info("Worker {} sent reply.".format(service))
 
         try:
             wq, wr = self._services[service]
@@ -328,6 +332,7 @@ class MDPBroker(object):
             wq.put(wrep.id)
 
             if wr:
+                logging.info("Sending queued message to worker {}".format(service))
                 proto, rp, msg = wr.pop(0)
                 self.on_client(proto, rp, msg)
         except KeyError:
@@ -463,8 +468,11 @@ class MDPBroker(object):
         service = msg.pop(0)
 
         if service.startswith(b'mmi.'):
+            logging.debug("Got MMI message from client.")
             self.on_mmi(rp, service, msg)
             return
+
+        logging.info("Client sends message (possibly queued) to worker {}".format(service))
 
         try:
             wq, wr = self._services[service]
@@ -474,6 +482,7 @@ class MDPBroker(object):
                 #
                 # No worker ready. Queue message
                 #
+                logging.info("Worker {} missing. Queuing message.".format(service))
                 msg.insert(0, service)
                 wr.append((proto, rp, msg))
                 return
@@ -519,6 +528,7 @@ class MDPBroker(object):
             #
             # Ignore unknown command. Disconnect worker.
             #
+            logging.error("Unknown worker command: {}".format(cmd))
             self.disconnect(rp[0])
 
     def on_message(self, msg):
@@ -541,10 +551,10 @@ class MDPBroker(object):
         #
         t = msg.pop(0)
         if t.startswith(b'MDPW'):
-            logging.info('Recieved message from worker {}'.format(rp))
+            logging.debug('Recieved message from worker {}'.format(rp))
             self.on_worker(t, rp, msg)
         elif t.startswith(b'MDPC'):
-            logging.info('Recieved message from client {}'.format(rp))
+            logging.debug('Recieved message from client {}'.format(rp))
             self.on_client(t, rp, msg)
         else:
             logging.error('Broker unknown Protocol: "{}"'.format(t))
