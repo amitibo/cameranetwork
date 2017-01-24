@@ -72,7 +72,7 @@ class MDPWorker(object):
         self.hb_stream = None
         self.ticker = None
         self._delayed_reconnect = None
-        self._unique_id = None
+        self._unique_id = ''
         self._create_stream()
 
     def _create_stream(self):
@@ -154,8 +154,7 @@ class MDPWorker(object):
         """Construct and send HB message to broker.
         """
 
-        if self._unique_id is not None:
-            msg = [EMPTY_FRAME, self._proto_version, W_HEARTBEAT, self._unique_id]
+        msg = [EMPTY_FRAME, self._proto_version, W_HEARTBEAT, self._unique_id]
 
         self.hb_stream.send_multipart(msg)
 
@@ -246,7 +245,12 @@ class MDPWorker(object):
             #
             # The message contains the unique id attahced to the worker.
             #
-            self._unique_id = msg[0]
+            if len(msg) > 0:
+                #
+                # This above check is used for supporting older version of
+                # the code.
+                #
+                self._unique_id = msg[0]
         elif msg_type == W_REQUEST:
             #
             # Request. Remaining parts are the user message

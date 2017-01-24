@@ -368,7 +368,11 @@ class MDPBroker(object):
         # stream (self.hb_stream). Therefore the ret_id is wrong. Instead the
         # worker sends its id in the message.
         #
-        ret_id = msg[0]
+        if len(msg) > 0:
+            ret_id = msg[0]
+        else:
+            ret_id = rp[0]
+
         try:
             worker = self._workers[ret_id]
             if worker.is_alive():
