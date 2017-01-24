@@ -12,8 +12,8 @@ AMAZON_SERVER = {
     #'ip': '132.68.58.206',
     'ip': '35.156.53.208',
     'proxy_port': 1980,
-    'client_port': 1985,
-    'hb_port': 1990,
+    'client_port': 1981,
+    'hb_port': 1985,
 }
 
 

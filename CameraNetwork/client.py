@@ -36,7 +36,7 @@ class Client(MDPClient):
         #
         super(Client, self).__init__(
             context=self.ctx,
-            endpoint="tcp://{ip}:{proxy_port}".format(**proxy_params)
+            endpoint="tcp://{ip}:{client_port}".format(**proxy_params)
         )
 
         self._servers_set = set()

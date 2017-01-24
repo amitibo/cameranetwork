@@ -142,7 +142,7 @@ class MDPBroker(object):
 
         logging.info('Registering new worker {}'.format(service))
 
-        self._workers[wid] = WorkerRep(self.WORKER_PROTO, wid, service, self.hb_stream)
+        self._workers[wid] = WorkerRep(self.WORKER_PROTO, wid, service, self.main_stream)
 
         if service in self._services:
             wq, wr = self._services[service]
@@ -362,7 +362,13 @@ class MDPBroker(object):
         :rtype: None
         """
 
-        ret_id = rp[0]
+        #
+        # Note:
+        # The modified heartbeat of the worker is sent over a separate socket
+        # stream (self.hb_stream). Therefore the ret_id is wrong. Instead the
+        # worker sends its id in the message.
+        #
+        ret_id = msg[0]
         try:
             worker = self._workers[ret_id]
             if worker.is_alive():
@@ -594,8 +600,22 @@ class WorkerRep(object):
         self.curr_liveness = HB_LIVENESS
         self.stream = stream
 
+        self.send_uniqueid()
+
         self.hb_out_timer = PeriodicCallback(self.send_hb, HB_INTERVAL)
         self.hb_out_timer.start()
+
+    def send_uniqueid(self):
+        """Called on W_READY from worker.
+
+        Sends unique id tu worker.
+        """
+
+        logging.debug('Broker to Worker {} sending unique id: {}'.format(
+            self.service, self.id))
+
+        msg = [self.id, EMPTY_FRAME, self.proto, W_READY, self.id]
+        self.stream.send_multipart(msg)
 
     def send_hb(self):
         """Called on every HB_INTERVAL.
