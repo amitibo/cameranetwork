@@ -12,12 +12,22 @@ import zmq
 
 
 def main ():
-    parser = argparse.ArgumentParser(description='Start the proxy application')
-    parser.add_argument('--log_level', default='INFO', help='Set the log level (possible values: info, debug, ...)')
-    parser.add_argument('--log_path', default='proxy_logs', help='Set the log folder')
+    parser = argparse.ArgumentParser(
+        description='Start the proxy application'
+    )
+    parser.add_argument(
+        '--log_level',
+        default='INFO',
+        help='Set the log level (possible values: info, debug, ...)'
+    )
+    parser.add_argument(
+        '--log_path',
+        default='proxy_logs',
+        help='Set the log folder'
+    )
     args = parser.parse_args()
- 
-    gs.initPaths()    
+
+    gs.initPaths()
 
     #
     # Initialize the logger

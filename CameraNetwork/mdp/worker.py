@@ -194,16 +194,17 @@ class MDPWorker(object):
         msg is a list w/ the message parts
         """
 
+        logging.debug('Received message: {}'.format(msg))
+
         #
         # 1st part is empty
-        #        
-        print msg
+        #
         msg.pop(0)
 
         #
         # 2nd part is protocol version
         # TODO: version check
-        #	
+        #
         proto = msg.pop(0)
 
         #
@@ -221,7 +222,7 @@ class MDPWorker(object):
             #
             # Disconnect. Reconnection will be triggered by hb timer
             #
-            self.curr_liveness = 0 
+            self.curr_liveness = 0
         elif msg_type == W_REQUEST:
             #
             # Request. Remaining parts are the user message

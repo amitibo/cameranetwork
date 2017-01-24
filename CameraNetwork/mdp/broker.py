@@ -132,10 +132,10 @@ class MDPBroker(object):
         """
 
         if wid in self._workers:
-            logging.debug('Worker %s already registered' % service)
+            logging.debug('Worker {} already registered'.format(service))
             return
 
-        logging.debug('Registering new worker %s' % service)
+        logging.debug('Registering new worker {}'.format(service))
 
         self._workers[wid] = WorkerRep(self.WORKER_PROTO, wid, service, self.main_stream)
 
@@ -168,7 +168,7 @@ class MDPBroker(object):
             #
             return
 
-        logging.debug('Unregistering worker %s' % wrep.service)
+        logging.debug('Unregistering worker {}'.format(wrep.service))
 
         wrep.shutdown()
 
@@ -198,7 +198,7 @@ class MDPBroker(object):
             #
             return
 
-        logging.debug('Disconnecting worker %s' % wrep.service)
+        logging.debug('Disconnecting worker {}'.format(wrep.service))
 
         to_send = [wid, self.WORKER_PROTO, W_DISCONNECT]
         self.main_stream.send_multipart(to_send)
@@ -218,7 +218,7 @@ class MDPBroker(object):
         :rtype: None
         """
 
-        logging.debug('Send reply to client from worker {}: {}'.format(service, msg))
+        logging.debug('Send reply to client from worker {}'.format(service))
 
         to_send = rp[:]
         to_send.extend([EMPTY_FRAME, self.CLIENT_PROTO, service])
@@ -489,7 +489,7 @@ class MDPBroker(object):
             #
             # Unknwon service. Ignore request
             #
-            logging.info('broker has no service "%s"' % service)
+            logging.info('broker has no service "{}"'.format(service))
 
     def on_worker(self, proto, rp, msg):
         """Method called on worker message.
@@ -541,13 +541,13 @@ class MDPBroker(object):
         #
         t = msg.pop(0)
         if t.startswith(b'MDPW'):
-            logging.debug('Recieved message from worker {}: {}'.format(rp, msg))
+            logging.debug('Recieved message from worker {}'.format(rp))
             self.on_worker(t, rp, msg)
         elif t.startswith(b'MDPC'):
-            logging.debug('Recieved message from client {}: {}'.format(rp, msg))
+            logging.debug('Recieved message from client {}'.format(rp))
             self.on_client(t, rp, msg)
         else:
-            logging.info('Broker unknown Protocol: "%s"' % t)
+            logging.info('Broker unknown Protocol: "{}"'.format(t))
 
 
 class WorkerRep(object):
@@ -586,7 +586,8 @@ class WorkerRep(object):
         """
 
         self.curr_liveness -= 1
-        logging.debug('Broker to Worker %s HB tick, current liveness: %d' % (self.service, self.curr_liveness))
+        logging.debug('Broker to Worker {} HB tick, current liveness: {}'.format(
+            self.service, self.curr_liveness))
 
         msg = [self.id, EMPTY_FRAME, self.proto, W_HEARTBEAT]
         self.stream.send_multipart(msg)
@@ -597,7 +598,7 @@ class WorkerRep(object):
         Sets current liveness to HB_LIVENESS.
         """
 
-        logging.debug('Received HB from worker %s' % self.service)
+        logging.debug('Received HB from worker {}'.format(self.service))
 
         self.curr_liveness = HB_LIVENESS
 
@@ -613,7 +614,7 @@ class WorkerRep(object):
         Stops timer.
         """
 
-        logging.debug('Shuting down worker %s' % self.service)
+        logging.debug('Shuting down worker {}'.format(self.service))
 
         self.hb_out_timer.stop()
         self.hb_out_timer = None
