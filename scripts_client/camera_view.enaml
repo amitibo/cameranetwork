@@ -338,7 +338,7 @@ enamldef ArraysItem(DockItem):
                         gain_db=0,
                         frames_num=1,
                         color_mode=gs.COLOR_RAW,
-                        gain_boost=gain_boost.checked,
+                        gain_boost=gain_cb.checked,
                         normalize=True,
                         resolution=resolution_fld.value
                     )
