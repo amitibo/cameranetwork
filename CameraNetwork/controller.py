@@ -798,7 +798,7 @@ class Controller(object):
 
     @cmd_callback
     @run_on_executor
-    def handle_extrinsic(self, date, save):
+    def handle_extrinsic(self, date, residual_threshold, save):
         """Handle extrinsic calibration"""
 
         #
@@ -849,13 +849,14 @@ class Controller(object):
         # Estimate oreintation
         #
         R, rotated_directions = find_camera_orientation_ransac(
-            calculated_directions, measured_directions)
+            calculated_directions, measured_directions, residual_threshold)
 
         #
         # Update normalization model.
         #
         self._normalization.R = R
-        np.save(gs.EXTRINSIC_SETTINGS_PATH, R)
+        if save:
+            np.save(gs.EXTRINSIC_SETTINGS_PATH, R)
 
         #
         # Send back the analysis.

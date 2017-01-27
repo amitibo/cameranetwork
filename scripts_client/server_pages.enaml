@@ -463,6 +463,12 @@ enamldef CalibrationControlPage(Page):
             HGroup:
                 DateSelector: extrinsic_day:
                     pass
+
+                Label:
+                    text = 'Residual Threshold:'
+                FloatField: residual_threshold:
+                    value = 5
+
                 PushButton: pb_extrinsic:
                     text = 'Extrinsic'
                     clicked ::
@@ -471,6 +477,7 @@ enamldef CalibrationControlPage(Page):
                             gs.MSG_TYPE_EXTRINSIC,
                             kwds=dict(
                                 date=extrinsic_day.date,
+                                residual_threshold=residual_threshold.value,
                                 save=True
                             )
                         )
