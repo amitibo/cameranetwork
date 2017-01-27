@@ -40,9 +40,9 @@ def main():
     parser.add_argument('--offline', action='store_true', help='When set, the server will work without camera nor shader. This setup is useful for offline running.')
     parser.add_argument('--local_path', type=str, default=None, help='If set, the camera will work in local and offline mode, using the given path as home.')
     args = parser.parse_args()
-    
+
     gs.initPaths(args.local_path)
-    
+
 
     #
     # Initialize the logger
@@ -60,10 +60,14 @@ def main():
         offline = True
     else:
         offline = False
-        
+
     try:
         #
-        # Setup
+        # Setup.
+        # Note:
+        # The controller is intialized first, for some reasons:
+        # - Initialize and get camera infor.
+        # - Pass a pointer to the controller to the server.
         #
         controller = Controller(offline=offline, local_path=args.local_path)
         server = Server(

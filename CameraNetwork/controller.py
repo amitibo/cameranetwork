@@ -35,6 +35,7 @@ import logging
 import numpy as np
 import os
 import pandas as pd
+import pkg_resources
 import Queue
 from scipy import signal
 import scipy.io as sio
@@ -114,7 +115,85 @@ class Controller(object):
         if not offline:
             self.start_camera()
             self._arduino_api = ArduinoAPI()
+        else:
+            self._camera = None
+
         self._offline = offline
+
+        #
+        # Load the camera calibration information.
+        #
+        self.loadCameraCalibration()
+
+        #
+        # Load dark images.
+        #
+        self.loadDarkImages()
+
+        #
+        # Load todays celestial position measurements
+        #
+        if not os.path.exists(gs.SUN_POSITIONS_PATH):
+            os.makedirs(gs.SUN_POSITIONS_PATH)
+        else:
+            self.loadSunMeasurements()
+
+        self.sunshader_angle_model = make_pipeline(
+            PolynomialFeatures(2),
+            linear_model.RANSACRegressor(random_state=0, residual_threshold=5)
+        )
+
+        #
+        # Set the last sunshader scan to "old" time.
+        #
+        self.last_sunshader_time = None
+        self.sunshader_fit = False
+
+        #
+        # Sky mask
+        #
+        if os.path.exists(gs.MASK_PATH):
+            self.sky_mask_base = sio.loadmat(gs.MASK_PATH)['mask_base']
+        else:
+            self.sky_mask_base = None
+
+    @property
+    def camera_serial_num(self):
+
+        if self._camera is None:
+            return None
+
+        return self._camera.info['serial_num']
+
+    def loadCameraCalibration(self):
+        """Load camera calibration data
+
+        Load the intrinsic and radiometric calibration data.
+        """
+
+        #
+        # Check if the data exisits in the data folder of the code.
+        # If so, the data is copied to the home folder.
+        #
+        if self.camera_serial_num is not None:
+            base_path = pkg_resources.resource_filename(__name__, '../data/calibration/')
+            base_path = os.path.join(base_path, self.camera_serial_num)
+
+            if os.path.exists(base_path):
+                try:
+                    shutil.copyfile(
+                        os.path.join(base_path, 'fisheye.pkl'),
+                        gs.CALIBRATION_SETTINGS_PATH)
+                    shutil.copyfile(
+                        os.path.join(base_path, 'vignetting.pkl'),
+                        gs.VIGNETTING_PATH)
+                    shutil.copyfile(
+                        os.path.join(base_path, 'radiometric.pkl'),
+                        gs.RADIOMETRIC_PATH)
+                except Exception as e:
+                    logging.error("Failed copying calibration data.".format(
+                        traceback.format_exc()))
+                    os.remove(path)
 
         #
         # Try to load calibration data.
@@ -137,21 +216,33 @@ class Controller(object):
             self._normalization = None
 
         #
-        # Load todays celestial position measurements
+        # Load vignetting settings.
         #
-        if not os.path.exists(gs.SUN_POSITIONS_PATH):
-            os.makedirs(gs.SUN_POSITIONS_PATH)
-        else:
-            self.loadPastMeasurements()
-
-        self.sunshader_angle_model = make_pipeline(
-            PolynomialFeatures(2),
-            linear_model.RANSACRegressor(random_state=0, residual_threshold=5)
-        )
+        try:
+            self._vignetting = VignettingCalibration.load(gs.VIGNETTING_PATH)
+        except:
+            self._vignetting = VignettingCalibration()
+            logging.error(
+                "Failed loading vignetting data:\n{}".format(
+                    traceback.format_exc()))
 
         #
-        # Load dark images.
+        # Load radiometric calibration.
         #
+        try:
+            self._radiometric = RadiometricCalibration.load(gs.RADIOMETRIC_PATH)
+        except:
+            self._radiometric = RadiometricCalibration()
+            logging.error(
+                "Failed loading radiometric data:\n{}".format(
+                    traceback.format_exc()))
+
+    def loadDarkImages(self):
+        """Load dark images from disk.
+
+        Dark images are used for reducing dark current noise.
+        """
+
         di_paths = sorted(glob.glob(os.path.join(gs.DARK_IMAGES_PATH, '*.mat')))
         if di_paths:
             self._dark_images = {
@@ -181,43 +272,7 @@ class Controller(object):
             logging.info("No dark images available")
             self._dark_images = None
 
-        #
-        # Load vignetting settings.
-        #
-        try:
-            self._vignetting = VignettingCalibration.load(gs.VIGNETTING_PATH)
-        except:
-            self._vignetting = VignettingCalibration()
-            logging.error(
-                "Failed loading vignetting data:\n{}".format(
-                    traceback.format_exc()))
-
-        #
-        # Load radiometric calibration.
-        #
-        try:
-            self._radiometric = RadiometricCalibration.load(gs.RADIOMETRIC_PATH)
-        except:
-            self._radiometric = RadiometricCalibration()
-            logging.error(
-                "Failed loading radiometric data:\n{}".format(
-                    traceback.format_exc()))
-
-        #
-        # Set the last sunshader scan to "old" time.
-        #
-        self.last_sunshader_time = None
-        self.sunshader_fit = False
-
-        #
-        # Sky mask
-        #
-        if os.path.exists(gs.MASK_PATH):
-            self.sky_mask_base = sio.loadmat(gs.MASK_PATH)['mask_base']
-        else:
-            self.sky_mask_base = None
-
-    def loadPastMeasurements(self):
+    def loadSunMeasurements(self):
         """Load previously stored sun measurements."""
 
         try:
