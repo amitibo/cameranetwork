@@ -104,11 +104,11 @@ def main():
         imgsR = []
         for i, (x, y) in \
             enumerate(itertools.product(
-                np.linspace(0, 120, GEOMETRIC_STEPS),
-                np.linspace(35, 165, GEOMETRIC_STEPS))):
+                np.linspace(35, 165, GEOMETRIC_STEPS),
+                np.linspace(0, 120, GEOMETRIC_STEPS))):
             print x, y
             p.move(int(x), int(y))
-            time.sleep(1.5)
+            time.sleep(2.5)
             img, _, _ = cam.capture(settings, frames_num=1)
             imgs.append(img)
             imgsR.append(raw2RGB(img)[0].astype(np.uint8))
