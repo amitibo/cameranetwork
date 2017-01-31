@@ -36,7 +36,7 @@ class Client(MDPClient):
         #
         super(Client, self).__init__(
             context=self.ctx,
-            endpoint="tcp://{ip}:{proxy_port}".format(**proxy_params)
+            endpoint="tcp://{ip}:{client_port}".format(**proxy_params)
         )
 
         self._servers_set = set()
@@ -270,6 +270,7 @@ class CLIclient(object):
     def __init__(self):
 
         self.futures = {}
+        self.servers_list = []
 
     def __getitem__(self, i):
 
@@ -292,6 +293,7 @@ class CLIclient(object):
         client_instance.handle_new_server = self.add_server
         client_instance.handle_server_failure = self.remove_server
         client_instance.handle_receive = self.receive_message
+        client_instance.tunnels_cb = self.tunnels_cb
 
         self.client_instance = client_instance
 
@@ -312,11 +314,35 @@ class CLIclient(object):
 
         return future.result(timeout=timeout)
 
+    def send_mmi(self, service, msg=[], timeout=30):
+
+        future = futures.Future()
+        self.futures['mmi'] = future
+
+        loop = ioloop.IOLoop.instance()
+        loop.add_callback(
+            self.client_instance.send_mmi,
+            service=service,
+            msg=msg
+        )
+
+        return future.result(timeout=timeout)
+
+    def tunnels_cb(self, tunnels):
+        """Return the tunnels data."""
+
+        self.futures['mmi'].set_result(tunnels)
+
     def add_server(self, server_id):
-        print 'Adding the new server: {}'.format(server_id)
+        logging.info('Adding the new server: {}'.format(server_id))
+
+        self.servers_list.append(server_id)
+        self.servers_list = sorted(self.servers_list)
 
     def remove_server(self, server_id):
-        print 'Removing server: {}'.format(server_id)
+        logging.info('Removing the server: {}'.format(server_id))
+
+        self.servers_list.remove(server_id)
 
     def receive_message(self, msg_extra, server_id, status, cmd, args, kwds):
 

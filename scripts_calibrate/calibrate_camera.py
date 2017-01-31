@@ -13,6 +13,7 @@ import winsound
 import ids
 import sys
 import os
+import pkg_resources
 import scipy.io as sio
 import fisheye
 from CameraNetwork.image_utils import FisheyeProxy, Normalization
@@ -76,9 +77,19 @@ def main():
     cv2.namedWindow("image", flags=cv2.WINDOW_NORMAL)
     cam = IDSCamera(callback=capture_callback)
 
-    base_path = os.path.join('vignetting_calibration', cam.info['serial_num'])
-    safe_mkdirs(base_path)
-    safe_mkdirs(os.path.join(base_path, 'images'))
+    #
+    # All the results of the calibration are stored on disk.
+    #
+    results_path = os.path.join('vignetting_calibration', cam.info['serial_num'])
+    safe_mkdirs(results_path)
+    safe_mkdirs(os.path.join(results_path, 'images'))
+
+    #
+    # Calibration data is stored in repo.
+    #
+    data_path = pkg_resources.resource_filename(__name__, '../data/calibration/')
+    data_path = os.path.join(data_path, cam.info['serial_num'])
+    safe_mkdirs(data_path)
 
     #
     # Capture settings.
@@ -93,7 +104,7 @@ def main():
     #
     # Store the exposure time
     #
-    with open(os.path.join(base_path, 'settings.pkl'), 'wb') as f:
+    with open(os.path.join(results_path, 'settings.pkl'), 'wb') as f:
         cPickle.dump(settings, f)
 
     if DO_GEOMETRIC_CALIBRATION:
@@ -131,9 +142,10 @@ def main():
         #
         # Save the geometric calibration
         #
-        fe.save(os.path.join(base_path, 'fisheye.pkl'))
+        fe.save(os.path.join(results_path, 'fisheye.pkl'))
+        fe.save(os.path.join(data_path, 'fisheye.pkl'))
     else:
-        fe = fisheye.load_model(os.path.join(base_path, 'fisheye.pkl'))
+        fe = fisheye.load_model(os.path.join(results_path, 'fisheye.pkl'))
 
     settings["exposure_us"] = VIGNETTING_EXPOSURE
 
@@ -148,12 +160,12 @@ def main():
 
         black_img = np.mean(cam.capture(settings, frames_num=10)[0], axis=2)
         winsound.Beep(5000, 500)
-        np.save(os.path.join(base_path, 'black_img.npy'), black_img)
+        np.save(os.path.join(results_path, 'black_img.npy'), black_img)
 
     #
     # Make path to store img measurements.
     #
-    safe_mkdirs(base_path)
+    safe_mkdirs(results_path)
 
     #
     # Print the COLIBRI LED POWER
@@ -170,7 +182,9 @@ def main():
         s = spec.spectrum()
         measurements.append(s[1])
 
-    with open(os.path.join(base_path, 'spec.pkl'), 'wb') as f:
+    with open(os.path.join(results_path, 'spec.pkl'), 'wb') as f:
+        cPickle.dump((s[0], np.mean(measurements, axis=0)), f)
+    with open(os.path.join(data_path, 'spec.pkl'), 'wb') as f:
         cPickle.dump((s[0], np.mean(measurements, axis=0)), f)
 
     #
@@ -191,7 +205,7 @@ def main():
     X_grid = X_grid.astype(np.int32)
     Y_grid = Y_grid.astype(np.int32)
 
-    black_img = np.load(os.path.join(base_path, 'black_img.npy'))
+    black_img = np.load(os.path.join(results_path, 'black_img.npy'))
 
     measurements = []
     for i, (x, y) in enumerate(zip(X_grid.ravel(), Y_grid.ravel())):
@@ -215,7 +229,7 @@ def main():
         #
         # Store the measurement image.
         #
-        img_path = os.path.join(base_path, 'images', 'img_{:03}.mat'.format(i))
+        img_path = os.path.join(results_path, 'images', 'img_{:03}.mat'.format(i))
         sio.savemat(img_path, {'img':img}, do_compression=True)
 
     img = np.zeros(shape=(1200, 1600, 3))
@@ -228,15 +242,16 @@ def main():
     #
     # Save the results
     #
-    sio.savemat(os.path.join(base_path, 'results.mat'), {'img':img}, do_compression=True)
-    with open(os.path.join(base_path, 'measurements.pkl'), 'wb') as f:
+    sio.savemat(os.path.join(results_path, 'results.mat'), {'img':img}, do_compression=True)
+    with open(os.path.join(results_path, 'measurements.pkl'), 'wb') as f:
         cPickle.dump(measurements, f)
 
     #
     # Calculate Vignetting correction.
     #
-    vc = VignettingCalibration.readMeasurements(base_path)
-    vc.save(os.path.join(base_path, '.vignetting.pkl'))
+    vc = VignettingCalibration.readMeasurements(results_path)
+    vc.save(os.path.join(results_path, '.vignetting.pkl'))
+    vc.save(os.path.join(data_path, 'vignetting.pkl'))
     print("The STD Vignetting Error per color is: {}".format(vc._stds))
 
     #

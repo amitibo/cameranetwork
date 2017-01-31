@@ -263,50 +263,57 @@ enamldef SeekControlPage(Page):
     GroupBox:
         title = 'Seek Array'
 
-        VGroup:
-            HGroup:
-                DateSelector: query_day:
-                    pass
-                PushButton: pb_query:
-                    text = 'Query'
-                    clicked ::
-                        root_object().client_model.send_message(
-                            server_model_,
-                            gs.MSG_TYPE_QUERY,
-                            kwds=dict(query_date=query_day.date)
-                        )
+        Container:
+            constraints = [
+                vbox(
+                    hbox(query_day, query_pb, spacer),
+                    df,
+                    hbox(resolution_lbl, resolution_fld, HDR_cb, seek_pb, spacer),
+                ),
+            ]
+
+            DateSelector: query_day:
+                pass
+
+            PushButton: query_pb:
+                text = 'Query'
+                clicked ::
+                    root_object().client_model.send_message(
+                        server_model_,
+                        gs.MSG_TYPE_QUERY,
+                        kwds=dict(query_date=query_day.date)
+                    )
 
             DataFrameTable: df:
                 data_frame << server_model_.images_df
                 selected_index >> server_model_.img_index
 
-            HGroup:
-                PushButton: pb_seek:
-                    text = 'Seek'
-                    clicked ::
-                        index = server_model_.img_index
-                        print index
-                        root_object().client_model.send_message(
-                            server_model_,
-                            gs.MSG_TYPE_SEEK,
-                            kwds=dict(
-                                seek_time=index[0],
-                                hdr_index=index[1],
-                                normalize=ff_normalized_seek.checked,
-                                resolution=ff_resolution_seek.value
-                            )
+            Label: resolution_lbl:
+                text = 'Resolution:'
+            IntField: resolution_fld:
+                minimum = 64
+                maximum = 1001
+                value = 301
+
+            CheckBox: HDR_cb:
+                tool_tip = "Return HDR image"
+                checked = False
+                text = "HDR"
+
+            PushButton: seek_pb:
+                text = 'Seek'
+                clicked ::
+                    index = server_model_.img_index
+                    root_object().client_model.send_message(
+                        server_model_,
+                        gs.MSG_TYPE_SEEK,
+                        kwds=dict(
+                            seek_time=index[0],
+                            hdr_index=-1 if HDR_cb.checked else index[1],
+                            normalize=True,
+                            resolution=resolution_fld.value
                         )
-                Label:
-                    text = 'Resolution:'
-                IntField: ff_resolution_seek:
-                    minimum = 64
-                    maximum = 1001
-                    value = 301
-                Form:
-                    Label:
-                        text = 'Normalized:'
-                    CheckBox: ff_normalized_seek:
-                        checked = True
+                    )
 
 
 enamldef SunshaderControlPage(Page):
@@ -456,6 +463,12 @@ enamldef CalibrationControlPage(Page):
             HGroup:
                 DateSelector: extrinsic_day:
                     pass
+
+                Label:
+                    text = 'Residual Threshold:'
+                FloatField: residual_threshold:
+                    value = 5
+
                 PushButton: pb_extrinsic:
                     text = 'Extrinsic'
                     clicked ::
@@ -464,6 +477,7 @@ enamldef CalibrationControlPage(Page):
                             gs.MSG_TYPE_EXTRINSIC,
                             kwds=dict(
                                 date=extrinsic_day.date,
+                                residual_threshold=residual_threshold.value,
                                 save=True
                             )
                         )

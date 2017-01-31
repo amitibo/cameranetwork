@@ -175,7 +175,7 @@ enamldef ArrayView(FlowItem):
     alias PrincipalPlane_coords: image_widget.PrincipalPlane_coords
     alias ROI: image_widget.ROI
     alias mask_ROI: image_widget.mask_ROI
-    alias reconstruct_flag: reconstruct_flag
+    alias export_flag: export_flag
     attr img_data
 
     GroupBox: gb:
@@ -198,10 +198,10 @@ enamldef ArrayView(FlowItem):
                 clicked ::
                     ImageDataPopup(img_data_=img_data).show()
 
-            CheckBox: reconstruct_flag:
-                tool_tip = "Use for reconstruction"
-                checked := image_widget.use_reconstruction
-                text = "Use in Recon."
+            CheckBox: export_flag:
+                tool_tip = "Export for reconstruction"
+                checked := image_widget.export_flag
+                text = "Export"
 
 
 ################################################################################
@@ -338,7 +338,7 @@ enamldef ArraysItem(DockItem):
                         gain_db=0,
                         frames_num=1,
                         color_mode=gs.COLOR_RAW,
-                        gain_boost=gain_boost.checked,
+                        gain_boost=gain_cb.checked,
                         normalize=True,
                         resolution=resolution_fld.value
                     )
@@ -485,6 +485,12 @@ enamldef MyDockArea(DockArea):
 ################################################################################
 # The Main View
 ################################################################################
+def reboot_servers(button, client_model):
+    if button is not None:
+        if button.text == 'Reboot':
+            client_model.broadcast_message(gs.MSG_TYPE_REBOOT)
+
+
 enamldef Main(MainWindow): main:
     initial_size = (200, 200)
     title = 'Camera Client'
@@ -535,6 +541,16 @@ enamldef Main(MainWindow): main:
                                 capture_settings=client_model.capture_settings
                             )
                         )
+
+            Action:
+                text = "Reboot\tCtrl+R"
+                triggered ::
+                    btns = [DialogButton('Reboot', 'accept'),
+                            DialogButton('Cancel', 'reject')]
+                    reboot_servers(
+                        warning(main, 'Reboot Cameras', 'Are you sure you want to reboot all cameras?', btns),
+                        client_model
+                    )
 
         Menu:
             title = "&View"

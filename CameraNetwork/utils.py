@@ -613,7 +613,10 @@ class ExtrinsicModel(BaseEstimator):
         return rotated_directions
 
 
-def find_camera_orientation_ransac(calculated_directions, measured_directions):
+def find_camera_orientation_ransac(
+    calculated_directions,
+    measured_directions,
+    residual_threshold):
     """
     Find the rotation of the camera based on the coordinates of a celestail object
     The input is two sets. The first is x,y image coordinates of the object (taken
@@ -631,13 +634,15 @@ def find_camera_orientation_ransac(calculated_directions, measured_directions):
             object. Given as an nx3 matrix of [x, y, z] on the unit hemisphere.
         measured_directions (array like): The measured directions of the celestial
             objects. Given as an nx3 matrix of [x, y, z] on the unit hemisphere.
+        residual_threshold (float): Residual threshold used by the RANSAC regressor.
 
     Returns:
         Euler angles for rotating the measured directions to match the calculated directions.
 
     """
 
-    model_ransac = linear_model.RANSACRegressor(ExtrinsicModel())
+    model_ransac = linear_model.RANSACRegressor(
+        ExtrinsicModel(), random_state=0, residual_threshold=residual_threshold)
     model_ransac.fit(measured_directions, calculated_directions)
 
     rotated_directions = model_ransac.predict(measured_directions)

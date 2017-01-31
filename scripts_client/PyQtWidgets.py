@@ -97,7 +97,7 @@ class PyQtImageView(PyQtGraphLayoutWidget):
     show_mask = Bool()
     show_LIDAR_grid = Bool()
 
-    use_reconstruction = Bool()
+    export_flag = Bool()
 
     def __init__(self, *params, **kwds):
         super(PyQtImageView, self).__init__(*params, **kwds)

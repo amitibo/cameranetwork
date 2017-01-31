@@ -149,6 +149,7 @@ class Server(MDPWorker):
         super(Server, self).__init__(
             context=self.ctx,
             endpoint="tcp://{ip}:{proxy_port}".format(**self.proxy_params),
+            hb_endpoint="tcp://{ip}:{hb_port}".format(**self.proxy_params),
             service=identity,
             endpoint_callback=self.endpoint_callback
         )
@@ -257,7 +258,8 @@ class Server(MDPWorker):
 
         self.update_proxy_params()
 
-        return "tcp://{ip}:{proxy_port}".format(**self.proxy_params)
+        return ("tcp://{ip}:{proxy_port}".format(**self.proxy_params),
+                "tcp://{ip}:{hb_port}".format(**self.proxy_params))
 
     ###########################################################
     # Low level message handling.
@@ -903,7 +905,7 @@ class Server(MDPWorker):
             'required_angle':required_angle,}))
 
     @gen.coroutine
-    def handle_extrinsic(self, date, save):
+    def handle_extrinsic(self, date, residual_threshold, save):
         """Handle extrinsic calibration."""
 
         #
@@ -911,7 +913,10 @@ class Server(MDPWorker):
         #
         rotated_directions, calculated_directions, R = \
             yield self.push_cmd(
-                gs.EXTRINSIC_CMD, date=date.strftime("%Y_%m_%d"), save=save)
+                gs.EXTRINSIC_CMD,
+                date=date.strftime("%Y_%m_%d"),
+                residual_threshold=residual_threshold,
+                save=save)
 
         #
         # Send reply on next ioloop cycle.
