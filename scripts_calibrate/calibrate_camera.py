@@ -1,9 +1,22 @@
+"""Intrinsic and Vignetting calibration
+
+This scripts does calibration of the camera. There are three steps:
+1) Geometric (intrinsic) calibration.
+2) Black image caputre. This is used only for the vignetting calibration step.
+3) Vignetting calibration.
+
+The results are stored in the repository under a folder named according to
+the camera serial number. After successful run, the results should be added,
+commited and pushed into the repository.
+"""
 from __future__ import division
+import CameraNetwork
 from CameraNetwork.calibration import VignettingCalibration
 from CameraNetwork.cameras import IDSCamera
 from CameraNetwork import Gimbal, findSpot
 from CameraNetwork.image_utils import raw2RGB
 import CameraNetwork.global_settings as gs
+import logging
 import numpy as np
 import matplotlib.pyplot as plt
 import cv2
@@ -21,22 +34,30 @@ import itertools
 import traceback
 import cPickle
 
-SLEEP_TIME = 0.1
 
+#
+# Geometric calibration
+#
 DO_GEOMETRIC_CALIBRATION = True
-GEOMETRIC_STEPS = 12
-
-DO_BLACK_IMG = True
-
-VIGNETTING_STEPS = 32
-
-#
-# Calibration params
-#
 NX, NY = 8, 6
 GEOMETRIC_EXPOSURE = 120000
+GEOMETRIC_STEPS = 12
+GEOMETRIC_XMIN, GEOMETRIC_XMAX = 45, 155
+GEOMETRIC_YMIN, GEOMETRIC_YMAX = 10, 110
+GEOMETRIC_SLEEP_TIME = 2.5
+
+#
+# Black image capture.
+#
+DO_BLACK_IMG = True
+
+#
+# Vignetting calibration.
+#
+VIGNETTING_STEPS = 32
 VIGNETTING_EXPOSURE = 65000
 LED_POWER = {"BLUE(470)": 35, "GREEN(505)": 100, "RED(625)": 50}
+VIGNETTING_SLEEP_TIME = 0.1
 
 
 def safe_mkdirs(path):
@@ -61,10 +82,15 @@ def capture_callback(img, exp, gain):
 
 
 def main():
+    """Run the calibration of the cameras."""
+
+    #
+    # Initialize the calibration setup.
+    #
+    CameraNetwork.initialize_logger(log_level=logging.DEBUG)
 
     import oceanoptics
     spec = oceanoptics.get_a_random_spectrometer()
-
 
     p = Gimbal(com="COM5")
 
@@ -107,19 +133,19 @@ def main():
     with open(os.path.join(results_path, 'settings.pkl'), 'wb') as f:
         cPickle.dump(settings, f)
 
+    ############################################################################
+    # Perform geometric Calibration
+    ############################################################################
     if DO_GEOMETRIC_CALIBRATION:
-        #
-        # Geometric Calibration
-        #
         imgs = []
         imgsR = []
         for i, (x, y) in \
             enumerate(itertools.product(
-                np.linspace(35, 165, GEOMETRIC_STEPS),
-                np.linspace(0, 120, GEOMETRIC_STEPS))):
+                np.linspace(GEOMETRIC_XMIN, GEOMETRIC_XMAX, GEOMETRIC_STEPS),
+                np.linspace(GEOMETRIC_YMIN, GEOMETRIC_YMAX, GEOMETRIC_STEPS))):
             print x, y
             p.move(int(x), int(y))
-            time.sleep(2.5)
+            time.sleep(GEOMETRIC_SLEEP_TIME)
             img, _, _ = cam.capture(settings, frames_num=1)
             imgs.append(img)
             imgsR.append(raw2RGB(img)[0].astype(np.uint8))
@@ -149,12 +175,12 @@ def main():
 
     settings["exposure_us"] = VIGNETTING_EXPOSURE
 
+    ############################################################################
+    # Measure dark noise
+    ############################################################################
     if DO_BLACK_IMG:
-        #
-        # Measure noise
-        #
         p.move(90, 90)
-        time.sleep(SLEEP_TIME)
+        time.sleep(GEOMETRIC_SLEEP_TIME)
         raw_input("Turn off the lights and press any key")
         winsound.Beep(5000, 500)
 
@@ -173,9 +199,9 @@ def main():
     raw_input("Set COLIBRI LEDS: {}, and press any key.".format(
         [(k, v) for k, v in LED_POWER.items()]))
 
-    #
+    ############################################################################
     # Measure the spectrum
-    #
+    ############################################################################
     spec.integration_time(0.3)
     measurements = []
     for i in range(10):
@@ -191,13 +217,16 @@ def main():
     # Verify no saturation.
     #
     p.move(90, 90)
-    time.sleep(SLEEP_TIME)
+    time.sleep(GEOMETRIC_SLEEP_TIME)
     img, exp, gain = cam.capture(settings, frames_num=1)
     if img.max() == 255:
         raise Exception('Saturation')
 
     print("Maximal color values: {}".format([c.max() for c in raw2RGB(img)]))
 
+    ############################################################################
+    # Perform Vignetting calibration.
+    ############################################################################
     X_grid, Y_grid = np.meshgrid(
         np.linspace(0, 180, VIGNETTING_STEPS),
         np.linspace(0, 180, VIGNETTING_STEPS),
@@ -213,7 +242,7 @@ def main():
         sys.stdout.write('x={}, y={}...\t'.format(x, y))
 
         p.move(x, y)
-        time.sleep(SLEEP_TIME)
+        time.sleep(VIGNETTING_SLEEP_TIME)
         img = np.mean(cam.capture(settings, frames_num=10)[0], axis=2)
         winsound.Beep(8000, 500)
         try:

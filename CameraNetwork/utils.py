@@ -234,8 +234,34 @@ def sync_time():
     os.system('sudo service ntp start')
 
 
-def initialize_logger(log_path, log_level=logging.INFO, postfix=''):
+def initialize_logger(log_path=None, log_level=logging.INFO, postfix=''):
     """Initialize the logger. Single process version. Logs both to file and stdout."""
+
+    #
+    # Get the log level
+    #
+    if type(log_level) == str:
+        log_level = getattr(logging, log_level.upper(), None)
+        if not isinstance(log_level, int):
+            raise ValueError('Invalid log level: %s' % log_level)
+
+    #
+    # Setup the logger
+    #
+    logFormatter = logging.Formatter("%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s]  %(message)s")
+
+    logger = logging.getLogger()
+    logger.setLevel(log_level)
+
+    #
+    # create console handler.
+    #
+    handler = logging.StreamHandler()
+    handler.setFormatter(logFormatter)
+    logger.addHandler(handler)
+
+    if log_path is None:
+        return
 
     #
     # Create a unique name for the log file.
@@ -259,27 +285,8 @@ def initialize_logger(log_path, log_level=logging.INFO, postfix=''):
         log_path = os.path.join(log_path, filename)
 
     #
-    # Get the log level
-    #
-    if type(log_level) == str:
-        log_level = getattr(logging, log_level.upper(), None)
-        if not isinstance(log_level, int):
-            raise ValueError('Invalid log level: %s' % log_level)
-
-    #
-    # Setup the logger
-    #
-    logFormatter = logging.Formatter("%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s]  %(message)s")
-
-    logger = logging.getLogger()
-    logger.setLevel(log_level)
-
-    # create console handler and set level to info
-    handler = logging.StreamHandler()
-    handler.setFormatter(logFormatter)
-    logger.addHandler(handler)
-
     # create error file handler and set level to error
+    #
     handler = logging.FileHandler(log_path, "w", encoding=None, delay="true")
     handler.setFormatter(logFormatter)
     logger.addHandler(handler)
