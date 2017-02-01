@@ -40,11 +40,13 @@ import cPickle
 #
 DO_GEOMETRIC_CALIBRATION = True
 NX, NY = 8, 6
-GEOMETRIC_EXPOSURE = 120000
-GEOMETRIC_STEPS = 12
-GEOMETRIC_XMIN, GEOMETRIC_XMAX = 45, 155
-GEOMETRIC_YMIN, GEOMETRIC_YMAX = 10, 110
+GEOMETRIC_EXPOSURE = 180000
+GEOMETRIC_STEPS = 8
+GEOMETRIC_XMIN, GEOMETRIC_XMAX = 35, 165
+GEOMETRIC_YMIN, GEOMETRIC_YMAX = 0, 120
 GEOMETRIC_SLEEP_TIME = 2.5
+CHESSBOARD_DETECTION_THRESHOLD = 20
+SHOW_REPROJECTION = True
 
 #
 # Black image capture.
@@ -77,7 +79,8 @@ def safe_mkdirs(path):
 def capture_callback(img, exp, gain):
     """Debug plot of the image."""
 
-    cv2.imshow("image", np.array(img).astype(np.uint8))
+    red_img = raw2RGB(img)[0].astype(np.uint8)
+    cv2.imshow("image", red_img)
     cv2.waitKey(1)
 
 
@@ -100,7 +103,7 @@ def main():
     #
     p.move(90, 90)
 
-    cv2.namedWindow("image", flags=cv2.WINDOW_NORMAL)
+    cv2.namedWindow("image", flags=cv2.WINDOW_AUTOSIZE)
     cam = IDSCamera(callback=capture_callback)
 
     #
@@ -139,26 +142,52 @@ def main():
     if DO_GEOMETRIC_CALIBRATION:
         imgs = []
         imgsR = []
-        for i, (x, y) in \
-            enumerate(itertools.product(
+        for x, y in \
+            itertools.product(
                 np.linspace(GEOMETRIC_XMIN, GEOMETRIC_XMAX, GEOMETRIC_STEPS),
-                np.linspace(GEOMETRIC_YMIN, GEOMETRIC_YMAX, GEOMETRIC_STEPS))):
-            print x, y
+                np.linspace(GEOMETRIC_YMIN, GEOMETRIC_YMAX, GEOMETRIC_STEPS)):
+
+            logging.debug("Moved gimbal to position: ({})".format((int(x), int(y))))
             p.move(int(x), int(y))
             time.sleep(GEOMETRIC_SLEEP_TIME)
+
             img, _, _ = cam.capture(settings, frames_num=1)
             imgs.append(img)
-            imgsR.append(raw2RGB(img)[0].astype(np.uint8))
+            red_img = raw2RGB(img)[0].astype(np.uint8)
+            red_img[red_img < CHESSBOARD_DETECTION_THRESHOLD] = 0
+            imgsR.append(red_img)
 
         #
         # Use the fisheye model
         #
         fe = fisheye.FishEye(nx=NX, ny=NY, verbose=True)
 
-        rms, K, D, rvecs, tvecs = fe.calibrate(
+        rms, K, D, rvecs, tvecs, mask = fe.calibrate(
             imgs=imgsR,
-            show_imgs=False
+            show_imgs=True,
+            return_mask=True
         )
+
+        if SHOW_REPROJECTION:
+            cv2.namedWindow("Reprojected img", cv2.WINDOW_AUTOSIZE)
+            vec_cnt = 0
+            for img_index, m in enumerate(mask):
+                if not m:
+                    continue
+                rep_img = cv2.drawChessboardCorners(
+                    imgsR[img_index].copy(),
+                    (NX, NY),
+                    fe.projectPoints(
+                        rvec=rvecs[vec_cnt],
+                        tvec=tvecs[vec_cnt]
+                        ),
+                    1
+                )
+                cv2.imshow("Reprojected img", rep_img)
+                cv2.waitKey(500)
+                vec_cnt += 1
+
+            cv2.destroyAllWindows()
 
         normalization = Normalization(1001, FisheyeProxy(fe))
         img_normalized = normalization.normalize(imgsR[0])
