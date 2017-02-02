@@ -1,7 +1,7 @@
 import sys
 if sys.platform == 'win32':
     from enaml import winutil
-
+from enaml.image import Image
 from enaml.layout.api import *
 from enaml.stdlib.fields import IntField, FloatField
 from enaml.widgets.api import *
@@ -467,7 +467,7 @@ enamldef CalibrationControlPage(Page):
                 Label:
                     text = 'Residual Threshold:'
                 FloatField: residual_threshold:
-                    value = 5
+                    value = 5.
 
                 PushButton: pb_extrinsic:
                     text = 'Extrinsic'
