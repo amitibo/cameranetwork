@@ -38,12 +38,12 @@ import cPickle
 #
 # Geometric calibration
 #
-DO_GEOMETRIC_CALIBRATION = True
+DO_GEOMETRIC_CALIBRATION = False
 NX, NY = 8, 6
 GEOMETRIC_EXPOSURE = 180000
 GEOMETRIC_STEPS = 8
-GEOMETRIC_XMIN, GEOMETRIC_XMAX = 35, 165
-GEOMETRIC_YMIN, GEOMETRIC_YMAX = 0, 120
+GEOMETRIC_XMIN, GEOMETRIC_XMAX = 40, 165
+GEOMETRIC_YMIN, GEOMETRIC_YMAX = 0, 110
 GEOMETRIC_SLEEP_TIME = 2.5
 CHESSBOARD_DETECTION_THRESHOLD = 20
 SHOW_REPROJECTION = True
@@ -56,10 +56,10 @@ DO_BLACK_IMG = True
 #
 # Vignetting calibration.
 #
-VIGNETTING_STEPS = 32
+VIGNETTING_STEPS = 16
 VIGNETTING_EXPOSURE = 65000
 LED_POWER = {"BLUE(470)": 35, "GREEN(505)": 100, "RED(625)": 50}
-VIGNETTING_SLEEP_TIME = 0.1
+VIGNETTING_SLEEP_TIME = 1
 
 
 def safe_mkdirs(path):
@@ -79,8 +79,7 @@ def safe_mkdirs(path):
 def capture_callback(img, exp, gain):
     """Debug plot of the image."""
 
-    red_img = raw2RGB(img)[0].astype(np.uint8)
-    cv2.imshow("image", red_img)
+    cv2.imshow("image", img)
     cv2.waitKey(1)
 
 
@@ -127,7 +126,7 @@ def main():
         "exposure_us": GEOMETRIC_EXPOSURE,
         "gain_db": 0,
         "gain_boost": False,
-        "color_mode": gs.COLOR_RAW
+        "color_mode": gs.COLOR_RGB
     }
 
     #
@@ -141,7 +140,6 @@ def main():
     ############################################################################
     if DO_GEOMETRIC_CALIBRATION:
         imgs = []
-        imgsR = []
         for x, y in \
             itertools.product(
                 np.linspace(GEOMETRIC_XMIN, GEOMETRIC_XMAX, GEOMETRIC_STEPS),
@@ -153,9 +151,6 @@ def main():
 
             img, _, _ = cam.capture(settings, frames_num=1)
             imgs.append(img)
-            red_img = raw2RGB(img)[0].astype(np.uint8)
-            red_img[red_img < CHESSBOARD_DETECTION_THRESHOLD] = 0
-            imgsR.append(red_img)
 
         #
         # Use the fisheye model
@@ -163,7 +158,7 @@ def main():
         fe = fisheye.FishEye(nx=NX, ny=NY, verbose=True)
 
         rms, K, D, rvecs, tvecs, mask = fe.calibrate(
-            imgs=imgsR,
+            imgs=imgs,
             show_imgs=True,
             return_mask=True
         )
@@ -171,11 +166,12 @@ def main():
         if SHOW_REPROJECTION:
             cv2.namedWindow("Reprojected img", cv2.WINDOW_AUTOSIZE)
             vec_cnt = 0
+            safe_mkdirs(os.path.join(results_path, 'reprojection'))
             for img_index, m in enumerate(mask):
                 if not m:
                     continue
                 rep_img = cv2.drawChessboardCorners(
-                    imgsR[img_index].copy(),
+                    imgs[img_index].copy(),
                     (NX, NY),
                     fe.projectPoints(
                         rvec=rvecs[vec_cnt],
@@ -185,12 +181,16 @@ def main():
                 )
                 cv2.imshow("Reprojected img", rep_img)
                 cv2.waitKey(500)
+                cv2.imwrite(
+                    os.path.join(results_path, 'reprojection', 'img_{}.jpg'.format(img_index)),
+                    rep_img
+                )
                 vec_cnt += 1
 
             cv2.destroyAllWindows()
 
         normalization = Normalization(1001, FisheyeProxy(fe))
-        img_normalized = normalization.normalize(imgsR[0])
+        img_normalized = normalization.normalize(imgs[0])
         plt.imshow(img_normalized, cmap='gray')
         plt.show()
 
@@ -202,6 +202,7 @@ def main():
     else:
         fe = fisheye.load_model(os.path.join(results_path, 'fisheye.pkl'))
 
+    settings["color_mode"] = gs.COLOR_RAW
     settings["exposure_us"] = VIGNETTING_EXPOSURE
 
     ############################################################################
@@ -321,7 +322,11 @@ def main():
     d = normalization.normalize(np.dstack(raw2RGB(vc.ratio)))
     plt.imshow(d)
     plt.show()
-
+    sio.savemat(
+        os.path.join(results_path, "vignetting_norm.mat"),
+        dict(img=d),
+        do_compression=True
+    )
     cv2.destroyAllWindows()
 
 
