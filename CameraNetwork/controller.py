@@ -187,13 +187,13 @@ class Controller(object):
                     shutil.copyfile(
                         os.path.join(base_path, 'vignetting.pkl'),
                         gs.VIGNETTING_PATH)
-                    shutil.copyfile(
-                        os.path.join(base_path, 'radiometric.pkl'),
-                        gs.RADIOMETRIC_PATH)
+                    #shutil.copyfile(
+                        #os.path.join(base_path, 'radiometric.pkl'),
+                        #gs.RADIOMETRIC_PATH)
                 except Exception as e:
-                    logging.error("Failed copying calibration data.".format(
+                    logging.error("Failed copying calibration data:\n{}".format(
                         traceback.format_exc()))
-                    os.remove(path)
+                    shutil.rmtree(base_path)
 
         #
         # Try to load calibration data.

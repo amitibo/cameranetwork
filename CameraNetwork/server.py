@@ -917,7 +917,7 @@ class Server(MDPWorker):
                 date=date.strftime("%Y_%m_%d"),
                 latitude=self.camera_settings[gs.CAMERA_LATITUDE],
                 longitude=self.camera_settings[gs.CAMERA_LONGITUDE],
-                altitude=self.camera_settings[gs.CAMERA_ALTITUDE],                
+                altitude=self.camera_settings[gs.CAMERA_ALTITUDE],
                 residual_threshold=residual_threshold,
                 save=save)
 

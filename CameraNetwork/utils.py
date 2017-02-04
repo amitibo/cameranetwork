@@ -500,7 +500,7 @@ def object_direction(
     celestial_class,
     date,
     latitude,
-    longitude,    
+    longitude,
     altitude,
     UTC_plus=0
     ):
