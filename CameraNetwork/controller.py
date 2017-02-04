@@ -798,7 +798,14 @@ class Controller(object):
 
     @cmd_callback
     @run_on_executor
-    def handle_extrinsic(self, date, residual_threshold, save):
+    def handle_extrinsic(
+        self,
+        date,
+        latitude,
+        longitude,
+        altitude,
+        residual_threshold,
+        save):
         """Handle extrinsic calibration"""
 
         #
@@ -842,7 +849,15 @@ class Controller(object):
         #
         calculated_directions = []
         for date in positions_df.index:
-            calculated_directions.append(object_direction(celestial_class=ephem.Sun, date=date))
+            calculated_directions.append(
+                object_direction(
+                    celestial_class=ephem.Sun,
+                    date=date,
+                    latitude=latitude,
+                    longitude=longitude,
+                    altitude=altitude
+                )
+            )
         calculated_directions = np.array(calculated_directions)
 
         #

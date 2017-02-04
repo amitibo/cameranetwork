@@ -915,6 +915,9 @@ class Server(MDPWorker):
             yield self.push_cmd(
                 gs.EXTRINSIC_CMD,
                 date=date.strftime("%Y_%m_%d"),
+                latitude=self.camera_settings[gs.CAMERA_LATITUDE],
+                longitude=self.camera_settings[gs.CAMERA_LONGITUDE],
+                altitude=self.camera_settings[gs.CAMERA_ALTITUDE],                
                 residual_threshold=residual_threshold,
                 save=save)
 

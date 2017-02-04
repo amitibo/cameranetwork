@@ -499,8 +499,9 @@ def sun_direction(
 def object_direction(
     celestial_class,
     date,
-    latitude='32.8167',
-    longitude='34.9833',
+    latitude,
+    longitude,    
+    altitude,
     UTC_plus=0
     ):
     """
@@ -512,8 +513,8 @@ def object_direction(
     delta_time = timedelta(seconds=3600*UTC_plus)
 
     observer = ephem.Observer()
-    observer.lat, observer.long, observer.date = \
-        str(latitude), str(longitude), date - delta_time
+    observer.lat, observer.long, observer.elevation, observer.date = \
+        str(latitude), str(longitude), altitude, date - delta_time
 
     cel_obj = celestial_class(observer)
 
