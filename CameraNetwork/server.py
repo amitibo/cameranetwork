@@ -31,6 +31,7 @@ import ImageDraw
 import json
 import logging
 import math
+import numpy as np
 import os
 import pandas as pd
 import pkg_resources
@@ -807,13 +808,7 @@ class Server(MDPWorker):
             img_datas.append(img_data)
 
         img_array = self._controller.preprocess_array(
-            img_arrays, img_datas, normalize, resolution)
-
-        if jpeg:
-            img = Image.fromarray(img_array)
-            f = StringIO.StringIO()
-            img.save(f, format="JPEG")
-            img_array = f.getvalue()
+            img_arrays, img_datas, normalize, resolution, jpeg)
 
         #
         # Send reply on next ioloop cycle.

@@ -43,6 +43,7 @@ import shutil
 from sklearn import linear_model
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import PolynomialFeatures
+import StringIO
 import subprocess
 import sys
 import time
@@ -981,7 +982,13 @@ class Controller(object):
 
         return img_array, img_data
 
-    def preprocess_array(self, img_arrays, img_datas, normalize, resolution):
+    def preprocess_array(
+            self,
+            img_arrays,
+            img_datas,
+            normalize,
+            resolution,
+            jpeg=False):
         """Apply preprocessing to the raw array:
         dark_image substraction, normalization, vignetting, HDR...
 
@@ -1012,17 +1019,29 @@ class Controller(object):
 
             img_arrays = tmp_arrays
 
-        if len(img_arrays) == 1:
-            img_array = \
-                img_arrays[0].astype(np.float) / (img_datas[0].exposure_us / 1000)
+        if jpeg:
+            #
+            # When sending jpeg, the image is not scaled by exposure.
+            #
+            img_array = img_arrays[0].astype(np.float)
         else:
-            img_exposures = [img_data.exposure_us / 1000 for img_data in img_datas]
-            img_array = calcHDR(img_arrays, img_exposures)
+            if len(img_arrays) == 1:
+                img_array = \
+                            img_arrays[0].astype(np.float) / (img_datas[0].exposure_us / 1000)
+            else:
+                img_exposures = [img_data.exposure_us / 1000 for img_data in img_datas]
+                img_array = calcHDR(img_arrays, img_exposures)
 
         #
         # Apply vignetting.
         #
         img_array = self._vignetting.applyVignetting(img_array)
+
+        #
+        # Scale to Watts.
+        #
+        if not jpeg:
+            img_array = self._radiometric.applyRadiometric(img_array)
 
         #
         # Check if there is a need to normalize
@@ -1036,10 +1055,20 @@ class Controller(object):
 
             img_array = self._normalization.normalize(img_array)
 
-        #
-        # Scale to Watts.
-        #
-        img_array = self._radiometric.applyRadiometric(img_array)
+        if jpeg:
+            #
+            # Apply JPEG compression.
+            # Note:
+            # The jpeg stream is converted back to numpy array
+            # to allow sending as matfile.
+            #
+            img_array = img_array.clip(0, 255)
+            img = Image.fromarray(img_array.astype(np.uint8))
+            f = StringIO.StringIO()
+            img.save(f, format="JPEG")
+            img_array = np.fromstring(f.getvalue(), dtype=np.uint8)
+        else:
+            img_array = img_array.astype(np.float32)
 
         return np.ascontiguousarray(img_array)
 
