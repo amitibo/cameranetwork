@@ -435,7 +435,7 @@ enamldef MyDockArea(DockArea):
                 vbox(
                     hbox(query_day, query_pb, spacer),
                     df,
-                    hbox(resolution_lbl, resolution_fld, HDR_cb, seek_pb, spacer),
+                    hbox(resolution_lbl, resolution_fld, HDR_cb, JPEG_cb, seek_pb, spacer),
                 ),
             ]
 
@@ -467,6 +467,11 @@ enamldef MyDockArea(DockArea):
                 checked = False
                 text = "HDR"
 
+            CheckBox: JPEG_cb:
+                tool_tip = "Use JPEG compression"
+                checked = False
+                text = "JPEG"
+
             PushButton: seek_pb:
                 text = 'Seek'
                 clicked ::
@@ -477,6 +482,7 @@ enamldef MyDockArea(DockArea):
                             seek_time=index[0],
                             hdr_index=-1 if HDR_cb.checked else index[1],
                             normalize=True,
+                            jpeg=JPEG_cb.checked,
                             resolution=resolution_fld.value
                         )
                     )

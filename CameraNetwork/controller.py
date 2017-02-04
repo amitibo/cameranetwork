@@ -540,7 +540,13 @@ class Controller(object):
                 }
             )
             val = img[img>128].sum() / img.size
-            print e, g, img.max(), img.min(), val
+
+            logging.debug(
+                "Exp.: {}, Gain: {}, image range: [{}, {}], Value: {}".format(
+                    e, g, img.min(), img.max(), val
+                )
+            )
+
             if np.isnan(val):
                 np.save('/home/odroid/nan_img.npy', img)
 
@@ -910,8 +916,6 @@ class Controller(object):
         #
         img_array, exposure_us, gain_db = self._camera.capture(settings)
         np.save('/home/odroid/tmp.npy', img_array)
-
-        print exposure_us, gain_db, [(img_array[..., i]==255).sum() for i in range(3)]
 
         #
         # Change camera back to large size.

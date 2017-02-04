@@ -734,6 +734,7 @@ class Server(MDPWorker):
             seek_time,
             hdr_index=0,
             normalize=False,
+            jpeg=False,
             resolution=gs.DEFAULT_NORMALIZATION_SIZE):
         """Seek for a previously captured (loop) array.
 
@@ -743,6 +744,7 @@ class Server(MDPWorker):
             hdr_index (int, optional): The hdr index of the frame. If hdr_index<0, all
                 images of the seek_time will be merged into an HDR image.
             normalize (bool, optional): Whether to normalize the frame. Default True.
+            jpeg (bool, optional): Whether to compress as jpeg stream. Default False.
             resolution (int, optional): The resolution of the normalized frame.
 
         Return:
@@ -807,12 +809,18 @@ class Server(MDPWorker):
         img_array = self._controller.preprocess_array(
             img_arrays, img_datas, normalize, resolution)
 
+        if jpeg:
+            img = Image.fromarray(img_array)
+            f = StringIO.StringIO()
+            img.save(f, format="JPEG")
+            img_array = f.getvalue()
+
         #
         # Send reply on next ioloop cycle.
         # The array is sent as mat file to save
         # band width
         #
-        matfile = dict2buff(dict(img_array=img_array))
+        matfile = dict2buff(dict(img_array=img_array, jpeg=jpeg))
 
         raise gen.Return(((), dict(matfile=matfile, img_data=img_datas[0])))
 

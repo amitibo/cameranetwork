@@ -943,7 +943,28 @@ class ServerModel(Atom):
 
     def reply_seek(self, matfile, img_data):
 
-        img_array = np.ascontiguousarray(buff2dict(matfile)['img_array'])
+        data = buff2dict(matfile)
+        img_array = data["img_array"]
+
+        if data["jpeg"]:
+            buff = StringIO.StringIO(img_array)
+            img = Image.open(buff)
+            width, height = img.size
+            array = np.array(img.getdata(), np.uint8)
+
+            #
+            # Handle gray scale image
+            #
+            if array.ndim == 1:
+                array.shape = (-1, 1)
+                array = np.hstack((array, array, array))
+
+            img_array = np.hstack(
+                (array[:, ::-1], np.ones((width*height, 1), dtype=np.uint8)*255)
+            )
+
+        else:
+            img_array = np.ascontiguousarray(img_array)
 
         #
         # Add new array.

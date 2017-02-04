@@ -268,7 +268,7 @@ enamldef SeekControlPage(Page):
                 vbox(
                     hbox(query_day, query_pb, spacer),
                     df,
-                    hbox(resolution_lbl, resolution_fld, HDR_cb, seek_pb, spacer),
+                    hbox(resolution_lbl, resolution_fld, HDR_cb, JPEG_cb, seek_pb, spacer),
                 ),
             ]
 
@@ -300,6 +300,11 @@ enamldef SeekControlPage(Page):
                 checked = False
                 text = "HDR"
 
+            CheckBox: JPEG_cb:
+                tool_tip = "Use JPEG compression"
+                checked = False
+                text = "JPEG"
+
             PushButton: seek_pb:
                 text = 'Seek'
                 clicked ::
@@ -311,6 +316,7 @@ enamldef SeekControlPage(Page):
                             seek_time=index[0],
                             hdr_index=-1 if HDR_cb.checked else index[1],
                             normalize=True,
+                            jpeg=JPEG_cb.checked,
                             resolution=resolution_fld.value
                         )
                     )
@@ -467,7 +473,7 @@ enamldef CalibrationControlPage(Page):
                 Label:
                     text = 'Residual Threshold:'
                 FloatField: residual_threshold:
-                    value = 5.
+                    value = 1.
 
                 PushButton: pb_extrinsic:
                     text = 'Extrinsic'
