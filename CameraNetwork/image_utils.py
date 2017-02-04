@@ -25,7 +25,7 @@ def calcHDR(img_arrays, img_exposures, low_limit=20, high_limit=230):
         exposure is used for the high RGB values, and the longest for the low
         values. The other values are averaged from all images. The HDR image
         returned is float in units of [RGB/ms]
-        
+
     """
 
     hdr_imgs = []

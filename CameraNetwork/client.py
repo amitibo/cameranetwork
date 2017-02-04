@@ -2,9 +2,11 @@ from __future__ import division
 from concurrent import futures
 import cPickle
 from functools import partial
+import Image
 import logging
 import numpy as np
 from random import randint
+import StringIO
 from threading import Thread
 import time
 import traceback
@@ -425,6 +427,7 @@ class CLIclient(object):
         server_id,
         seek_time,
         hdr_index,
+        jpeg,
         resolution
         ):
 
@@ -435,13 +438,33 @@ class CLIclient(object):
                 seek_time=seek_time,
                 hdr_index=hdr_index,
                 normalize=True,
+                jpeg=jpeg,
                 resolution=resolution
             )
         )
         if status == gs.MSG_STATUS_ERROR:
             raise Exception(args[0])
 
-        img_array = np.ascontiguousarray(buff2dict(kwds['matfile'])['img_array'])
+        data = buff2dict(kwds['matfile'])
+        img_array = data["img_array"]
+
+        if data["jpeg"]:
+            buff = StringIO.StringIO(img_array.tostring())
+            img = Image.open(buff)
+            width, height = img.size
+            array = np.array(img.getdata(), np.uint8)
+
+            #
+            # Handle gray scale image
+            #
+            if array.ndim == 1:
+                array.shape = (-1, 1)
+                array = np.hstack((array, array, array))
+
+            img_array = array.reshape(height, width, 3)
+        else:
+            img_array = np.ascontiguousarray(img_array)
+
         img_data = kwds['img_data']
 
         return img_array, img_data

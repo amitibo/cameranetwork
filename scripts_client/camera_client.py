@@ -947,7 +947,7 @@ class ServerModel(Atom):
         img_array = data["img_array"]
 
         if data["jpeg"]:
-            buff = StringIO.StringIO(img_array)
+            buff = StringIO.StringIO(img_array.tostring())
             img = Image.open(buff)
             width, height = img.size
             array = np.array(img.getdata(), np.uint8)
@@ -959,10 +959,7 @@ class ServerModel(Atom):
                 array.shape = (-1, 1)
                 array = np.hstack((array, array, array))
 
-            img_array = np.hstack(
-                (array[:, ::-1], np.ones((width*height, 1), dtype=np.uint8)*255)
-            )
-
+            img_array = array.reshape(height, width, 3)
         else:
             img_array = np.ascontiguousarray(img_array)
 
