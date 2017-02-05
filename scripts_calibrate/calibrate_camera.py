@@ -140,16 +140,26 @@ def main():
     ############################################################################
     if DO_GEOMETRIC_CALIBRATION:
         imgs = []
-        for x, y in \
-            itertools.product(
+        safe_mkdirs(os.path.join(results_path, 'geometric'))
+        for img_index, (x, y) in \
+            enumerate(itertools.product(
                 np.linspace(GEOMETRIC_XMIN, GEOMETRIC_XMAX, GEOMETRIC_STEPS),
-                np.linspace(GEOMETRIC_YMIN, GEOMETRIC_YMAX, GEOMETRIC_STEPS)):
+                np.linspace(GEOMETRIC_YMIN, GEOMETRIC_YMAX, GEOMETRIC_STEPS))):
 
             logging.debug("Moved gimbal to position: ({})".format((int(x), int(y))))
             p.move(int(x), int(y))
             time.sleep(GEOMETRIC_SLEEP_TIME)
 
             img, _, _ = cam.capture(settings, frames_num=1)
+
+            #
+            # Save image for debuging the calibration process.
+            #
+            cv2.imwrite(
+                os.path.join(results_path, 'geometric', 'img_{}.jpg'.format(img_index)),
+                img
+            )
+
             imgs.append(img)
 
         #
