@@ -288,6 +288,32 @@ def processExport(
     deferred_call(progress_callback, 0)
 
 
+def extractImgArray(matfile):
+    """Extract the image from matfile"""
+
+    data = buff2dict(matfile)
+    img_array = data["img_array"]
+
+    if data["jpeg"]:
+        buff = StringIO.StringIO(img_array.tostring())
+        img = Image.open(buff)
+        width, height = img.size
+        array = np.array(img.getdata(), np.uint8)
+
+        #
+        # Handle gray scale image
+        #
+        if array.ndim == 1:
+            array.shape = (-1, 1)
+            array = np.hstack((array, array, array))
+
+        img_array = array.reshape(height, width, 3)
+    else:
+        img_array = np.ascontiguousarray(img_array)
+
+    return img_array
+
+
 class ClientModel(Atom):
     """The data model of the client."""
 
@@ -690,8 +716,9 @@ class ClientModel(Atom):
         self.images_df = new_df
 
     def reply_broadcast_seek(self, server_id, matfile, img_data):
+        """Handle the broadcast reply of the seek command."""
 
-        img_array = np.ascontiguousarray(buff2dict(matfile)['img_array'])
+        img_array = extractImgArray(matfile)
 
         #
         # Add new array.
@@ -943,25 +970,7 @@ class ServerModel(Atom):
 
     def reply_seek(self, matfile, img_data):
 
-        data = buff2dict(matfile)
-        img_array = data["img_array"]
-
-        if data["jpeg"]:
-            buff = StringIO.StringIO(img_array.tostring())
-            img = Image.open(buff)
-            width, height = img.size
-            array = np.array(img.getdata(), np.uint8)
-
-            #
-            # Handle gray scale image
-            #
-            if array.ndim == 1:
-                array.shape = (-1, 1)
-                array = np.hstack((array, array, array))
-
-            img_array = array.reshape(height, width, 3)
-        else:
-            img_array = np.ascontiguousarray(img_array)
+        img_array = extractImgArray(matfile)
 
         #
         # Add new array.
