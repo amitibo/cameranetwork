@@ -154,7 +154,12 @@ class Controller(object):
         # Sky mask
         #
         if os.path.exists(gs.MASK_PATH):
-            self.sky_mask_base = sio.loadmat(gs.MASK_PATH)['mask_base']
+            try:
+                self.sky_mask_base = sio.loadmat(gs.MASK_PATH)['mask_base']
+            except Exception, e:
+                logging.error("Failed loading sky mask.")
+                logging.error("{}".format(traceback.print_exc()))
+                self.sky_mask_base = None
         else:
             self.sky_mask_base = None
 
