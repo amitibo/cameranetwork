@@ -38,13 +38,13 @@ import cPickle
 #
 # Geometric calibration
 #
-DO_GEOMETRIC_CALIBRATION = False
+DO_GEOMETRIC_CALIBRATION = True
 NX, NY = 8, 6
-GEOMETRIC_EXPOSURE = 180000
+GEOMETRIC_EXPOSURE = 360000
 GEOMETRIC_STEPS = 8
 GEOMETRIC_XMIN, GEOMETRIC_XMAX = 40, 165
 GEOMETRIC_YMIN, GEOMETRIC_YMAX = 0, 110
-GEOMETRIC_SLEEP_TIME = 2.5
+GEOMETRIC_SLEEP_TIME = 3.5
 CHESSBOARD_DETECTION_THRESHOLD = 20
 SHOW_REPROJECTION = True
 
@@ -170,6 +170,7 @@ def main():
         rms, K, D, rvecs, tvecs, mask = fe.calibrate(
             imgs=imgs,
             show_imgs=True,
+            calibration_flags=cv2.fisheye.CALIB_RECOMPUTE_EXTRINSIC+cv2.fisheye.CALIB_FIX_SKEW,
             return_mask=True
         )
 
