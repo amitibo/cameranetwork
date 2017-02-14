@@ -1040,13 +1040,9 @@ class Controller(object):
         #
         # Apply vignetting.
         #
+        logging.info('IMAGE SHAPE: {}'.format(img_array.shape))
         img_array = self._vignetting.applyVignetting(img_array)
-
-        #
-        # Scale to Watts.
-        #
-        if not jpeg:
-            img_array = self._radiometric.applyRadiometric(img_array)
+        logging.info('IMAGE SHAPE: {}'.format(img_array.shape))
 
         #
         # Check if there is a need to normalize
@@ -1060,7 +1056,13 @@ class Controller(object):
 
             img_array = self._normalization.normalize(img_array)
 
-        if jpeg:
+        if not jpeg:
+            #
+            # Scale to Watts.
+            #
+            img_array = \
+                self._radiometric.applyRadiometric(img_array).astype(np.float32)
+        else:
             #
             # Apply JPEG compression.
             # Note:
@@ -1072,8 +1074,6 @@ class Controller(object):
             f = StringIO.StringIO()
             img.save(f, format="JPEG")
             img_array = np.fromstring(f.getvalue(), dtype=np.uint8)
-        else:
-            img_array = img_array.astype(np.float32)
 
         return np.ascontiguousarray(img_array)
 
