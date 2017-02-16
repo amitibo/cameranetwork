@@ -38,7 +38,7 @@ import cPickle
 #
 # Geometric calibration
 #
-DO_GEOMETRIC_CALIBRATION = False
+DO_GEOMETRIC_CALIBRATION = True
 NX, NY = 9, 6
 GEOMETRIC_EXPOSURE = 300000
 GEOMETRIC_STEPS = 8
