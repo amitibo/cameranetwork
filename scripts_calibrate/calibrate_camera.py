@@ -51,7 +51,7 @@ SHOW_REPROJECTION = True
 #
 # Black image capture.
 #
-DO_BLACK_IMG = True
+DO_BLACK_IMG = False
 
 #
 # Vignetting calibration.
