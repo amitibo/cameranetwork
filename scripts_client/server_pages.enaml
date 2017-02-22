@@ -10,6 +10,7 @@ from enaml.stdlib.task_dialog import (TaskDialogBody, TaskDialogCommandArea,
     TaskDialogContentArea, TaskDialogInstructionArea, TaskDialogStyleSheet)
 from enaml.stdlib.message_box import (MessageBox, about, critical, information,
     question, warning)
+from traits_enaml.widgets.mayavi_canvas import MayaviCanvas
 
 import CameraNetwork.global_settings as gs
 from data_frame_table import DataFrameTable
@@ -488,7 +489,8 @@ enamldef CalibrationControlPage(Page):
                             )
                         )
 
-            MPLCanvas: canvas:
-                figure << server_model_.extrinsic_figure
+            MayaviCanvas: mcanvas:
+                scene << server_model_.extrinsic_scene
+                show_toolbar = False
 
 
