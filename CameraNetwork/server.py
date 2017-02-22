@@ -621,6 +621,7 @@ class Server(MDPWorker):
             color_mode=gs.COLOR_RAW,
             frames_num=1,
             normalize=True,
+            jpeg=False,
             resolution=gs.DEFAULT_NORMALIZATION_SIZE):
 
         """Capture a new array.
@@ -631,6 +632,7 @@ class Server(MDPWorker):
             gain_boost (bool, optional): Analog gain boost. Default False.
             color_mode (int, optional): Color mode of image. Default RAW.
             frames_num (int, optional): Number of frames to capture. Default 1.
+            jpeg (bool, optional): Whether to whether to compress as jpeg. Default False.
             normalize (bool, optional): Whether to normalize the image. Default True.
 
         Returns:
@@ -662,6 +664,7 @@ class Server(MDPWorker):
                     },
                 frames_num=frames_num,
                 normalize=normalize,
+                jpeg=jpeg,
                 resolution=resolution,
                 img_data=img_data
             )
@@ -671,7 +674,7 @@ class Server(MDPWorker):
         # The array is sent as mat file to save
         # band width
         #
-        matfile = dict2buff(dict(img_array=img_array))
+        matfile = dict2buff(dict(img_array=img_array, jpeg=jpeg))
 
         raise gen.Return(((), dict(matfile=matfile, img_data=img_data)))
 

@@ -941,8 +941,8 @@ class Controller(object):
 
     @cmd_callback
     @run_on_executor
-    def handle_array(self, capture_settings, frames_num, normalize, resolution,
-                     img_data):
+    def handle_array(self, capture_settings, frames_num, normalize, jpeg,
+                     resolution, img_data):
 
         #
         # Change camera to large size.
@@ -983,7 +983,7 @@ class Controller(object):
         # Preprocess the array before sending it.
         #
         img_array = self.preprocess_array(
-            [img_array], [img_data], normalize, resolution)
+            [img_array], [img_data], normalize, resolution, jpeg)
 
         return img_array, img_data
 
