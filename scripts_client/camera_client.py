@@ -957,7 +957,7 @@ class ServerModel(Atom):
 
     def reply_array(self, matfile, img_data):
 
-        img_array = np.ascontiguousarray(buff2dict(matfile)['img_array'])
+        img_array = extractImgArray(matfile)
 
         #
         # Add new array.

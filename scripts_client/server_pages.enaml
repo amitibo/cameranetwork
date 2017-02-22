@@ -217,6 +217,7 @@ enamldef ImageControlPage(Page):
                                 color_mode=cmode.items[cmode.index],
                                 gain_boost=ff_gain_boost.checked,
                                 normalize=ff_normalized_array.checked,
+                                jpeg=ff_JPEG.checked,
                                 resolution=ff_resolution.value
                             )
                         )
@@ -245,6 +246,10 @@ enamldef ImageControlPage(Page):
                             )
                         )
                 Form:
+                    Label:
+                        text = 'JPEG:'
+                    CheckBox: ff_JPEG:
+                        checked = True
                     Label:
                         text = 'Normalized:'
                     CheckBox: ff_normalized_array:
