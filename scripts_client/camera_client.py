@@ -21,8 +21,11 @@ from enaml.application import deferred_call, is_main_thread
 import json
 import logging
 import math
+from mayavi.tools.mlab_scene_model import MlabSceneModel
+from mayavi.tools.figure import clf
 import os
 import pymap3d
+import random
 import scipy.io as sio
 import StringIO
 import subprocess
@@ -801,7 +804,7 @@ class ServerModel(Atom):
     tunnel_port = Int()
     tunnel_ip = Str()
     sunshader_figure = Value()
-    extrinsic_figure = Value()
+    extrinsic_scene = Value()
     sunshader_required_angle = Int()
     camera_settings = Dict(default=gs.CAMERA_SETTINGS)
     capture_settings = Dict(default=gs.CAPTURE_SETTINGS)
@@ -824,13 +827,23 @@ class ServerModel(Atom):
 
         return figure
 
-    def _default_extrinsic_figure(self):
-        """Draw the default plot figure."""
+    def _default_extrinsic_scene(self):
+        """Draw the default extrinsic plot scene."""
 
-        figure = Figure(figsize=(2, 1))
-        ax = figure.add_subplot(111)
+        n_mer = random.randint(1, 20)
+        n_long = random.randint(1, 20)
 
-        return figure
+        phi = np.linspace(0, 2*np.pi, 2000)
+        x = np.cos(phi*n_mer) * (1 + 0.5*np.cos(n_long*phi))
+        y = np.sin(phi*n_mer) * (1 + 0.5*np.cos(n_long*phi))
+        z = 0.5*np.sin(n_long*phi)
+        s = np.sin(phi*n_mer)
+
+        scene = MlabSceneModel()
+        clf()
+        scene.mlab.plot3d(x, y, z, s)
+
+        return scene
 
     def _default_images_df(self):
         """Initialize an empty data frame."""
@@ -940,19 +953,18 @@ class ServerModel(Atom):
 
     def reply_extrinsic(self, rotated_directions, calculated_directions, R):
 
-        fig = plt.figure()
-        ax = fig.add_subplot(111, projection='3d')
-
-        ax.scatter(
+        scene = MlabSceneModel()
+        clf()
+        scene.mlab.points3d(
             rotated_directions[:, 0], rotated_directions[:, 1], rotated_directions[:, 2],
-            c='r', marker='o')
-        ax.scatter(
+            color=(1, 0, 0), mode='sphere', scale_mode='scalar', scale_factor=0.02
+        )
+        scene.mlab.points3d(
             calculated_directions[:, 0], calculated_directions[:, 1], calculated_directions[:, 2],
-            c='b', marker='^')
+            color=(0, 0, 1), mode='sphere', scale_mode='scalar', scale_factor=0.02
+        )
 
-        #plt.ion()
-
-        self.extrinsic_figure = fig
+        self.extrinsic_scene = scene
 
     def reply_array(self, matfile, img_data):
 
