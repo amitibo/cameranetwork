@@ -469,7 +469,7 @@ enamldef MyDockArea(DockArea):
 
             CheckBox: JPEG_cb:
                 tool_tip = "Use JPEG compression"
-                checked = False
+                checked = True
                 text = "JPEG"
 
             PushButton: seek_pb:

@@ -491,6 +491,6 @@ enamldef CalibrationControlPage(Page):
 
             MayaviCanvas: mcanvas:
                 scene << server_model_.extrinsic_scene
-                show_toolbar = False
+                show_toolbar = True
 
 

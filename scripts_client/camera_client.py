@@ -804,7 +804,7 @@ class ServerModel(Atom):
     tunnel_port = Int()
     tunnel_ip = Str()
     sunshader_figure = Value()
-    extrinsic_scene = Value()
+    extrinsic_scene = Typed(MlabSceneModel)
     sunshader_required_angle = Int()
     camera_settings = Dict(default=gs.CAMERA_SETTINGS)
     capture_settings = Dict(default=gs.CAPTURE_SETTINGS)
@@ -830,19 +830,7 @@ class ServerModel(Atom):
     def _default_extrinsic_scene(self):
         """Draw the default extrinsic plot scene."""
 
-        n_mer = random.randint(1, 20)
-        n_long = random.randint(1, 20)
-
-        phi = np.linspace(0, 2*np.pi, 2000)
-        x = np.cos(phi*n_mer) * (1 + 0.5*np.cos(n_long*phi))
-        y = np.sin(phi*n_mer) * (1 + 0.5*np.cos(n_long*phi))
-        z = 0.5*np.sin(n_long*phi)
-        s = np.sin(phi*n_mer)
-
         scene = MlabSceneModel()
-        clf()
-        scene.mlab.plot3d(x, y, z, s)
-
         return scene
 
     def _default_images_df(self):
@@ -952,19 +940,20 @@ class ServerModel(Atom):
         self.sunshader_required_angle = int(required_angle)
 
     def reply_extrinsic(self, rotated_directions, calculated_directions, R):
+        """Update the extrinsic calibration view."""
 
-        scene = MlabSceneModel()
-        clf()
-        scene.mlab.points3d(
+        scene = self.extrinsic_scene.mayavi_scene
+        clf(figure=scene)
+        self.extrinsic_scene.mlab.points3d(
             rotated_directions[:, 0], rotated_directions[:, 1], rotated_directions[:, 2],
-            color=(1, 0, 0), mode='sphere', scale_mode='scalar', scale_factor=0.02
+            color=(1, 0, 0), mode='sphere', scale_mode='scalar', scale_factor=0.02,
+            figure=scene
         )
-        scene.mlab.points3d(
+        self.extrinsic_scene.mlab.points3d(
             calculated_directions[:, 0], calculated_directions[:, 1], calculated_directions[:, 2],
-            color=(0, 0, 1), mode='sphere', scale_mode='scalar', scale_factor=0.02
+            color=(0, 0, 1), mode='sphere', scale_mode='scalar', scale_factor=0.02,
+            figure=scene
         )
-
-        self.extrinsic_scene = scene
 
     def reply_array(self, matfile, img_data):
 
