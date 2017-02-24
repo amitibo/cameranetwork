@@ -1,3 +1,4 @@
+from docks import ArraysItem, LoggerItem, TimesItem
 
 from enaml.layout.api import *
 from enaml.core.api import Include, Conditional, Looper
@@ -282,120 +283,9 @@ enamldef ServerItem(DockItem):
                 text << server_model.reply
 
 
-enamldef ArraysItem(DockItem):
-
-    alias arrays_area
-    alias array_views
-
-    Container:
-        constraints = [
-            vbox(
-                hbox(
-                    exposure_lbl,
-                    exposure_fld,
-                    gain_cb,
-                    JPEG_cb,
-                    resolution_lbl,
-                    resolution_fld,
-                    get_pb,
-                    clear_pb,
-                    spacer,
-                ),
-                arrays,
-                hbox(
-                    intensity_lbl,
-                    intensity_slider,
-                    intensity_txt,
-                    gamma_cb,
-                    spacer,
-                    load_pb,
-                    save_pb
-                )
-            ),
-        ]
-
-        Label: exposure_lbl:
-            text = 'Exp[us]:'
-        IntField: exposure_fld:
-            minimum = 0
-            value = 500
-
-        CheckBox: gain_cb:
-            text = 'Gain Boost:'
-
-        CheckBox: JPEG_cb:
-            tool_tip = "Use JPEG compression"
-            checked = True
-            text = "JPEG"
-
-        Label: resolution_lbl:
-            text = 'Resolution:'
-        IntField: resolution_fld:
-            minimum = 201
-            value = 301
-
-        PushButton: get_pb:
-            text = 'Get'
-            clicked ::
-                root_object().client_model.broadcast_message(
-                    gs.MSG_TYPE_ARRAY,
-                    kwds=dict(
-                        exposure_us=exposure_fld.value,
-                        gain_db=0,
-                        frames_num=1,
-                        color_mode=gs.COLOR_RAW,
-                        gain_boost=gain_cb.checked,
-                        normalize=True,
-                        jpeg=JPEG_cb.checked,
-                        resolution=resolution_fld.value
-                    )
-                )
-
-        PushButton: clear_pb:
-            text = 'Clear'
-            clicked ::
-                root_object().client_model.clear_arrays()
-
-        Label: intensity_lbl:
-            text = 'Intensity Level'
-
-        Slider: intensity_slider:
-            tracking = False
-            tick_interval = 50
-            maximum = 1000
-            minimum = 1
-            value := root_object().client_model.intensity_value
-
-        Field: intensity_txt:
-            text << u'{}'.format(intensity_slider.value)
-            read_only = True
-
-        CheckBox: gamma_cb:
-            text = 'Gamma'
-            toggled ::
-                for array_view in array_views.objects:
-                    array_view.image_widget.applyGamma(checked)
-
-        Container: arrays:
-            FlowArea: arrays_area:
-                 Include: array_views:
-                     pass
-
-        PushButton: load_pb:
-            text = 'Load ROI'
-
-            clicked ::
-                path = FileDialogEx.get_open_file_name()
-                if path:
-                    root_object().client_model.load_rois(path)
-
-        PushButton: save_pb:
-            text = 'Save ROI'
-
-            clicked ::
-                root_object().client_model.save_rois()
-
-
+################################################################################
+# The main dockarea.
+################################################################################
 enamldef MyDockArea(DockArea):
     alias array_views: arrays_dockitem.array_views
 
@@ -412,87 +302,15 @@ enamldef MyDockArea(DockArea):
         title = 'Arrays'
         closable = False
 
-    DockItem:
+    LoggerItem: logger_dockitem:
         name = 'logger'
         title = 'Logger'
         closable = False
 
-        Container:
-            constraints = [
-                hbox(logger, clear)
-            ]
-            MultilineField: logger:
-                name = 'line-collector'
-                text << root_object().client_model.logger_text
-                font = '9pt Courier'
-                read_only = True
-
-            PushButton: clear:
-                text = 'Clear'
-                clicked ::
-                    root_object().client_model.logger_text = ''
-
-    DockItem:
+    TimesItem: times_dockitem:
         name = 'times'
         title = 'Times'
         closable = False
-
-        Container:
-            constraints = [
-                vbox(
-                    hbox(query_day, query_pb, spacer),
-                    df,
-                    hbox(resolution_lbl, resolution_fld, HDR_cb, JPEG_cb, seek_pb, spacer),
-                ),
-            ]
-
-            DateSelector: query_day:
-                pass
-
-            PushButton: query_pb:
-                text = 'Query'
-                clicked ::
-                    root_object().client_model.clear_image_df()
-                    root_object().client_model.broadcast_message(
-                        gs.MSG_TYPE_QUERY,
-                        kwds=dict(query_date=query_day.date)
-                    )
-
-            DataFrameTable: df:
-                data_frame << root_object().client_model.images_df
-                selected_index >> root_object().client_model.img_index
-
-            Label: resolution_lbl:
-                text = 'Resolution:'
-            IntField: resolution_fld:
-                minimum = 64
-                maximum = 1001
-                value = 301
-
-            CheckBox: HDR_cb:
-                tool_tip = "Return HDR image"
-                checked = False
-                text = "HDR"
-
-            CheckBox: JPEG_cb:
-                tool_tip = "Use JPEG compression"
-                checked = True
-                text = "JPEG"
-
-            PushButton: seek_pb:
-                text = 'Seek'
-                clicked ::
-                    index = root_object().client_model.img_index
-                    root_object().client_model.broadcast_message(
-                        gs.MSG_TYPE_SEEK,
-                        kwds=dict(
-                            seek_time=index[0],
-                            hdr_index=-1 if HDR_cb.checked else index[1],
-                            normalize=True,
-                            jpeg=JPEG_cb.checked,
-                            resolution=resolution_fld.value
-                        )
-                    )
 
 
 ################################################################################

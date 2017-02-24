@@ -23,18 +23,18 @@ def convert(lat, lon, hgt, lat0=32.775776, lon0=35.024963, alt0=229):
     n, e, d = pymap3d.geodetic2ned(
         lat, lon, hgt,
         lat0=lat0, lon0=lon0, h0=alt0)
-    
+
     x, y, z = e, n, -d
-    
+
     xi = np.linspace(-10000, 10000, 100)
     yi = np.linspace(-10000, 10000, 100)
     X, Y = np.meshgrid(xi, yi)
-    
+
     Z = ml.griddata(y.flatten(), x.flatten(), z.flatten(), yi, xi, interp='linear')
-    
+
     return X, Y, Z
-    
-    
+
+
 def viz_elev(X, Y, Z):
     mlab.surf(Y, X, Z)
 
@@ -47,7 +47,7 @@ def quiver(datas, length = 6000, skip=5):
         (0, 4, 3),
         (0, 3, 1),
     ]
-    
+
     for cam_id, data in datas.items():
         x0, y0, z0, phi, psi = \
             [data[i] for i in ('x', 'y', 'z', 'bounding_phi', 'bounding_psi')]
@@ -65,18 +65,18 @@ def quiver(datas, length = 6000, skip=5):
             opacity=0.2
         )
         mlab.text3d(x0, y0, z0, cam_id, color=(0, 0, 0), scale=100.)
-    
+
 
 if __name__ == '__main__':
     lat, lon, hgt = loadData()
     X, Y, Z = convert(lat, lon, hgt)
     mlab.figure()
     viz_elev(X, Y, Z)
-    
+
     with open(os.path.join(BASE_PATH, 'Datas.pkl'), 'rb') as f:
-        datas = cPickle.load(f)   
-    
+        datas = cPickle.load(f)
+
     quiver(datas)
 
-    
+
     mlab.show()
