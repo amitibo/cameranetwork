@@ -21,8 +21,11 @@ from enaml.application import deferred_call, is_main_thread
 import json
 import logging
 import math
+from mayavi.tools.mlab_scene_model import MlabSceneModel
+from mayavi.tools.figure import clf
 import os
 import pymap3d
+import random
 import scipy.io as sio
 import StringIO
 import subprocess
@@ -801,7 +804,7 @@ class ServerModel(Atom):
     tunnel_port = Int()
     tunnel_ip = Str()
     sunshader_figure = Value()
-    extrinsic_figure = Value()
+    extrinsic_scene = Typed(MlabSceneModel)
     sunshader_required_angle = Int()
     camera_settings = Dict(default=gs.CAMERA_SETTINGS)
     capture_settings = Dict(default=gs.CAPTURE_SETTINGS)
@@ -824,13 +827,11 @@ class ServerModel(Atom):
 
         return figure
 
-    def _default_extrinsic_figure(self):
-        """Draw the default plot figure."""
+    def _default_extrinsic_scene(self):
+        """Draw the default extrinsic plot scene."""
 
-        figure = Figure(figsize=(2, 1))
-        ax = figure.add_subplot(111)
-
-        return figure
+        scene = MlabSceneModel()
+        return scene
 
     def _default_images_df(self):
         """Initialize an empty data frame."""
@@ -939,24 +940,24 @@ class ServerModel(Atom):
         self.sunshader_required_angle = int(required_angle)
 
     def reply_extrinsic(self, rotated_directions, calculated_directions, R):
+        """Update the extrinsic calibration view."""
 
-        fig = plt.figure()
-        ax = fig.add_subplot(111, projection='3d')
-
-        ax.scatter(
+        scene = self.extrinsic_scene.mayavi_scene
+        clf(figure=scene)
+        self.extrinsic_scene.mlab.points3d(
             rotated_directions[:, 0], rotated_directions[:, 1], rotated_directions[:, 2],
-            c='r', marker='o')
-        ax.scatter(
+            color=(1, 0, 0), mode='sphere', scale_mode='scalar', scale_factor=0.02,
+            figure=scene
+        )
+        self.extrinsic_scene.mlab.points3d(
             calculated_directions[:, 0], calculated_directions[:, 1], calculated_directions[:, 2],
-            c='b', marker='^')
-
-        #plt.ion()
-
-        self.extrinsic_figure = fig
+            color=(0, 0, 1), mode='sphere', scale_mode='scalar', scale_factor=0.02,
+            figure=scene
+        )
 
     def reply_array(self, matfile, img_data):
 
-        img_array = np.ascontiguousarray(buff2dict(matfile)['img_array'])
+        img_array = extractImgArray(matfile)
 
         #
         # Add new array.

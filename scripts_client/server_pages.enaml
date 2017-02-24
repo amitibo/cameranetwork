@@ -10,6 +10,7 @@ from enaml.stdlib.task_dialog import (TaskDialogBody, TaskDialogCommandArea,
     TaskDialogContentArea, TaskDialogInstructionArea, TaskDialogStyleSheet)
 from enaml.stdlib.message_box import (MessageBox, about, critical, information,
     question, warning)
+from traits_enaml.widgets.mayavi_canvas import MayaviCanvas
 
 import CameraNetwork.global_settings as gs
 from data_frame_table import DataFrameTable
@@ -216,6 +217,7 @@ enamldef ImageControlPage(Page):
                                 color_mode=cmode.items[cmode.index],
                                 gain_boost=ff_gain_boost.checked,
                                 normalize=ff_normalized_array.checked,
+                                jpeg=ff_JPEG.checked,
                                 resolution=ff_resolution.value
                             )
                         )
@@ -244,6 +246,10 @@ enamldef ImageControlPage(Page):
                             )
                         )
                 Form:
+                    Label:
+                        text = 'JPEG:'
+                    CheckBox: ff_JPEG:
+                        checked = True
                     Label:
                         text = 'Normalized:'
                     CheckBox: ff_normalized_array:
@@ -488,7 +494,8 @@ enamldef CalibrationControlPage(Page):
                             )
                         )
 
-            MPLCanvas: canvas:
-                figure << server_model_.extrinsic_figure
+            MayaviCanvas: mcanvas:
+                scene << server_model_.extrinsic_scene
+                show_toolbar = True
 
 

@@ -163,10 +163,10 @@ CAPTURE_SETTINGS = {
     START_LOOP: True,
     DAY_PERIOD_START: 9,
     DAY_PERIOD_END: 19,
-    UPLOAD_JPG_FILE: True,
+    UPLOAD_JPG_FILE: False,
     UPLOAD_MAT_FILE: False,
     DAY_SETTINGS: {
-        LOOP_DELAY: 60,
+        LOOP_DELAY: 300,
         IMAGE_EXPOSURE: 50,
         IMAGE_GAIN: 0,
         GAIN_BOOST: False,

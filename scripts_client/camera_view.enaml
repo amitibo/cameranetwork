@@ -294,6 +294,7 @@ enamldef ArraysItem(DockItem):
                     exposure_lbl,
                     exposure_fld,
                     gain_cb,
+                    JPEG_cb,
                     resolution_lbl,
                     resolution_fld,
                     get_pb,
@@ -322,6 +323,11 @@ enamldef ArraysItem(DockItem):
         CheckBox: gain_cb:
             text = 'Gain Boost:'
 
+        CheckBox: JPEG_cb:
+            tool_tip = "Use JPEG compression"
+            checked = True
+            text = "JPEG"
+
         Label: resolution_lbl:
             text = 'Resolution:'
         IntField: resolution_fld:
@@ -340,6 +346,7 @@ enamldef ArraysItem(DockItem):
                         color_mode=gs.COLOR_RAW,
                         gain_boost=gain_cb.checked,
                         normalize=True,
+                        jpeg=JPEG_cb.checked,
                         resolution=resolution_fld.value
                     )
                 )
@@ -469,7 +476,7 @@ enamldef MyDockArea(DockArea):
 
             CheckBox: JPEG_cb:
                 tool_tip = "Use JPEG compression"
-                checked = False
+                checked = True
                 text = "JPEG"
 
             PushButton: seek_pb:

@@ -102,6 +102,5 @@ class ArduinoAPI(object):
         self.board.digital[self.sprinkler_pin].write(1 if state else 0)
 
 
-
 if __name__ == '__main__':
     main()
