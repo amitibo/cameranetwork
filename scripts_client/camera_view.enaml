@@ -312,6 +312,11 @@ enamldef MyDockArea(DockArea):
         title = 'Times'
         closable = False
 
+    MapperItem: mapper_dockitem:
+        name = 'map'
+        title = 'Map'
+        closable = False
+
 
 ################################################################################
 # The Main View

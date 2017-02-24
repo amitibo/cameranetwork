@@ -21,6 +21,7 @@ from enaml.application import deferred_call, is_main_thread
 import json
 import logging
 import math
+import matplotlib.mlab as ml
 from mayavi.tools.mlab_scene_model import MlabSceneModel
 from mayavi.tools.figure import clf
 import os
@@ -317,6 +318,38 @@ def extractImgArray(matfile):
     return img_array
 
 
+def loadMapData():
+    """Load height data for map visualization."""
+
+    path1 = r"..\data\reconstructions\N32E034.hgt"
+    path2 = r"..\data\reconstructions\N32E035.hgt"
+    with open(path1) as hgt_data:
+        hgt1 = np.fromfile(hgt_data, np.dtype('>i2')).reshape((1201, 1201))[:1200, :1200]
+    with open(path2) as hgt_data:
+        hgt2 = np.fromfile(hgt_data, np.dtype('>i2')).reshape((1201, 1201))[:1200, :1200]
+    hgt = np.hstack((hgt1, hgt2)).astype(np.float32)
+    lon, lat = np.meshgrid(np.linspace(34, 36, 2400, endpoint=False), np.linspace(32, 33, 1200, endpoint=False)[::-1])
+    return lat[100:400, 1100:1400], lon[100:400, 1100:1400], hgt[100:400, 1100:1400]
+
+
+def convertMapData(lat, lon, hgt, lat0=32.775776, lon0=35.024963, alt0=229):
+    """Convert lat/lon/height data to grid data."""
+
+    n, e, d = pymap3d.geodetic2ned(
+        lat, lon, hgt,
+        lat0=lat0, lon0=lon0, h0=alt0)
+
+    x, y, z = e, n, -d
+
+    xi = np.linspace(-10000, 10000, 100)
+    yi = np.linspace(-10000, 10000, 100)
+    X, Y = np.meshgrid(xi, yi)
+
+    Z = ml.griddata(y.flatten(), x.flatten(), z.flatten(), yi, xi, interp='linear')
+
+    return X, Y, Z
+
+
 class ClientModel(Atom):
     """The data model of the client."""
 
@@ -335,6 +368,10 @@ class ClientModel(Atom):
 
     images_df = Typed(pd.DataFrame)
     img_index = Tuple()
+
+    map_scene = Typed(MlabSceneModel)
+
+    sunshader_required_angle = Int()
 
     #
     # Reconstruction parameters
@@ -381,6 +418,20 @@ class ClientModel(Atom):
 
         df = pd.DataFrame(columns=('Time', 'hdr')).set_index(['Time', 'hdr'])
         return df
+
+    def _default_map_scene(self):
+        """Draw the default map scene."""
+
+        scene = MlabSceneModel()
+
+        lat, lon, hgt = loadMapData()
+        X, Y, Z = convertMapData(lat, lon, hgt)
+
+        mayavi_scene = scene.mayavi_scene
+        clf(figure=mayavi_scene)
+        scene.mlab.surf(Y, X, Z, figure=mayavi_scene)
+
+        return scene
 
     def start_camera_thread(self, local_mode):
         """Start a camera client on a separate thread."""

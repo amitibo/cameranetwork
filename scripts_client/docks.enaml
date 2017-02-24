@@ -6,6 +6,7 @@ from enaml.stdlib.dialog_buttons import DialogButtonBox, DialogButton
 
 from CameraNetwork import global_settings as gs
 from data_frame_table import DataFrameTable
+from traits_enaml.widgets.mayavi_canvas import MayaviCanvas
 
 
 ################################################################################
@@ -146,6 +147,22 @@ enamldef LoggerItem(DockItem):
             text = 'Clear'
             clicked ::
                 root_object().client_model.logger_text = ''
+
+
+################################################################################
+# Mapper
+# Shows a map of haifa with visualization of the cameras.
+#
+enamldef MapperItem(DockItem):
+
+    Container:
+        constraints = [
+            mcanvas
+        ]
+
+        MayaviCanvas: mcanvas:
+            scene << root_object().client_model.map_scene
+            show_toolbar = True
 
 
 ################################################################################
