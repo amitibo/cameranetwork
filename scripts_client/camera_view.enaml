@@ -1,4 +1,4 @@
-from docks import ArraysItem, LoggerItem, TimesItem
+from docks import ArraysItem, LoggerItem, MapperItem, TimesItem
 
 from enaml.layout.api import *
 from enaml.core.api import Include, Conditional, Looper
@@ -293,7 +293,7 @@ enamldef MyDockArea(DockArea):
         VSplitLayout(
             'arrays',
             'times',
-            'logger'
+            TabLayout('logger', 'map')
         ),
     )
 

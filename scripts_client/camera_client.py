@@ -369,6 +369,7 @@ class ClientModel(Atom):
     images_df = Typed(pd.DataFrame)
     img_index = Tuple()
 
+    map_coords = Tuple()
     map_scene = Typed(MlabSceneModel)
 
     sunshader_required_angle = Int()
@@ -422,16 +423,48 @@ class ClientModel(Atom):
     def _default_map_scene(self):
         """Draw the default map scene."""
 
-        scene = MlabSceneModel()
-
+        #
+        # Load the map data.
+        #
         lat, lon, hgt = loadMapData()
-        X, Y, Z = convertMapData(lat, lon, hgt)
+        self.map_coords = convertMapData(
+            lat,
+            lon,
+            hgt,
+            lat0=self.latitude,
+            lon0=self.longitude,
+            alt0=self.altitude,
+        )
 
-        mayavi_scene = scene.mayavi_scene
-        clf(figure=mayavi_scene)
-        scene.mlab.surf(Y, X, Z, figure=mayavi_scene)
-
+        #
+        # Create the mayavi scene.
+        #
+        scene = MlabSceneModel()
         return scene
+
+    def draw_camera(self, server_id, img_data):
+        """Draw a camera on the map."""
+
+        n, e, d = pymap3d.geodetic2ned(
+            img_data.latitude, img_data.longitude, img_data.altitude,
+            lat0=self.latitude, lon0=self.longitude, h0=self.altitude)
+
+        x, y, z = e, n, -d
+        self.map_scene.mlab.points3d(
+            [x], [y], [z],
+            color=(1, 0, 0), mode='sphere', scale_mode='scalar', scale_factor=500,
+            figure=self.map_scene.mayavi_scene
+        )
+        self.map_scene.mlab.text3d(x, y, z+50, server_id, color=(0, 0, 0), scale=500.)
+
+
+    def draw_map(self):
+        """Clear the map view and draw elevation map."""
+
+        mayavi_scene = self.map_scene.mayavi_scene
+        clf(figure=mayavi_scene)
+        X, Y, Z = self.map_coords
+        self.map_scene.mlab.surf(Y, X, Z, figure=mayavi_scene)
 
     def start_camera_thread(self, local_mode):
         """Start a camera client on a separate thread."""
@@ -773,6 +806,11 @@ class ClientModel(Atom):
         """Handle the broadcast reply of the seek command."""
 
         img_array = extractImgArray(matfile)
+
+        #
+        # Draw the camera on the map.
+        #
+        self.draw_camera(server_id, img_data)
 
         #
         # Add new array.

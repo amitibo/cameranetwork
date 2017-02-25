@@ -68,6 +68,7 @@ enamldef ArraysItem(DockItem):
         PushButton: get_pb:
             text = 'Get'
             clicked ::
+                root_object().client_model.draw_map()
                 root_object().client_model.broadcast_message(
                     gs.MSG_TYPE_ARRAY,
                     kwds=dict(
@@ -157,7 +158,7 @@ enamldef MapperItem(DockItem):
 
     Container:
         constraints = [
-            mcanvas
+            vbox(mcanvas)
         ]
 
         MayaviCanvas: mcanvas:
@@ -216,6 +217,7 @@ enamldef TimesItem(DockItem):
         PushButton: seek_pb:
             text = 'Seek'
             clicked ::
+                root_object().client_model.draw_map()
                 index = root_object().client_model.img_index
                 root_object().client_model.broadcast_message(
                     gs.MSG_TYPE_SEEK,
