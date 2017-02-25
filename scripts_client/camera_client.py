@@ -1049,6 +1049,11 @@ class ServerModel(Atom):
         img_array = extractImgArray(matfile)
 
         #
+        # Draw the camera on the map.
+        #
+        self.client_model.draw_camera(self.server_id, img_data)
+
+        #
         # Add new array.
         #
         self.client_model.new_array_signal.emit(self.server_id, img_array, img_data)

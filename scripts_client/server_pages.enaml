@@ -207,6 +207,7 @@ enamldef ImageControlPage(Page):
                 PushButton: pb_array:
                     text = 'Get Array'
                     clicked ::
+                        root_object().client_model.draw_map()
                         root_object().client_model.send_message(
                             server_model_,
                             gs.MSG_TYPE_ARRAY,
