@@ -291,8 +291,7 @@ enamldef MyDockArea(DockArea):
 
     layout = HSplitLayout(
         VSplitLayout(
-            'arrays',
-            'times',
+            TabLayout('arrays', 'times'),
             TabLayout('logger', 'map')
         ),
     )
