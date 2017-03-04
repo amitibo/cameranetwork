@@ -4,9 +4,12 @@ tolerance = 0.5;
 
 //
 // Servo definition.
+// note:
+// servo_air_space is used to give the servo space for cooling.
 //
+servo_air_space = 2;
 servo_length = 41.8 + 2*tolerance;
-servo_width = 20.2 + tolerance;
+servo_width = 20.2 + tolerance + servo_air_space;
 servo_half_height = 30.5 + tolerance;
 servo_height = 42.9 + tolerance;
 
@@ -29,7 +32,7 @@ body_width = 39;
 //
 // Hole spaces.
 //
-screw_width = 6.5;
+screw_width = 6.5 + 2*tolerance;
 screw_height = 3;
 accuracy = 100;
 
@@ -84,46 +87,60 @@ module spaces(){
      };
 };
 
+module servo(){
+     difference(){
+          //
+          // Body.
+          //
+          union(){
+               //
+               // Back of servo
+               //
+               cube([body_length, body_width, wall_thick]);
 
-difference(){
-     //
-     // Body.
-     //
-     union(){
-          //
-          // Back of servo
-          //
-          cube([body_length, body_width, wall_thick]);
+               //
+               // Top of servo
+               //
+               cube([body_length, wall_thick, wall_thick+servo_height]);
+
+               //
+               // Rain cover
+               //
+               translate([0, 0, wall_thick+servo_height])
+                    cube([body_length, wall_thick+2*cover_height, cover_height]);
+
+               //
+               // Two supports
+               //
+               translate([body_length-extra, 0, 0])
+                    cube([extra, wall_thick+servo_width, wall_thick+servo_half_height]);
+               translate([0, 0, wall_thick+servo_half_height-extra_h])
+                    cube([extra, wall_thick+servo_width, extra_h]);
+          };
 
           //
-          // Top of servo
+          // holes.
           //
-          cube([body_length, wall_thick, wall_thick+servo_height]);
+          translate([body_length/2, wall_thick+servo_width/2, 0])
+               holes();
 
           //
-          // Rain cover
+          // Space.
           //
-          translate([0, 0, wall_thick+servo_height])
-               cube([body_length, wall_thick+cover_height, cover_height]);
-
-          //
-          // Two supports
-          //
-          translate([body_length-extra, 0, 0])
-               cube([extra, wall_thick+servo_width, wall_thick+servo_half_height]);
-          translate([0, 0, wall_thick+servo_half_height-extra_h])
-               cube([extra, wall_thick+servo_width, extra_h]);
+          translate([0, wall_thick+servo_width/2, wall_thick+servo_half_height-space_dist1])
+               spaces();
      };
-
-     //
-     // holes.
-     //
-     translate([body_length/2, wall_thick+servo_width/2, 0])
-          holes();
-
-     //
-     // Space.
-     //
-     translate([0, wall_thick+servo_width/2, wall_thick+servo_half_height-space_dist1])
-          spaces();
 };
+
+
+rotate([90, 0, 0]) {
+     servo();
+     translate([0, 0, 55])
+          servo();
+     translate([75, 0, 0]){
+          servo();
+          translate([0, 0, 55])
+               servo();
+     }
+}
+
