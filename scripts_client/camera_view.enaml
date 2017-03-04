@@ -348,7 +348,7 @@ enamldef Main(MainWindow): main:
                     iterable << sorted(client_model.tunnels_dict.items())
                     Action:
                         text = "Camera {}, port {}".format(loop_item[0], loop_item[1]['tunnel_port'])
-                        triggered :: client_model.open_tunnel(loop_item[1])
+                        triggered :: client_model.open_tunnel(loop_item[0], loop_item[1])
 
             Action:
                 text = "Loop\tCtrl+L"

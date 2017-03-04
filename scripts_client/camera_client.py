@@ -171,6 +171,11 @@ def processExport(
 
         #
         # Extract the image values at the ROI
+        # Note about directions:
+        # The directions in the Qt view are as follows:
+        # x axis (horizontal) goes from South (left) to North (right)
+        # y axis (vertical) goes from west (down) to east (up).
+        # this makes it a NE axis system
         #
         img_array = array_view.img_array
         Rs[server_id] = array_view.image_widget.getArrayRegion(img_array[..., 0])
@@ -541,7 +546,7 @@ class ClientModel(Atom):
     ############################################################################
     # GUI Actions.
     ############################################################################
-    def open_tunnel(self, tunnel_details):
+    def open_tunnel(self, server_id, tunnel_details):
         """Open the putty client"""
 
         tunnel_user = tunnel_details['password']
@@ -549,11 +554,12 @@ class ClientModel(Atom):
         tunnel_pw = tunnel_details['password']
         tunnel_ip = self.client_instance.proxy_params['ip']
 
-        putty_cmd = 'putty -P {port} -pw {password} {user}@{proxy_ip}'.format(
+        putty_cmd = 'kitty_portable -P {port} -pw {password} {user}@{proxy_ip} -title "Camera {title}"'.format(
             user=tunnel_user,
             password=tunnel_pw,
             port=tunnel_port,
-            proxy_ip=tunnel_ip
+            proxy_ip=tunnel_ip,
+            title=server_id
         )
         subprocess.Popen(putty_cmd)
 
@@ -960,11 +966,12 @@ class ServerModel(Atom):
     def reply_tunnel_details(self, tunnel_port, tunnel_ip, tunnel_user, tunnel_pw):
         """Open the putty client"""
 
-        putty_cmd = 'putty -P {port} -pw {password} {user}@{proxy_ip}'.format(
+        putty_cmd = 'kitty_portable -P {port} -pw {password} {user}@{proxy_ip} -title "Camera {title}"'.format(
             user=tunnel_user,
             password=tunnel_pw,
             port=tunnel_port,
-            proxy_ip=tunnel_ip
+            proxy_ip=tunnel_ip,
+            title=self.server_id
         )
 
         subprocess.Popen(putty_cmd)
@@ -972,11 +979,12 @@ class ServerModel(Atom):
     def reply_local_ip(self, port, ip, user, pw):
         """Open the putty client"""
 
-        putty_cmd = 'putty -P {port} -pw {password} {user}@{proxy_ip}'.format(
-            user=user,
-            password=pw,
-            port=port,
-            proxy_ip=ip
+        putty_cmd = 'kitty_portable -P {port} -pw {password} {user}@{proxy_ip} -title "Camera {title}"'.format(
+            user=tunnel_user,
+            password=tunnel_pw,
+            port=tunnel_port,
+            proxy_ip=tunnel_ip,
+            title=self.server_id
         )
 
         subprocess.Popen(putty_cmd)
@@ -1339,7 +1347,7 @@ class Controller(Atom):
 
         server_id = data['server_id']
         pos_x, pos_y = data['pos']
-
+        print pos_x, pos_y
         clicked_model, clicked_view = self.model.array_items[server_id]
 
         LOS_pts = clicked_model.setEpipolar(

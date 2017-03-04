@@ -222,30 +222,6 @@ enamldef ImageControlPage(Page):
                                 resolution=ff_resolution.value
                             )
                         )
-                PushButton: pb_thumb:
-                    text = 'Thumb'
-                    clicked ::
-                        root_object().client_model.send_message(
-                            server_model_,
-                            gs.MSG_TYPE_THUMBNAIL,
-                            kwds=dict(
-                                exposure_us=ff_exposure.value if ff_exposure.value>0 else None,
-                                gain_db=ff_gain.value if ff_gain.value>0 else None,
-                                color_mode=cmode.items[cmode.index],
-                                gain_boost=ff_gain_boost.checked,
-                                normalize=ff_normalized_array.checked
-                            )
-                        )
-                PushButton: pb_auto_thumb:
-                    text = 'Auto Thumb'
-                    clicked ::
-                        root_object().client_model.send_message(
-                            server_model_,
-                            gs.MSG_TYPE_THUMBNAIL,
-                            kwds=dict(
-                                normalize=ff_normalized_array.checked
-                            )
-                        )
                 Form:
                     Label:
                         text = 'JPEG:'
@@ -309,7 +285,7 @@ enamldef SeekControlPage(Page):
 
             CheckBox: JPEG_cb:
                 tool_tip = "Use JPEG compression"
-                checked = False
+                checked = True
                 text = "JPEG"
 
             PushButton: seek_pb:
