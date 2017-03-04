@@ -56,7 +56,7 @@ def quiver(datas, length = 6000, skip=5):
         y = y0 + length * np.cos(phi)
         z = z0 + length * np.cos(psi)
 
-        mlab.triangular_mesh(
+        tm = mlab.triangular_mesh(
             np.insert(x, 0, x0),
             np.insert(y, 0, y0),
             np.insert(z, 0, z0),

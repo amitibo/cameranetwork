@@ -71,6 +71,9 @@ from mpl_toolkits.mplot3d import Axes3D
 import time
 
 
+ROI_length = 6000
+
+
 def calcSunphometerCoords(img_data, resolution):
     """Calculate the Almucantar and PrinciplePlanes for a specifica datetime."""
 
@@ -376,6 +379,7 @@ class ClientModel(Atom):
 
     map_coords = Tuple()
     map_scene = Typed(MlabSceneModel)
+    cameras_ROIs = Dict()
 
     sunshader_required_angle = Int()
 
@@ -453,20 +457,82 @@ class ClientModel(Atom):
         n, e, d = pymap3d.geodetic2ned(
             img_data.latitude, img_data.longitude, img_data.altitude,
             lat0=self.latitude, lon0=self.longitude, h0=self.altitude)
-
         x, y, z = e, n, -d
+
+        #
+        # Draw a point at the camera center.
+        #
         self.map_scene.mlab.points3d(
             [x], [y], [z],
             color=(1, 0, 0), mode='sphere', scale_mode='scalar', scale_factor=500,
             figure=self.map_scene.mayavi_scene
         )
+
+        #
+        # Draw the camera ROI
+        #
+        triangles = [
+            (0, 1, 2),
+            (0, 2, 4),
+            (0, 4, 3),
+            (0, 3, 1),
+        ]
+
+        phi = [0, np.pi/2, np.pi, 0]
+        psi = [np.pi/10] * 4
+
+        x_ = np.insert(x + ROI_length * np.sin(phi), 0, x)
+        y_ = np.insert(y + ROI_length * np.cos(phi), 0, y)
+        z_ = np.insert(z + ROI_length * np.cos(psi), 0, z)
+
+        roi_mesh = self.map_scene.mlab.triangular_mesh(
+            x_,
+            y_,
+            z_,
+            triangles,
+            color=(0.5, 0.5, 0.5),
+            opacity=0.2
+        )
+        self.cameras_ROIs[server_id] = roi_mesh
+
+        #
+        # Write the id of the camera.
+        #
         self.map_scene.mlab.text3d(x, y, z+50, server_id, color=(0, 0, 0), scale=500.)
 
+    def updateROImesh(self, server_id, pts, shape):
+
+        center = float(shape[0])/2
+
+        pts = (pts - center) / center
+        X, Y = pts[:, 1], pts[:, 0]
+
+        phi = np.arctan2(X, Y)
+        psi = np.pi/2 * np.sqrt(X**2 + Y**2)
+
+        roi_mesh = self.cameras_ROIs[server_id]
+
+        x, y, z = roi_mesh.mlab_source.points[0]
+
+        x_ = np.insert(x + ROI_length * np.sin(phi), 0, x)
+        y_ = np.insert(y + ROI_length * np.cos(phi), 0, y)
+        z_ = np.insert(z + ROI_length * np.cos(psi), 0, z)
+
+        roi_mesh.mlab_source.set(
+            x=x_, y=y_, z=z_
+        )
+
+    def showCamerasROIs(self, checked):
+        """Show/Hide the camera's ROI visualization."""
+
+        for roi_mesh in self.cameras_ROIs.values():
+            roi_mesh.visible = checked
 
     def draw_map(self):
         """Clear the map view and draw elevation map."""
 
         mayavi_scene = self.map_scene.mayavi_scene
+        self.cameras_ROIs = dict()
         clf(figure=mayavi_scene)
         X, Y, Z = self.map_coords
         self.map_scene.mlab.surf(Y, X, Z, figure=mayavi_scene)
@@ -554,7 +620,7 @@ class ClientModel(Atom):
         tunnel_pw = tunnel_details['password']
         tunnel_ip = self.client_instance.proxy_params['ip']
 
-        putty_cmd = 'kitty_portable -P {port} -pw {password} {user}@{proxy_ip} -title "Camera {title}"'.format(
+        putty_cmd = 'kitty_portable -P {port} -pw {password} {user}@{proxy_ip} -title "GLOBAL Camera {title}"'.format(
             user=tunnel_user,
             password=tunnel_pw,
             port=tunnel_port,
@@ -1298,6 +1364,7 @@ class Controller(Atom):
             )
             array_view.image_widget.observe('epipolar_signal', self.updateEpipolar)
             array_view.image_widget.observe('export_flag', self.updateExport)
+            array_view.image_widget.observe('ROI_signal', self.updateROI)
 
             #
             # Create the model.
@@ -1327,6 +1394,12 @@ class Controller(Atom):
         xs, ys = array_model.projectECEF(self.model.GRID_ECEF)
         array_view.image_widget.updateLIDARgridPts(xs=xs, ys=ys)
 
+        #
+        # Update the view of the ROI.
+        # This is necessary for displaying the ROI in the map view.
+        #
+        array_view.image_widget._ROI_updated()
+
     @observe('model.settings_signal')
     def settings_signal(self, server_model):
         """Open a settings popup window."""
@@ -1347,7 +1420,7 @@ class Controller(Atom):
 
         server_id = data['server_id']
         pos_x, pos_y = data['pos']
-        print pos_x, pos_y
+
         clicked_model, clicked_view = self.model.array_items[server_id]
 
         LOS_pts = clicked_model.setEpipolar(
@@ -1361,6 +1434,15 @@ class Controller(Atom):
             xs, ys = array_model.projectECEF(LOS_pts)
 
             array_view.image_widget.updateEpipolar(xs=xs, ys=ys)
+
+    def updateROI(self, data):
+        """Handle update of a server ROI."""
+
+        server_id = data['server_id']
+        pts = data['pts']
+        shape = data['shape']
+
+        self.model.updateROImesh(server_id, pts, shape)
 
     @observe('model.intensity_value')
     def updateIntensity(self, change):

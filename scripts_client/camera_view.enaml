@@ -411,6 +411,7 @@ enamldef Main(MainWindow): main:
                 checkable = True
                 text = 'Show ROI'
                 toggled ::
+                    client_model.showCamerasROIs(checked)
                     for array_view in array_views.objects:
                         array_view.image_widget.show_ROI = checked
 

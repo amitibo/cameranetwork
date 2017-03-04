@@ -81,7 +81,16 @@ class PyQtImageView(PyQtGraphLayoutWidget):
     Almucantar_coords = List()
     PrincipalPlane_coords = List()
 
+    #
+    # ROI - Rectangle ROI that can be set by the user.
+    #
     ROI = Instance(pg.RectROI)
+    ROI_signal = Signal()
+
+    #
+    # mask_ROI - Polygon ROI that can be use to mask buildings and other
+    # obstacles.
+    #
     mask_ROI = Instance(pg.PolyLineROI)
 
     img_item = Instance(pg.ImageItem)
@@ -223,6 +232,11 @@ class PyQtImageView(PyQtGraphLayoutWidget):
         self.ROI.addRotateHandle([1, 0], [0.5, 0.5])
         self.ROI.setVisible(False)
 
+        #
+        # Callback when the user stopsmoving a ROI.
+        #
+        self.ROI.sigRegionChangeFinished.connect(self._ROI_updated)
+
         plot_area.vb.addItem(self.ROI)
 
     def _calcMask(self):
@@ -233,6 +247,28 @@ class PyQtImageView(PyQtGraphLayoutWidget):
         """
 
         pass
+
+    def _ROI_updated(self):
+        """Callback of ROI udpate."""
+
+        _, tr = self.ROI.getArraySlice(
+            self.img_array,
+            self.img_item
+        )
+
+        size = self.ROI.state['size']
+
+        #
+        # Calculate the bounds.
+        #
+        pts = np.array(
+            [tr.map(x, y) for x, y in \
+             ((0, 0), (size.x(), 0), (0, size.y()), (size.x(), size.y()))]
+        )
+
+        self.ROI_signal.emit(
+            {'server_id': self.server_id, 'pts': pts, 'shape': self.img_array.shape}
+        )
 
     @observe('img_array')
     def update_img_array(self, change):
