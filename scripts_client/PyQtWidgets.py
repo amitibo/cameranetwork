@@ -9,6 +9,7 @@ from enaml.widgets.api import *
 import numpy as np
 from pyqtgraph import opengl as gl
 import pyqtgraph as pg
+pg.setConfigOptions(imageAxisOrder='row-major')
 
 
 class PyQtGraphWidget(RawWidget):

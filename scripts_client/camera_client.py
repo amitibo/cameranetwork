@@ -1211,10 +1211,12 @@ class ArrayModel(Atom):
         x = (x - self.resolution/2) / (self.resolution/2)
         y = (y - self.resolution/2) / (self.resolution/2)
 
+        print x, y
+
         #
         # Calculate angle of click.
         #
-        phi = math.atan2(y, x)
+        phi = math.atan2(x, y)
         psi = self.fov * math.sqrt(x**2 + y**2)
 
         #
