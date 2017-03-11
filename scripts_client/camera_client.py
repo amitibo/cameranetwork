@@ -159,9 +159,6 @@ def processExport(
     X, Y, Z = np.meshgrid(*grid)
     ecef_grid = pymap3d.ned2ecef(X, Y, Z, lat, lon, alt)
 
-    #
-    # Set the center of the axes
-    #
     Xs, Ys, Zs, PHIs, PSIs, Rs, Gs, Bs, Masks, Datas, Visibility = \
         {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}
 
@@ -1215,13 +1212,18 @@ class ArrayModel(Atom):
 
         #
         # Calculate angle of click.
+        # Note:
+        # phi is the azimuth angle, 0 at the north and increasing
+        # east. The given x, y are East and North correspondingly.
+        # Therefore there is a need to transpose them as the atan
+        # is defined as atan2(y, x).
         #
         phi = math.atan2(x, y)
         psi = self.fov * math.sqrt(x**2 + y**2)
 
         #
         # Calculate a LOS in this direction.
-        # The LOS is first calculate in local coords (NED) of the camera.
+        # The LOS is first calculated in local coords (NED) of the camera.
         #
         pts = np.linspace(0, self.line_length, N)
         Z = -math.cos(psi) * pts
@@ -1256,6 +1258,9 @@ class ArrayModel(Atom):
             ECEF_pts[0], ECEF_pts[1], ECEF_pts[2],
             self.latitude, self.longitude, self.altitude)
 
+        #
+        # Convert the points to NEU.
+        #
         neu_pts = np.array([X.flatten(), Y.flatten(), -Z.flatten()]).T
 
         #
@@ -1270,11 +1275,17 @@ class ArrayModel(Atom):
         cosPSI = neu_pts[:,2].copy()
         cosPSI[cosPSI<0] = 0
 
-        normXY = np.linalg.norm(neu_pts[:, :2], axis=1)
-        PSI = np.arccos(neu_pts[:,2])
+        #
+        # Calculate The x, y of the projected points.
+        # Note that x and y here are according to the pyQtGraph convention
+        # of right, up (East, North) respectively.
+        #
+        #normXY = np.linalg.norm(neu_pts[:, :2], axis=1)
+        normXYZ = np.linalg.norm(neu_pts, axis=1)
+        PSI = np.arccos(neu_pts[:,2]/(normXYZ+0.00000001))
         R = PSI / self.fov * self.resolution/2
-        xs = R * neu_pts[:,0]/(normXY+0.00000001) + self.resolution/2
-        ys = R * neu_pts[:,1]/(normXY+0.00000001) + self.resolution/2
+        xs = R * neu_pts[:,1]/(normXYZ+0.00000001) + self.resolution/2
+        ys = R * neu_pts[:,0]/(normXYZ+0.00000001) + self.resolution/2
 
         if filter_fov:
             return xs[cosPSI>0], ys[cosPSI>0]
