@@ -69,6 +69,7 @@ enamldef ArraysItem(DockItem):
             text = 'Get'
             clicked ::
                 root_object().client_model.draw_map()
+                root_object().client_model.draw_grid()
                 root_object().client_model.broadcast_message(
                     gs.MSG_TYPE_ARRAY,
                     kwds=dict(
@@ -218,6 +219,7 @@ enamldef TimesItem(DockItem):
             text = 'Seek'
             clicked ::
                 root_object().client_model.draw_map()
+                root_object().client_model.draw_grid()
                 index = root_object().client_model.img_index
                 root_object().client_model.broadcast_message(
                     gs.MSG_TYPE_SEEK,

@@ -194,52 +194,38 @@ def processExport(
             "Saved reconstruction data of camera: {}.".format(server_id)
             )
 
-        x, y, z = e, n, -d
-        Xs[server_id] = np.ones_like(Rs[server_id]) * x
-        Ys[server_id] = np.ones_like(Rs[server_id]) * y
-        Zs[server_id] = np.ones_like(Rs[server_id]) * z
+        #
+        # Saving in the SHDOM coordinate system: NEU
+        #
+        Xs[server_id] = np.ones_like(Rs[server_id]) * n
+        Ys[server_id] = np.ones_like(Rs[server_id]) * e
+        Zs[server_id] = np.ones_like(Rs[server_id]) * (-d)
 
         #
         # Calculate azimuth and elevation.
+        # These are calculated in SHDOM convention where the direction is
+        # of the photons.
         # TODO:
         # The azimuth and elevation here are calculated assuming
         # that the cameras are near. If they are far, the azimuth
         # and elevation should take into account the earth carvature.
         # I.e. relative to the center of axis the angles are rotated.
         #
-        X_, Y_ = np.meshgrid(
+        Y_shdom, X_shdom = np.meshgrid(
             np.linspace(-1, 1, img_array.shape[1]),
             np.linspace(-1, 1, img_array.shape[0])
         )
+        PHI_shdom = np.pi + np.arctan2(Y_shdom, X_shdom)
+        PSI_shdom = -np.pi + array_model.fov * np.sqrt(X_shdom**2 + Y_shdom**2)
 
-        PHI = np.arctan2(X_, Y_)
-        PSI = array_model.fov * np.sqrt(X_**2 + Y_**2)
-
-        PHIs[server_id] = array_view.image_widget.getArrayRegion(PHI)
-        PSIs[server_id] = array_view.image_widget.getArrayRegion(PSI)
-
-        #
-        # Calculate bounding coords (useful for debug visualization)
-        #
-        bounding_phi, bounding_psi = calcROIbounds(array_model, array_view)
+        PHIs[server_id] = array_view.image_widget.getArrayRegion(PHI_shdom)
+        PSIs[server_id] = array_view.image_widget.getArrayRegion(PSI_shdom)
 
         #
         # Calculate mask using grabcut. This is used for removing the
         # sunshader.
         #
-        sunshader_mask = np.ones(img_array.shape[:2], np.uint8)*cv2.GC_PR_FGD
-        sunshader_mask[img_array.max(axis=2) < grabcut_threshold] = cv2.GC_PR_BGD
-        img_u8 = (255 * np.clip(img_array, 0, 40) / 40).astype(np.uint8)
-        bgdModel = np.zeros((1, 65), np.float64)
-        fgdModel = np.zeros((1, 65), np.float64)
-        rect = (0, 0, 0, 0)
-        sunshader_mask, bgdModel, fgdModel = cv2.grabCut(
-            img_u8, sunshader_mask, rect, bgdModel, fgdModel,
-            5, cv2.GC_INIT_WITH_MASK)
-        sunshader_mask = np.where(
-            (sunshader_mask==cv2.GC_FGD) | (sunshader_mask==cv2.GC_PR_FGD),
-            1,
-            0).astype('uint8')
+        sunshader_mask = calcSunshaderMask(img_array, grabcut_threshold)
 
         #
         # The (ROI) mask marked by the user.
@@ -264,7 +250,14 @@ def processExport(
         Visibility[server_id] = grid_visibility.reshape(*ecef_grid[0].shape)
 
         #
+        # Calculate bounding coords (useful for debug visualization)
+        #
+        bounding_phi, bounding_psi = calcROIbounds(array_model, array_view)
+
+        #
         # Extra data
+        # Note the directions are converted to SHDOM convetion (direction of
+        # photons).
         #
         sun_alt, sun_az = sun_direction(
             latitude=str(array_model.latitude),
@@ -277,15 +270,18 @@ def processExport(
                 at_time=array_model.img_data.name_time,
                 sun_alt=float(sun_alt),
                 sun_az=float(sun_az),
-                x=x,
-                y=y,
-                z=z,
+                x=n,
+                y=e,
+                z=-d,
                 bounding_phi=bounding_phi,
                 bounding_psi=bounding_psi
             )
 
         deferred_call(progress_callback, i / progress_cnt)
 
+    #
+    # Save the results.
+    #
     for f_name, obj in zip(
         ('Rs', 'Gs', 'Bs', 'Xs', 'Ys', 'Zs', 'PHIs',
          'PSIs', 'Masks', 'Datas', 'Visibility'),
@@ -295,6 +291,43 @@ def processExport(
             cPickle.dump(obj, f)
 
     deferred_call(progress_callback, 0)
+
+
+def calcSunshaderMask(img_array, grabcut_threshold, values_range=40):
+    """Calculate a mask for the sunshader.
+
+    Calculate a mask for the pixels covered by the sunshader.
+    Uses the grabcut algorithm.
+
+    Args:
+        img_array (array): Image (float HDR).
+        grabcut_threshold (float): Threshold used to set the seed for the
+            background.
+        values_range (float): This value is used for normalizing the image.
+            It is an empirical number that works for HDR images captured
+            during the day.
+
+    .. note::
+
+        The algorithm uses some "Magic" numbers that might need to be
+        adapted to different lighting levels.
+    """
+
+    sunshader_mask = np.ones(img_array.shape[:2], np.uint8)*cv2.GC_PR_FGD
+    sunshader_mask[img_array.max(axis=2) < grabcut_threshold] = cv2.GC_PR_BGD
+    img_u8 = (255 * np.clip(img_array, 0, values_range) / values_range).astype(np.uint8)
+    bgdModel = np.zeros((1, 65), np.float64)
+    fgdModel = np.zeros((1, 65), np.float64)
+    rect = (0, 0, 0, 0)
+    sunshader_mask, bgdModel, fgdModel = cv2.grabCut(
+        img_u8, sunshader_mask, rect, bgdModel, fgdModel,
+        5, cv2.GC_INIT_WITH_MASK)
+    sunshader_mask = np.where(
+        (sunshader_mask==cv2.GC_FGD) | (sunshader_mask==cv2.GC_PR_FGD),
+        1,
+        0).astype('uint8')
+
+    return sunshader_mask
 
 
 def extractImgArray(matfile):
@@ -399,6 +432,9 @@ class ClientModel(Atom):
     TOG = Float(3000)
     GRID_ECEF = Tuple()
     GRID_NED = Tuple()
+    grid_mode = Str()
+    grid_width = Float(3000)
+    grid_length = Float(5000)
 
     #
     # Sunshader mask threshold used in grabcut algorithm.
@@ -496,6 +532,24 @@ class ClientModel(Atom):
         # Write the id of the camera.
         #
         self.map_scene.mlab.text3d(x, y, z+50, server_id, color=(0, 0, 0), scale=500.)
+
+    def draw_grid(self):
+        """Draw the reconstruction grid on the map."""
+
+        if self.GRID_NED == ():
+            return
+
+        X, Y, Z = self.GRID_NED
+        X, Y, Z = np.meshgrid(X, Y, -Z)
+
+        #
+        # Draw a point at the camera center.
+        #
+        self.map_scene.mlab.points3d(
+            X, Y, Z,
+            color=(1, 1, 1), mode='point',
+            figure=self.map_scene.mayavi_scene
+        )
 
     def updateROImesh(self, server_id, pts, shape):
 
@@ -908,27 +962,31 @@ class ClientModel(Atom):
         #
         # Calculate the bounding box of the cameras.
         #
-        s_pts = np.array((-1000, -1000, -self.TOG))
-        e_pts = np.array((1000, 1000, 0))
-        for server_id, (array_model, array_view) in self.array_items.items():
-            if not array_view.export_flag.checked:
-                logging.info(
-                    "LIDAR Grid: Camera {} ignored.".format(server_id)
-                )
-                continue
+        if self.grid_mode == "Auto":
+            s_pts = np.array((-1000, -1000, -self.TOG))
+            e_pts = np.array((1000, 1000, 0))
+            for server_id, (array_model, array_view) in self.array_items.items():
+                if not array_view.export_flag.checked:
+                    logging.info(
+                        "LIDAR Grid: Camera {} ignored.".format(server_id)
+                    )
+                    continue
 
-            #
-            # Convert the ECEF center of the camera to the grid center ccords.
-            #
-            cam_center = pymap3d.ecef2ned(
-                array_model.center[0], array_model.center[1], array_model.center[2],
-                self.latitude, self.longitude, 0)
+                #
+                # Convert the ECEF center of the camera to the grid center ccords.
+                #
+                cam_center = pymap3d.ecef2ned(
+                    array_model.center[0], array_model.center[1], array_model.center[2],
+                    self.latitude, self.longitude, 0)
 
-            #
-            # Accomulate tight bounding.
-            #
-            s_pts = np.array((s_pts, cam_center)).min(axis=0)
-            e_pts = np.array((e_pts, cam_center)).max(axis=0)
+                #
+                # Accomulate tight bounding.
+                #
+                s_pts = np.array((s_pts, cam_center)).min(axis=0)
+                e_pts = np.array((e_pts, cam_center)).max(axis=0)
+        else:
+            s_pts = np.array((-self.grid_length/2, -self.grid_width/2, -self.TOG))
+            e_pts = np.array((self.grid_length/2, self.grid_width/2, 0))
 
         #
         # Create the LIDAR grid.

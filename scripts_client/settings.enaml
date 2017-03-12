@@ -260,6 +260,29 @@ enamldef ReconstructDialog(Dialog): popup:
                     value := client_model.delz
 
                 Label:
+                    text = 'mode:'
+                ObjectCombo: grid_mode:
+                    tool_tip = "Set to auto to bound grid by cameras."
+                    items = ["Manual", "Auto"]
+                    selected := client_model.grid_mode
+
+                Label:
+                    text = 'Grid Length:'
+                    visible << grid_mode.selected == "Manual"
+                FloatField: grid_length:
+                    tool_tip = "Length of Grid (X - East)"
+                    visible << grid_mode.selected == "Manual"
+                    value := client_model.grid_length
+
+                Label:
+                    text = 'Grid Width:'
+                    visible << grid_mode.selected == "Manual"
+                FloatField: grid_width:
+                    tool_tip = "Width of Grid (Y - North)"
+                    visible << grid_mode.selected == "Manual"
+                    value := client_model.grid_width
+
+                Label:
                     text = 'TOG:'
                 FloatField: TOG:
                     tool_tip = "Top of Lidar Grid [m]"
