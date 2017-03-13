@@ -36,10 +36,12 @@ from zmq.eventloop import ioloop
 
 import CameraNetwork
 from CameraNetwork import global_settings as gs
+from CameraNetwork.export import exportToShdom
 from CameraNetwork.mdp import MDP
 from CameraNetwork.radiosonde import load_radiosonde
 from CameraNetwork.utils import buff2dict
 from CameraNetwork.utils import DataObj
+from CameraNetwork.utils import extractImgArray
 from CameraNetwork.utils import sun_direction
 
 #
@@ -49,9 +51,6 @@ import enaml.qt
 import ephem
 import numpy as np
 import pandas as pd
-from PIL import Image
-from PIL import ImageFont
-from PIL import ImageDraw
 
 from enaml.image import Image as EImage
 
@@ -64,7 +63,7 @@ from enaml.image import Image as EImage
 import matplotlib
 matplotlib.use('Qt4Agg')
 
-from CameraNetwork.sunphotometer import calcAlmucantarPrinciplePlanes
+from CameraNetwork.sunphotometer import calcSunphometerCoords
 from matplotlib.figure import Figure
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
@@ -72,288 +71,6 @@ import time
 
 
 ROI_length = 6000
-
-
-def calcSunphometerCoords(img_data, resolution):
-    """Calculate the Almucantar and PrinciplePlanes for a specifica datetime."""
-
-    Almucantar_coords, PrincipalPlane_coords, _, _ = \
-        calcAlmucantarPrinciplePlanes(
-            latitude=img_data.latitude,
-            longitude=img_data.longitude,
-            capture_time=img_data.capture_time,
-            img_resolution=resolution)
-
-    #
-    # Note:
-    # The X, Y coords are switched as the pyqt display is Transposed to the matplotlib coords.
-    #
-    return Almucantar_coords[::-1, ...].T.tolist(), PrincipalPlane_coords[::-1, ...].T.tolist()
-
-
-def calcROIbounds(array_model, array_view):
-    """Calculate bounds of ROI in array_view
-
-    Useful for debug visualization.
-    """
-
-    #
-    # Get the ROI size
-    #
-    roi = array_view.ROI
-    size = roi.state['size']
-
-    #
-    # Get the transform from the ROI to the data.
-    #
-    _, tr = roi.getArraySlice(array_view.img_array, array_view.image_widget.img_item)
-
-    #
-    # Calculate the bounds.
-    #
-    center = float(array_view.img_array.shape[0])/2
-    pts = np.array(
-        [tr.map(x, y) for x, y in \
-         ((0, 0), (size.x(), 0), (0, size.y()), (size.x(), size.y()))]
-    )
-    pts = (pts - center) / center
-    X, Y = pts[:, 1], pts[:, 0]
-    bounding_phi = np.arctan2(X, Y)
-    bounding_psi = array_model.fov * np.sqrt(X**2 + Y**2)
-
-    return bounding_phi, bounding_psi
-
-
-def processExport(
-    base_path,
-    array_items,
-    grid,
-    lat,
-    lon,
-    alt,
-    grabcut_threshold,
-    progress_callback):
-    """Process export of reconstruction data on separate thread.
-
-    Args:
-        base_path (str): Path to store export data.
-        array_items (list): List of array items.
-        grid (list): List of grid array. This is the grid to reconstruct.
-        lat, lon, lat (float): The latitude, longitude and altitude of the center
-            of the grid.
-        grabcut_threshold (float): Threshold for grabcut algorithm applied for
-            sunshader segmentation.
-        progress_callback (function): Callback function to update the (GUI) with
-            the progress of the export.
-    """
-
-    #
-    # Reset the progress indicatort.
-    #
-    progress_cnt = len(array_items)
-    deferred_call(progress_callback, 0)
-
-    #
-    # Convert the grid to ECEF
-    #
-    X, Y, Z = np.meshgrid(*grid)
-    ecef_grid = pymap3d.ned2ecef(X, Y, Z, lat, lon, alt)
-
-    Xs, Ys, Zs, PHIs, PSIs, Rs, Gs, Bs, Masks, Datas, Visibility = \
-        {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}
-
-    for i, (server_id, (array_model, array_view)) in enumerate(array_items):
-        if not array_view.export_flag.checked:
-            logging.info(
-                "Reconstruction: Camera {} ignored.".format(server_id)
-            )
-            continue
-
-        #
-        # Extract the image values at the ROI
-        # Note about directions:
-        # The directions in the Qt view are as follows:
-        # x axis (horizontal) goes from South (left) to North (right)
-        # y axis (vertical) goes from west (down) to east (up).
-        # this makes it a NE axis system
-        #
-        img_array = array_view.img_array
-        Rs[server_id] = array_view.image_widget.getArrayRegion(img_array[..., 0])
-        Gs[server_id] = array_view.image_widget.getArrayRegion(img_array[..., 1])
-        Bs[server_id] = array_view.image_widget.getArrayRegion(img_array[..., 2])
-
-        #
-        # Calculate the center of the camera.
-        # Note that the coords are stored as ENU (in contrast to NED)
-        #
-        n, e, d = pymap3d.geodetic2ned(
-            array_model.latitude, array_model.longitude, array_model.altitude,
-            lat0=lat, lon0=lon, h0=alt)
-
-        logging.info(
-            "Saved reconstruction data of camera: {}.".format(server_id)
-            )
-
-        #
-        # Saving in the SHDOM coordinate system: NEU
-        #
-        Xs[server_id] = np.ones_like(Rs[server_id]) * n
-        Ys[server_id] = np.ones_like(Rs[server_id]) * e
-        Zs[server_id] = np.ones_like(Rs[server_id]) * (-d)
-
-        #
-        # Calculate azimuth and elevation.
-        # These are calculated in SHDOM convention where the direction is
-        # of the photons.
-        # TODO:
-        # The azimuth and elevation here are calculated assuming
-        # that the cameras are near. If they are far, the azimuth
-        # and elevation should take into account the earth carvature.
-        # I.e. relative to the center of axis the angles are rotated.
-        #
-        Y_shdom, X_shdom = np.meshgrid(
-            np.linspace(-1, 1, img_array.shape[1]),
-            np.linspace(-1, 1, img_array.shape[0])
-        )
-        PHI_shdom = np.pi + np.arctan2(Y_shdom, X_shdom)
-        PSI_shdom = -np.pi + array_model.fov * np.sqrt(X_shdom**2 + Y_shdom**2)
-
-        PHIs[server_id] = array_view.image_widget.getArrayRegion(PHI_shdom)
-        PSIs[server_id] = array_view.image_widget.getArrayRegion(PSI_shdom)
-
-        #
-        # Calculate mask using grabcut. This is used for removing the
-        # sunshader.
-        #
-        sunshader_mask = calcSunshaderMask(img_array, grabcut_threshold)
-
-        #
-        # The (ROI) mask marked by the user.
-        #
-        manual_mask = array_view.image_widget.getMask()
-
-        Masks[server_id] = (
-            array_view.image_widget.getArrayRegion(sunshader_mask),
-            array_view.image_widget.getArrayRegion(manual_mask),
-        )
-
-        #
-        # Project the grid on the image and check viewed voxels.
-        #
-        xs, ys, fov_mask = array_model.projectECEF(ecef_grid, filter_fov=False)
-        xs = xs.astype(np.uint32).flatten()
-        ys = ys.astype(np.uint32).flatten()
-        joint_mask = (manual_mask * sunshader_mask).astype(np.uint8)
-        grid_visibility = np.zeros_like(xs, dtype=np.uint8)
-        grid_visibility[fov_mask] = \
-            joint_mask[ys[fov_mask], xs[fov_mask]].astype(np.uint8)
-        Visibility[server_id] = grid_visibility.reshape(*ecef_grid[0].shape)
-
-        #
-        # Calculate bounding coords (useful for debug visualization)
-        #
-        bounding_phi, bounding_psi = calcROIbounds(array_model, array_view)
-
-        #
-        # Extra data
-        # Note the directions are converted to SHDOM convetion (direction of
-        # photons).
-        #
-        sun_alt, sun_az = sun_direction(
-            latitude=str(array_model.latitude),
-            longitude=str(array_model.longitude),
-            altitude=array_model.altitude,
-            at_time=array_model.img_data.name_time)
-
-        Datas[server_id] = \
-            dict(
-                at_time=array_model.img_data.name_time,
-                sun_alt=float(sun_alt),
-                sun_az=float(sun_az),
-                x=n,
-                y=e,
-                z=-d,
-                bounding_phi=bounding_phi,
-                bounding_psi=bounding_psi
-            )
-
-        deferred_call(progress_callback, i / progress_cnt)
-
-    #
-    # Save the results.
-    #
-    for f_name, obj in zip(
-        ('Rs', 'Gs', 'Bs', 'Xs', 'Ys', 'Zs', 'PHIs',
-         'PSIs', 'Masks', 'Datas', 'Visibility'),
-        (Rs, Gs, Bs, Xs, Ys, Zs, PHIs,
-         PSIs, Masks, Datas, Visibility)):
-        with open(os.path.join(base_path, '{}.pkl'.format(f_name)), 'wb') as f:
-            cPickle.dump(obj, f)
-
-    deferred_call(progress_callback, 0)
-
-
-def calcSunshaderMask(img_array, grabcut_threshold, values_range=40):
-    """Calculate a mask for the sunshader.
-
-    Calculate a mask for the pixels covered by the sunshader.
-    Uses the grabcut algorithm.
-
-    Args:
-        img_array (array): Image (float HDR).
-        grabcut_threshold (float): Threshold used to set the seed for the
-            background.
-        values_range (float): This value is used for normalizing the image.
-            It is an empirical number that works for HDR images captured
-            during the day.
-
-    .. note::
-
-        The algorithm uses some "Magic" numbers that might need to be
-        adapted to different lighting levels.
-    """
-
-    sunshader_mask = np.ones(img_array.shape[:2], np.uint8)*cv2.GC_PR_FGD
-    sunshader_mask[img_array.max(axis=2) < grabcut_threshold] = cv2.GC_PR_BGD
-    img_u8 = (255 * np.clip(img_array, 0, values_range) / values_range).astype(np.uint8)
-    bgdModel = np.zeros((1, 65), np.float64)
-    fgdModel = np.zeros((1, 65), np.float64)
-    rect = (0, 0, 0, 0)
-    sunshader_mask, bgdModel, fgdModel = cv2.grabCut(
-        img_u8, sunshader_mask, rect, bgdModel, fgdModel,
-        5, cv2.GC_INIT_WITH_MASK)
-    sunshader_mask = np.where(
-        (sunshader_mask==cv2.GC_FGD) | (sunshader_mask==cv2.GC_PR_FGD),
-        1,
-        0).astype('uint8')
-
-    return sunshader_mask
-
-
-def extractImgArray(matfile):
-    """Extract the image from matfile"""
-
-    data = buff2dict(matfile)
-    img_array = data["img_array"]
-
-    if data["jpeg"]:
-        buff = StringIO.StringIO(img_array.tostring())
-        img = Image.open(buff)
-        width, height = img.size
-        array = np.array(img.getdata(), np.uint8)
-
-        #
-        # Handle gray scale image
-        #
-        if array.ndim == 1:
-            array.shape = (-1, 1)
-            array = np.hstack((array, array, array))
-
-        img_array = array.reshape(height, width, 3)
-    else:
-        img_array = np.ascontiguousarray(img_array)
-
-    return img_array
 
 
 def loadMapData():
@@ -552,6 +269,7 @@ class ClientModel(Atom):
         )
 
     def updateROImesh(self, server_id, pts, shape):
+        """Update the 3D visualization of the ROI."""
 
         center = float(shape[0])/2
 
@@ -746,7 +464,7 @@ class ClientModel(Atom):
         # Start export on separate thread.
         #
         thread = Thread(
-            target=processExport,
+            target=exportToShdom,
             kwargs=dict(
                 base_path=base_path,
                 array_items=self.array_items.items(),
