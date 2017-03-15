@@ -28,12 +28,12 @@ def calcAlmucantarPrinciplePlanes(
         principleplane_angles (array like): Sampling angles (degrees) along
             PrinciplePlane.
 
-    Note:    
+    Note:
          In practice the Almucantar and PrinciplePlane are measured in
          different times. So this function should be called twice for each
          with its own capture time.
     """
-    
+
     #
     # Create an Sun/observer at camera position
     #
@@ -45,7 +45,7 @@ def calcAlmucantarPrinciplePlanes(
 
     #
     # Calculate Almucantar angles.
-    # Almucantar samples at the altitude of the sun at differnt Azimuths. 
+    # Almucantar samples at the altitude of the sun at differnt Azimuths.
     start_az = -sun.az
     if almucantar_angles is None:
         #
@@ -64,7 +64,7 @@ def calcAlmucantarPrinciplePlanes(
     alm_x = (-alm_radius * np.sin(alm_az) + 1) * img_resolution / 2
     alm_y = (alm_radius * np.cos(alm_az) + 1) * img_resolution / 2
     Almucantar_coords = np.array((alm_x, alm_y))
-    
+
     #
     # Calculate PrinciplePlane coords.
     #
@@ -77,7 +77,7 @@ def calcAlmucantarPrinciplePlanes(
         pp_alts = np.linspace(0, np.pi, pp_resolution, endpoint=False)
     else:
         pp_alts = np.radians(principleplane_angles) + start_alt
-    pp_az = -sun.az * np.ones(len(pp_alts))    
+    pp_az = -sun.az * np.ones(len(pp_alts))
 
     #
     # Convert Principal Plane angles to image coords.
@@ -86,14 +86,14 @@ def calcAlmucantarPrinciplePlanes(
     pp_x = (-pp_radius * np.sin(pp_az) + 1) * img_resolution / 2
     pp_y = (pp_radius * np.cos(pp_az) + 1) * img_resolution / 2
     PrincipalPlane_coords = np.array((pp_x, pp_y))
-    
+
     return Almucantar_coords, PrincipalPlane_coords, \
            almucantar_angles, principleplane_angles
 
 
 def parseSunPhotoMeter(path):
     """Parse the sunphotometer data."""
-    
+
     def dateparse(d, t):
         return pd.datetime.strptime(d+' '+t, '%d:%m:%Y %H:%M:%S')
 
@@ -110,17 +110,17 @@ def parseSunPhotoMeter(path):
 
 def findClosestImageTime(images_df, timestamp, hdr='2'):
     """Find the image taken closest to a given time stamp."""
-    
+
     if type(timestamp) is str:
         timestamp = parser.parse(timestamp)
-        
+
 
     #
     # Get a close index to time stamp.
     #
     hdr_df = images_df.xs(hdr, level='hdr')
     i = hdr_df.index.get_loc(timestamp, method='nearest')
-    
+
     return hdr_df.iloc[i].name
 
 
@@ -139,7 +139,7 @@ def sampleImage(img, img_data, almucantar_angles=None, principleplane_angles=Non
             principleplane_angles=principleplane_angles)
 
     img = np.ascontiguousarray(img)
-    
+
     #
     # Sample the Almucantar angles.
     #
@@ -153,7 +153,7 @@ def sampleImage(img, img_data, almucantar_angles=None, principleplane_angles=Non
         borderValue=BORDER_MAP_VALUE
     )
     almucantar_samples = np.squeeze(almucantar_samples)
-    
+
     # Sample the PrinciplePlane angles.
     #
     BORDER_MAP_VALUE = 100000
@@ -166,44 +166,63 @@ def sampleImage(img, img_data, almucantar_angles=None, principleplane_angles=Non
         borderValue=BORDER_MAP_VALUE
     )
     principalplane_samples = np.squeeze(principalplane_samples)
-    
+
     return almucantar_samples, almucantar_angles, Almucantar_coords, \
            principalplane_samples, principleplane_angles, PrincipalPlane_coords
 
 
 def readSunPhotoMeter(df, timestamp, sun_angles=5):
     """Get a sunphotometer reading at some time."""
-    
+
     #
     # Make sure that timestamp is of type pd.TimeStamp. For some reason, pandas
     # behaves differently when timestamp is a string, i.e. it returns a DataFrame
     # instead of a series, which causes the drop to fail (it requires an axis number).
     #
     timestamp = pd.Timestamp(timestamp)
-    
+
     data = df.loc[timestamp].drop('Wavelength(um)').drop('SolarZenithAngle(degrees)')
     angles = np.array([float('.'.join(i.split('.')[:2])) for i in data.keys()])
-    
+
     #
     # Remove wrong readings(?)
     #
     angles = angles[data.values != -100]
     values = data.values
     values = values[data.values != -100]
-    
+
     #
     # Sort
     #
     angles, values = np.sort(angles), values[np.argsort(angles)]
-    
+
     #
     # Remove angles near sun.
     #
     angles, unique_indices = np.unique(angles, return_index=True)
     values = values[unique_indices]
-    
+
     #values = values[(angles<-sun_angles) | (angles>sun_angles)]
     #angles = angles[(angles<-sun_angles) | (angles>sun_angles)]
     values[(angles>-sun_angles) & (angles<sun_angles)] = 0
-    
+
     return angles, values
+
+
+def calcSunphometerCoords(img_data, resolution):
+    """Calculate the Almucantar and PrinciplePlanes for a specifica datetime."""
+
+    Almucantar_coords, PrincipalPlane_coords, _, _ = \
+        calcAlmucantarPrinciplePlanes(
+            latitude=img_data.latitude,
+            longitude=img_data.longitude,
+            capture_time=img_data.capture_time,
+            img_resolution=resolution)
+
+    #
+    # Note:
+    # The X, Y coords are switched as the pyqt display is Transposed to the matplotlib coords.
+    #
+    return Almucantar_coords[::-1, ...].T.tolist(), PrincipalPlane_coords[::-1, ...].T.tolist()
+
+

@@ -216,7 +216,7 @@ class Client(MDPClient):
     @property
     def servers(self):
 
-        return list(self._servers_set)
+        return sorted(list(self._servers_set))
 
 
 class ServerProxy(object):

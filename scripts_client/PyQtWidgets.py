@@ -152,11 +152,20 @@ class PyQtImageView(PyQtGraphLayoutWidget):
         #
         # Get ROI region.
         #
-        sl = self.mask_ROI.getArraySlice(data, self.img_item, axes=(0, 1))
+        sl, _ = self.mask_ROI.getArraySlice(data, self.img_item, axes=(0, 1))
         sl_mask = self.mask_ROI.getArrayRegion(data, self.img_item)
 
+        #
+        # The new version of pyqtgraph has some rounding problems.
+        # Fix it the slices accordingly.
+        #
+        fixed_slices = (
+            slice(sl[0].start, sl[0].start+sl_mask.shape[0]),
+            slice(sl[1].start, sl[1].start+sl_mask.shape[1])
+        )
+
         mask = np.zeros(self.img_array.shape[:2], np.uint8)
-        mask[sl[0]] = sl_mask
+        mask[fixed_slices] = sl_mask
 
         return mask
 

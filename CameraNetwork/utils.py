@@ -702,5 +702,38 @@ def safe_make_dirs(path):
     os.makedirs(path)
 
 
+def extractImgArray(matfile):
+    """Extract the image from matfile"""
+
+    #
+    # This function is used in the GUI.
+    # I am not sure that PIL is installed the same on the odroid.
+    # Therefore I import Image from here inside the function.
+    #
+    from PIL import Image
+
+    data = buff2dict(matfile)
+    img_array = data["img_array"]
+
+    if data["jpeg"]:
+        buff = StringIO.StringIO(img_array.tostring())
+        img = Image.open(buff)
+        width, height = img.size
+        array = np.array(img.getdata(), np.uint8)
+
+        #
+        # Handle gray scale image
+        #
+        if array.ndim == 1:
+            array.shape = (-1, 1)
+            array = np.hstack((array, array, array))
+
+        img_array = array.reshape(height, width, 3)
+    else:
+        img_array = np.ascontiguousarray(img_array)
+
+    return img_array
+
+
 if __name__ == '__main__':
     pass
