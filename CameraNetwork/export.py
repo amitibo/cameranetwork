@@ -96,6 +96,10 @@ def exportToShdom(
         # Project the grid on the image and check viewed voxels.
         # Note:
         # This measurement is used for checking how many cameras see each voxel.
+        # TODO:
+        # This procedure is time expensive and can be cached.
+        # This should probably be a method of the camera, and this method should
+        # cache the result, or even be triggered by setting the grid.
         #
         visibility = projectGridOnCamera(ecef_grid, array_model, joint_mask)
 

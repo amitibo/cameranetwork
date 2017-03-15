@@ -274,7 +274,7 @@ class ClientModel(Atom):
         center = float(shape[0])/2
 
         pts = (pts - center) / center
-        X, Y = pts[:, 1], pts[:, 0]
+        X, Y = pts[:, 0], pts[:, 1]
 
         phi = np.arctan2(X, Y)
         psi = np.pi/2 * np.sqrt(X**2 + Y**2)
