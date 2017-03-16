@@ -530,8 +530,8 @@ class Server(MDPWorker):
             (
                 (),
                 {
-                    'git': mem_result,
-                    'memory': git_result
+                    'git_result': git_result,
+                    'memory_result': mem_result
                 }
             )
         )
