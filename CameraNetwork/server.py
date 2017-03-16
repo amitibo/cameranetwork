@@ -503,6 +503,40 @@ class Server(MDPWorker):
             None, self.capture_settings)
 
     @gen.coroutine
+    def handle_status(self):
+        """Handle get status command.
+
+        Returns general status log on the camera.
+        """
+
+        #
+        # Get memory status
+        #
+        p = subprocess.Popen(
+            "df -h", stderr=subprocess.PIPE, stdout=subprocess.PIPE, shell=True
+        )
+        mem_result = p.communicate()
+
+        #
+        # Get git version.
+        #
+        p = subprocess.Popen(
+            "cd ~/code/cameranetwork;git log -n 1 HEAD --decorate",
+            stderr=subprocess.PIPE, stdout=subprocess.PIPE, shell=True
+        )
+        git_result = p.communicate()
+
+        raise gen.Return(
+            (
+                (),
+                {
+                    'git': mem_result,
+                    'memory': git_result
+                }
+            )
+        )
+
+    @gen.coroutine
     def handle_loop(self):
         """Start capture"""
 

@@ -59,103 +59,113 @@ enamldef UpdateTaskDialog(Dialog):
 enamldef MainControlsPage(Page):
     attr server_model_
 
-    HGroup:
-        VGroup:
-            GroupBox:
-                title = 'Capture Mode'
+    VGroup:
+        HGroup:
+            VGroup:
+                GroupBox:
+                    title = 'Capture Mode'
 
-                PushButton: pb_loop:
-                    text = 'Loop'
+                    PushButton: pb_loop:
+                        text = 'Loop'
+                        clicked ::
+                            root_object().client_model.send_message(server_model_, gs.MSG_TYPE_LOOP)
+
+                    PushButton: pb_calib:
+                        text = 'Calib Imgs'
+                        clicked :: root_object().client_model.send_message(server_model_, gs.MSG_TYPE_CALIB_IMGS)
+
+                    PushButton: pb_halt:
+                        text = 'Halt'
+                        clicked :: root_object().client_model.send_message(server_model_, gs.MSG_TYPE_HALT)
+
+                GroupBox:
+                    title = 'SSH'
+
+                    PushButton: pb_tunnel_on:
+                        text = 'Tunnel On'
+                        clicked :: root_object().client_model.send_message(
+                            server_model_,
+                            gs.MSG_TYPE_TUNNEL,
+                            kwds=dict(tunnel_state=True)
+                            )
+
+                    PushButton: pb_tunnel_off:
+                        text = 'Tunnel Off'
+                        clicked :: root_object().client_model.send_message(
+                            server_model_,
+                            gs.MSG_TYPE_TUNNEL,
+                            kwds=dict(tunnel_state=False)
+                            )
+
+                    PushButton: pb_putty:
+                        text = 'Putty'
+                        clicked :: root_object().client_model.send_message(server_model_, gs.MSG_TYPE_TUNNEL_CHECK)
+
+                    PushButton: pb_local:
+                        text = 'Local'
+                        clicked :: root_object().client_model.send_message(server_model_, gs.MSG_TYPE_LOCAL)
+
+            VGroup:
+                PushButton: pb_status:
+                    text = "Status"
                     clicked ::
-                        root_object().client_model.send_message(server_model_, gs.MSG_TYPE_LOOP)
+                        root_object().client_model.send_message(server_model_, gs.MSG_TYPE_STATUS)
 
-                PushButton: pb_calib:
-                    text = 'Calib Imgs'
-                    clicked :: root_object().client_model.send_message(server_model_, gs.MSG_TYPE_CALIB_IMGS)
+                PushButton: pb_settings:
+                    text = "Settings"
+                    clicked ::
+                        root_object().client_model.send_message(server_model_, gs.MSG_TYPE_GET_SETTINGS)
 
-                PushButton: pb_halt:
-                    text = 'Halt'
-                    clicked :: root_object().client_model.send_message(server_model_, gs.MSG_TYPE_HALT)
-
-            GroupBox:
-                title = 'SSH'
-
-                PushButton: pb_tunnel_on:
-                    text = 'Tunnel On'
-                    clicked :: root_object().client_model.send_message(
-                        server_model_,
-                        gs.MSG_TYPE_TUNNEL,
-                        kwds=dict(tunnel_state=True)
+                PushButton: pb_restart:
+                    text = 'Software Restart'
+                    style_class = 'gradient-button gb-yellow rounded'
+                    clicked ::
+                        btns = [DialogButton('Restart', 'accept'),
+                                DialogButton('Cancel', 'reject')]
+                        restart_server(
+                            warning(self, 'Restart Camera Software', 'Are you sure you want to restart the camera?', btns),
+                            root_object().client_model,
+                            server_model_
                         )
 
-                PushButton: pb_tunnel_off:
-                    text = 'Tunnel Off'
-                    clicked :: root_object().client_model.send_message(
-                        server_model_,
-                        gs.MSG_TYPE_TUNNEL,
-                        kwds=dict(tunnel_state=False)
+                PushButton: pb_reboot:
+                    text = 'Reboot'
+                    style_class = 'gradient-button gb-blue rounded'
+                    clicked ::
+                        btns = [DialogButton('Reboot', 'accept'),
+                                DialogButton('Cancel', 'reject')]
+                        reboot_server(
+                            warning(self, 'Reboot Camera', 'Are you sure you want to reboot the camera?', btns),
+                            root_object().client_model,
+                            server_model_
                         )
 
-                PushButton: pb_putty:
-                    text = 'Putty'
-                    clicked :: root_object().client_model.send_message(server_model_, gs.MSG_TYPE_TUNNEL_CHECK)
-
-                PushButton: pb_local:
-                    text = 'Local'
-                    clicked :: root_object().client_model.send_message(server_model_, gs.MSG_TYPE_LOCAL)
-
-        VGroup:
-            PushButton: pb_settings:
-                text = "Settings"
-                clicked ::
-                    root_object().client_model.send_message(server_model_, gs.MSG_TYPE_GET_SETTINGS)
-
-            PushButton: pb_restart:
-                text = 'Software Restart'
-                style_class = 'gradient-button gb-yellow rounded'
-                clicked ::
-                    btns = [DialogButton('Restart', 'accept'),
-                            DialogButton('Cancel', 'reject')]
-                    restart_server(
-                        warning(self, 'Restart Camera Software', 'Are you sure you want to restart the camera?', btns),
-                        root_object().client_model,
-                        server_model_
-                    )
-
-            PushButton: pb_reboot:
-                text = 'Reboot'
-                style_class = 'gradient-button gb-blue rounded'
-                clicked ::
-                    btns = [DialogButton('Reboot', 'accept'),
-                            DialogButton('Cancel', 'reject')]
-                    reboot_server(
-                        warning(self, 'Reboot Camera', 'Are you sure you want to reboot the camera?', btns),
-                        root_object().client_model,
-                        server_model_
-                    )
-
-            #PushButton: pb_update:
-                #text = 'Update'
-                #style_class = 'gradient-button gb-red rounded'
-                #clicked ::
-                    #revisions = root_object().client_model.get_revisions_list()
-                    #if revisions == []:
-                        #warning(self, 'Warning', 'Your local repository is not synced with remote.\nPlease pull/push before trying to update the cameras.')
-                    #else:
-                        #descriptions, nodes = zip(*revisions)
-                        #td = UpdateTaskDialog(
-                            #self,
-                            #revisions=list(descriptions)
-                        #)
-                        #if td.exec_():
-                            #root_object().client_model.send_message(
-                                #server_model_,
-                                #gs.MSG_TYPE_UPDATE,
-                                #kwds=dict(
-                                    #rev=nodes[descriptions.index(td.selected_revision)]
-                                #)
+                #PushButton: pb_update:
+                    #text = 'Update'
+                    #style_class = 'gradient-button gb-red rounded'
+                    #clicked ::
+                        #revisions = root_object().client_model.get_revisions_list()
+                        #if revisions == []:
+                            #warning(self, 'Warning', 'Your local repository is not synced with remote.\nPlease pull/push before trying to update the cameras.')
+                        #else:
+                            #descriptions, nodes = zip(*revisions)
+                            #td = UpdateTaskDialog(
+                                #self,
+                                #revisions=list(descriptions)
                             #)
+                            #if td.exec_():
+                                #root_object().client_model.send_message(
+                                    #server_model_,
+                                    #gs.MSG_TYPE_UPDATE,
+                                    #kwds=dict(
+                                        #rev=nodes[descriptions.index(td.selected_revision)]
+                                    #)
+                                #)
 
+        MultilineField: status:
+            text << server_model_.status_text
+            font = '9pt Courier'
+            read_only = True
 
 enamldef ImageControlPage(Page):
     attr server_model_

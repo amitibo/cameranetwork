@@ -742,6 +742,7 @@ class ServerModel(Atom):
     sunshader_required_angle = Int()
     camera_settings = Dict(default=gs.CAMERA_SETTINGS)
     capture_settings = Dict(default=gs.CAPTURE_SETTINGS)
+    status_text = Str()
 
     client_model = Typed(ClientModel)
 
@@ -827,6 +828,13 @@ class ServerModel(Atom):
         )
 
         subprocess.Popen(putty_cmd)
+
+    def reply_status(self, git_result, memory_result):
+        """Open the putty client"""
+
+        self.status_text = "Memory Status:\n{}\n\nGit HEAD:\n{}".format(
+            memory_result[0], git_result[0]
+        )
 
     def reply_get_settings(self, camera_settings, capture_settings):
         """Handle reply of settings."""
@@ -1057,11 +1065,12 @@ class ArrayModel(Atom):
         # of right, up (East, North) respectively.
         #
         #normXY = np.linalg.norm(neu_pts[:, :2], axis=1)
-        normXYZ = np.linalg.norm(neu_pts, axis=1)
-        PSI = np.arccos(neu_pts[:,2]/(normXYZ+0.00000001))
+        #normXYZ = np.linalg.norm(neu_pts, axis=1)
+        PSI = np.arccos(neu_pts[:,2])
+        PHI = np.arctan2(neu_pts[:,1], neu_pts[:,0])
         R = PSI / self.fov * self.resolution/2
-        xs = R * neu_pts[:,1]/(normXYZ+0.00000001) + self.resolution/2
-        ys = R * neu_pts[:,0]/(normXYZ+0.00000001) + self.resolution/2
+        xs = R * np.sin(PHI) + self.resolution/2
+        ys = R * np.cos(PHI) + self.resolution/2
 
         if filter_fov:
             return xs[cosPSI>0], ys[cosPSI>0]

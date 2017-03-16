@@ -171,6 +171,23 @@ def sampleImage(img, img_data, almucantar_angles=None, principleplane_angles=Non
            principalplane_samples, principleplane_angles, PrincipalPlane_coords
 
 
+def sampleData(spm_df, t, camera_df, cam_id='102', resolution=301):
+    """Sample almucantar rgb values of some camera at specific time."""
+
+    angles, values = readSunPhotoMeter(spm_df, t)
+    closest_time = findClosestImageTime(camera_df, t, hdr='2')
+    img, img_data = cams.seek(cam_id, closest_time, -1, resolution)
+    almucantar_samples, almucantar_angles, almucantar_coords, \
+           _, _, _ = sampleImage(img, img_data, almucantar_angles=angles)
+    #
+    # Visualize the sampling positions
+    #
+    for x, y in zip(almucantar_coords[0], almucantar_coords[1]):
+        cv2.circle(img, (int(x), int(y)), 2, (255, 255, 0))
+
+    return angles, values, almucantar_samples, img, closest_time
+
+
 def readSunPhotoMeter(df, timestamp, sun_angles=5):
     """Get a sunphotometer reading at some time."""
 
