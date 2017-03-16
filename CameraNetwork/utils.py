@@ -15,6 +15,7 @@ import logging.handlers
 import math
 import numpy as np
 import os
+import pandas as pd
 import platform
 import scipy.io as sio
 from sklearn.base import BaseEstimator
@@ -733,6 +734,35 @@ def extractImgArray(matfile):
         img_array = np.ascontiguousarray(img_array)
 
     return img_array
+
+
+def getImagesDF(query_date):
+    """Get dataframe of images captures at a specific date."""
+
+    base_path = os.path.join(
+        gs.CAPTURE_PATH, query_date.strftime("%Y_%m_%d"))
+
+    if not os.path.isdir(base_path):
+        raise Exception('Non existing day: {}'.format(base_path))
+
+    image_list = sorted(glob.glob(os.path.join(base_path, '*.mat')))
+    times_list = map(lambda p: os.path.split(p)[-1], image_list)
+
+    time_stamps =  []
+    datetimes = []
+    hdrs = []
+    for time_str in times_list:
+        tmp = os.path.splitext(time_str)[0]
+        tmp_parts = tmp.split('_')
+        time_stamps.append(float(tmp_parts[0]))
+        datetimes.append(datetime(*[int(i) for i in tmp_parts[1:-1]]))
+        hdrs.append(tmp_parts[-1])
+
+    new_df = pd.DataFrame(
+        data={'Time': datetimes, 'hdr': hdrs, 'path': image_list},
+        columns=('Time', 'hdr', 'path')).set_index(['Time', 'hdr'])
+
+    return new_df
 
 
 if __name__ == '__main__':

@@ -5,6 +5,7 @@ from CameraNetwork.internet import retrieve_proxy_parameters
 from CameraNetwork.mdp import MDPWorker
 from CameraNetwork.utils import DataObj
 from CameraNetwork.utils import dict2buff
+from CameraNetwork.utils import getImagesDF
 from CameraNetwork.utils import handler
 from CameraNetwork.utils import handler_no_answer
 from CameraNetwork.utils import identify_server
@@ -731,28 +732,7 @@ class Server(MDPWorker):
         if type(query_date) == str:
             query_date = dtparser.parse(query_date)
 
-        base_path = os.path.join(
-            gs.CAPTURE_PATH, query_date.strftime("%Y_%m_%d"))
-
-        if not os.path.isdir(base_path):
-            raise Exception('Non existing day: {}'.format(base_path))
-
-        image_list = sorted(glob.glob(os.path.join(base_path, '*.mat')))
-        times_list = map(lambda p: os.path.split(p)[-1], image_list)
-
-        time_stamps =  []
-        datetimes = []
-        hdrs = []
-        for time_str in times_list:
-            tmp = os.path.splitext(time_str)[0]
-            tmp_parts = tmp.split('_')
-            time_stamps.append(float(tmp_parts[0]))
-            datetimes.append(datetime(*[int(i) for i in tmp_parts[1:-1]]))
-            hdrs.append(tmp_parts[-1])
-
-        new_df = pd.DataFrame(
-            data={'Time': datetimes, 'hdr': hdrs, 'path': image_list},
-            columns=('Time', 'hdr', 'path')).set_index(['Time', 'hdr'])
+        new_df = getImagesDF(query_date)
 
         #
         # Cleaup possible problems in the new dataframe.
@@ -793,59 +773,15 @@ class Server(MDPWorker):
         if self.last_query_df is None:
             raise Exception("Need to first call the 'query' cmd.")
 
-        #
-        # Seek the array/settings.
-        #
-        original_seek_time = seek_time
-        if type(seek_time) == str:
-            seek_time = dtparser.parse(seek_time)
-
-        if type(seek_time) == datetime:
-            seek_time = pd.Timestamp(seek_time)
-
-        if type(seek_time) != pd.Timestamp:
-            raise ValueError("Cannot translate seek_time: {}}".format(
-                original_seek_time))
-
-        if hdr_index < 0:
-            mat_paths = self.last_query_df.loc[seek_time].values.flatten()
-        else:
-            mat_paths = self.last_query_df.loc[seek_time, hdr_index].values
-
-        img_arrays, img_datas = [], []
-        for mat_path in mat_paths:
-            print("Seeking: {}".format(mat_path))
-            assert os.path.exists(mat_path), "Non existing array: {}".format(mat_path)
-            img_array = sio.loadmat(mat_path)['img_array']
-
-            base_path = os.path.splitext(mat_path)[0]
-            if os.path.exists(base_path+'.json'):
-                #
-                # Support old json data files.
-                #
-                img_data = DataObj(
-                    longitude=self.camera_settings[gs.CAMERA_LONGITUDE],
-                    latitude=self.camera_settings[gs.CAMERA_LATITUDE],
-                    altitude=self.camera_settings[gs.CAMERA_ALTITUDE],
-                    name_time=seek_time.to_datetime()
-                )
-
-                data_path = base_path + '.json'
-                with open(data_path, mode='rb') as f:
-                    img_data.update(**json.load(f))
-
-            elif os.path.exists(base_path+'.pkl'):
-                #
-                # New pickle data files.
-                #
-                with open(base_path+'.pkl', 'rb') as f:
-                    img_data = cPickle.load(f)
-
-            img_arrays.append(img_array)
-            img_datas.append(img_data)
-
-        img_array = self._controller.preprocess_array(
-            img_arrays, img_datas, normalize, resolution, jpeg)
+        img_datas, img_array = self._controller.seekImageArray(
+            self.last_query_df,
+            seek_time,
+            hdr_index,
+            normalize,
+            resolution,
+            jpeg,
+            self.camera_settings
+        )
 
         #
         # Send reply on next ioloop cycle.
@@ -968,6 +904,31 @@ class Server(MDPWorker):
             'rotated_directions': rotated_directions,
             'calculated_directions': calculated_directions,
             'R': R,}))
+
+    @gen.coroutine
+    def handle_radiometric(self, date, time_index, residual_threshold, save):
+        """Handle radiometric calibration."""
+
+        #
+        # Send command to the controller.
+        #
+        angles, measurements, estimations = \
+            yield self.push_cmd(
+                gs.RADIOMETRIC_CMD,
+                date=date,
+                time_index=time_index,
+                residual_threshold=residual_threshold,
+                save=save,
+                camera_settings=self.camera_settings
+            )
+
+        #
+        # Send reply on next ioloop cycle.
+        #
+        raise gen.Return(((), {
+            'angles': angles,
+            'measurements': measurements,
+            'estimations': estimations,}))
 
     @gen.coroutine
     def handle_calibration(self, nx, ny, imgs_num, delay, exposure_us,
