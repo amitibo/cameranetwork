@@ -832,9 +832,11 @@ class ServerModel(Atom):
     def reply_status(self, git_result, memory_result):
         """Open the putty client"""
 
-        self.status_text = "Memory Status:\n{}\n\nGit HEAD:\n{}".format(
+        self.status_text = \
+            "Memory Status:\n--------------\n{}\n\nGit HEAD:\n---------\n{}".format(
             memory_result[0], git_result[0]
         )
+        print(self.status_text)
 
     def reply_get_settings(self, camera_settings, capture_settings):
         """Handle reply of settings."""

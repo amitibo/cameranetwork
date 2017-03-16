@@ -167,6 +167,7 @@ enamldef MainControlsPage(Page):
             font = '9pt Courier'
             read_only = True
 
+
 enamldef ImageControlPage(Page):
     attr server_model_
 

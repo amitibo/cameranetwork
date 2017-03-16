@@ -361,6 +361,11 @@ enamldef Main(MainWindow): main:
                     client_model.broadcast_message(gs.MSG_TYPE_HALT)
 
             Action:
+                text = "Status\tCtrl+M"
+                triggered ::
+                    client_model.broadcast_message(gs.MSG_TYPE_STATUS)
+
+            Action:
                 text = "Settings\tCtrl+S"
                 triggered ::
                     hresult = GlobalSettingsDialog(
