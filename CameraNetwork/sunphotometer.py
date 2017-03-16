@@ -46,7 +46,8 @@ def calcAlmucantarPrinciplePlanes(
     #
     # Calculate Almucantar angles.
     # Almucantar samples at the altitude of the sun at differnt Azimuths.
-    start_az = -sun.az
+    #
+    start_az = sun.az
     if almucantar_angles is None:
         #
         # Sample uniformly along Almucantar angles.
@@ -61,7 +62,7 @@ def calcAlmucantarPrinciplePlanes(
     # Convert Almucantar angles to image coords.
     #
     alm_radius = (np.pi/2 - alm_alts)/(np.pi/2)
-    alm_x = (-alm_radius * np.sin(alm_az) + 1) * img_resolution / 2
+    alm_x = (alm_radius * np.sin(alm_az) + 1) * img_resolution / 2
     alm_y = (alm_radius * np.cos(alm_az) + 1) * img_resolution / 2
     Almucantar_coords = np.array((alm_x, alm_y))
 
@@ -77,13 +78,13 @@ def calcAlmucantarPrinciplePlanes(
         pp_alts = np.linspace(0, np.pi, pp_resolution, endpoint=False)
     else:
         pp_alts = np.radians(principleplane_angles) + start_alt
-    pp_az = -sun.az * np.ones(len(pp_alts))
+    pp_az = sun.az * np.ones(len(pp_alts))
 
     #
     # Convert Principal Plane angles to image coords.
     #
     pp_radius = (np.pi/2 - pp_alts)/(np.pi/2)
-    pp_x = (-pp_radius * np.sin(pp_az) + 1) * img_resolution / 2
+    pp_x = (pp_radius * np.sin(pp_az) + 1) * img_resolution / 2
     pp_y = (pp_radius * np.cos(pp_az) + 1) * img_resolution / 2
     PrincipalPlane_coords = np.array((pp_x, pp_y))
 
@@ -236,10 +237,6 @@ def calcSunphometerCoords(img_data, resolution):
             capture_time=img_data.capture_time,
             img_resolution=resolution)
 
-    #
-    # Note:
-    # The X, Y coords are switched as the pyqt display is Transposed to the matplotlib coords.
-    #
-    return Almucantar_coords[::-1, ...].T.tolist(), PrincipalPlane_coords[::-1, ...].T.tolist()
+    return Almucantar_coords.T.tolist(), PrincipalPlane_coords.T.tolist()
 
 

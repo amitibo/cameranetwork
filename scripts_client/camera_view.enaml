@@ -17,7 +17,8 @@ from settings import GlobalSettingsDialog
 from settings import SettingsDialog
 from settings import ReconstructDialog
 from server_pages import (MainControlsPage, ImageControlPage, SeekControlPage,
-    SunshaderControlPage, SprinklerControlPage, CalibrationControlPage)
+    SunshaderControlPage, SprinklerControlPage, IntrinsicControlPage,
+    ExtrinsicControlPage, RadiometricControlPage)
 
 from data_frame_table import DataFrameTable
 
@@ -246,13 +247,24 @@ enamldef ServerItem(DockItem):
                 closable = False
                 server_model_ = server_model
 
-            CalibrationControlPage:
-                title = 'Calibration'
+            IntrinsicControlPage:
+                title = 'Intrinsic'
                 closable = False
                 server_model_ = server_model
                 exposure_us << image_page.ff_exposure
                 gain_db << image_page.ff_gain
                 gain_boost<< image_page.ff_gain_boost
+
+            ExtrinsicControlPage:
+                title = 'Extrinsic'
+                closable = False
+                server_model_ = server_model
+
+            RadiometricControlPage:
+                title = 'Radiometric'
+                closable = False
+                sunphotometer_times = []
+                server_model_ = server_model
 
         GroupBox:
             title = 'Message'

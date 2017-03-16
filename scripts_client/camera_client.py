@@ -738,6 +738,7 @@ class ServerModel(Atom):
     tunnel_port = Int()
     tunnel_ip = Str()
     sunshader_figure = Value()
+    radiometric_figure = Value()
     extrinsic_scene = Typed(MlabSceneModel)
     sunshader_required_angle = Int()
     camera_settings = Dict(default=gs.CAMERA_SETTINGS)
@@ -753,6 +754,16 @@ class ServerModel(Atom):
         pass
 
     def _default_sunshader_figure(self):
+        """Draw the default plot figure."""
+
+        figure = Figure(figsize=(2, 1))
+        ax = figure.add_subplot(111)
+        x = np.arange(20, 160)
+        ax.plot(x, np.zeros_like(x))
+
+        return figure
+
+    def _default_radiometric_figure(self):
         """Draw the default plot figure."""
 
         figure = Figure(figsize=(2, 1))
