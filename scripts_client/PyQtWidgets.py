@@ -12,20 +12,6 @@ import pyqtgraph as pg
 pg.setConfigOptions(imageAxisOrder='row-major')
 
 
-class PyQtGraphWidget(RawWidget):
-    """A base for PyQtGraph Widgets for enaml."""
-
-    def __init__(self, *params, **kwds):
-        super(PyQtGraphWidget, self).__init__(*params, **kwds)
-
-    def create_widget(self, parent):
-        """ Create the PyQtGraph widget"""
-
-        win = pg.GraphicsView(parent)
-
-        return win
-
-
 class PyQtGraphLayoutWidget(RawWidget):
     """A base for PyQtGraph Widgets for enaml."""
 
@@ -442,4 +428,17 @@ class PyQtImageView(PyQtGraphLayoutWidget):
         win.resize(400, 400)
 
         return win
+
+
+    #myFilter = MyEventFilter()
+    #win.installEventFilter(myFilter)
+
+#class MyEventFilter(QtCore.QObject):
+    #def eventFilter(self, event):
+        #if event.type() == QtCore.QEvent.Wheel:
+            ## do some stuff ...
+            #return False # means stop event propagation
+
+        #return super(MyEventFilter,self).eventFilter(event)
+
 
