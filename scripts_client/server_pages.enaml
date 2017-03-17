@@ -527,6 +527,15 @@ enamldef RadiometricControlPage(Page):
             ObjectCombo: time_combo:
                 pass
 
+        HGroup:
+            Label:
+                text = 'Residual Threshold:'
+            FloatField: residual_threshold:
+                value = 1.
+
+            CheckBox: cb_save:
+               text = "Save"
+               
             PushButton: pb_radiometric:
                 text = 'Radiometric Calibrate'
                 clicked ::
@@ -536,6 +545,8 @@ enamldef RadiometricControlPage(Page):
                         kwds=dict(
                             date=radiometric_day.date,
                             time_index=time_combo.items.index(time_combo.selected),
+                            residual_threshold=residual_threshold.value,
+                            save=cb_save.checked
                         )
                     )
 

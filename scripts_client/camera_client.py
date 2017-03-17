@@ -889,6 +889,18 @@ class ServerModel(Atom):
         array = np.hstack((array[:, ::-1], np.ones((width*height, 1), dtype=np.uint8)*255))
         self.client_model.thumb = EImage(data=array.tostring(), format='argb32', raw_size=(width, height))
 
+    def reply_radiometric(self, angles, measurements, estimations):
+        """Handle to reply for the radiometric calibration."""
+        
+        f = Figure(figsize=(2, 1))
+        
+        for i in range(3):
+            ax = f.add_subplot(131+i)
+            ax.plot(angles, measurements[i], label="spm")
+            ax.plot(angles, estimations[i], label="cam")
+        
+        self.radiometric_figure = f
+
     def reply_sunshader_scan(self, angles, saturated_array, sun_signal, required_angle):
         f = Figure(figsize=(2, 1))
         ax = f.add_subplot(111)
