@@ -716,6 +716,10 @@ def extractImgArray(matfile):
     data = buff2dict(matfile)
     img_array = data["img_array"]
 
+    #
+    # This if handles both the case where "jpeg" type
+    # is int (quality) and bool.
+    #
     if data["jpeg"]:
         buff = StringIO.StringIO(img_array.tostring())
         img = Image.open(buff)

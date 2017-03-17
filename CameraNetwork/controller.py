@@ -980,7 +980,8 @@ class Controller(object):
             normalize=True,
             resolution=resolution,
             jpeg=False,
-            camera_settings=camera_settings
+            camera_settings=camera_settings,
+            correct_radiometric=False
         )
         almucantar_samples, almucantar_angles, almucantar_coords, \
                _, _, _ = spm.sampleImage(img, img_datas[0], almucantar_angles=angles)
@@ -1092,9 +1093,26 @@ class Controller(object):
         normalize,
         resolution,
         jpeg,
-        camera_settings
+        camera_settings,
+        correct_radiometric=True
         ):
-        """Seek an image array."""
+        """Seek an image array.
+
+        Args:
+            df (DataFrame): Pandas DataFrame holding all paths to images captured at
+                some day. It is created using `CameraNetwork.utils.getImagesDF`
+            seek_time (datetime): Time of required image.
+            hdr_index (int): Index of hdr exposure. If <0 , then and HDR image will
+                be returned.
+            normalize (bool): Normalize the image.
+            resolution (int): Resolution of the normalized image.
+            jpeg (bool/int): Whether to return an array or compressed JPEG. If int,
+                then it will be used as quality of the JPEG.
+            camera_settings (DataObj): Object holding camera information.
+            correct_radiometric (bool): Whether to apply radiometric correction.
+                When calculating radiometric correction, it is important NOT to
+                fix the measurements.
+        """
 
         #
         # Seek the array/settings.
@@ -1158,13 +1176,22 @@ class Controller(object):
             img_datas,
             normalize,
             resolution,
-            jpeg=False):
+            jpeg=False,
+            correct_radiometric=True):
         """Apply preprocessing to the raw array:
         dark_image substraction, normalization, vignetting, HDR...
 
+        Args:
+            ...
+            jpeg (bool/int): Whether to return an array or compressed JPEG. If int,
+                then it will be used as quality of the JPEG.
+            correct_radiometric (bool): Whether to apply radiometric correction.
+                When calculating radiometric correction, it is important NOT to
+                fix the measurements.
+
         Note:
-        If multiple arrays/data are passed to the function, these are merged to
-        an HDR image.
+            If multiple arrays/data are passed to the function, these are merged to
+            an HDR image.
         """
 
         #
@@ -1188,6 +1215,15 @@ class Controller(object):
                 tmp_arrays.append(img_array)
 
             img_arrays = tmp_arrays
+
+        #
+        # Check the type of the jpeg argument. If it is int, handle it as quality.
+        #
+        if type(jpeg) is int:
+            jpeg_quality = min(100, max(jpeg, gs.MIN_JPEG_QUALITY))
+            jpeg = True
+        else:
+            jpeg_quality = gs.MIN_JPEG_QUALITY
 
         if jpeg:
             #
@@ -1221,7 +1257,7 @@ class Controller(object):
 
             img_array = self._normalization.normalize(img_array)
 
-        if not jpeg:
+        if not jpeg and correct_radiometric:
             #
             # Scale to Watts.
             #
@@ -1237,7 +1273,7 @@ class Controller(object):
             img_array = img_array.clip(0, 255)
             img = Image.fromarray(img_array.astype(np.uint8))
             f = StringIO.StringIO()
-            img.save(f, format="JPEG")
+            img.save(f, format="JPEG", quality=jpeg_quality)
             img_array = np.fromstring(f.getvalue(), dtype=np.uint8)
 
         return np.ascontiguousarray(img_array)

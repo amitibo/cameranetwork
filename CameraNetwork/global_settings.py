@@ -12,6 +12,11 @@ import warnings
 ##############################################################
 
 #
+# General
+#
+MIN_JPEG_QUALITY = 80
+
+#
 # Internet watchdog
 #
 WD_TEST_INTERNET_PERIOD = 120
