@@ -738,10 +738,12 @@ class ServerModel(Atom):
     tunnel_port = Int()
     tunnel_ip = Str()
     sunshader_figure = Value()
+    radiometric_figure = Value()
     extrinsic_scene = Typed(MlabSceneModel)
     sunshader_required_angle = Int()
     camera_settings = Dict(default=gs.CAMERA_SETTINGS)
     capture_settings = Dict(default=gs.CAPTURE_SETTINGS)
+    status_text = Str()
 
     client_model = Typed(ClientModel)
 
@@ -752,6 +754,16 @@ class ServerModel(Atom):
         pass
 
     def _default_sunshader_figure(self):
+        """Draw the default plot figure."""
+
+        figure = Figure(figsize=(2, 1))
+        ax = figure.add_subplot(111)
+        x = np.arange(20, 160)
+        ax.plot(x, np.zeros_like(x))
+
+        return figure
+
+    def _default_radiometric_figure(self):
         """Draw the default plot figure."""
 
         figure = Figure(figsize=(2, 1))
@@ -828,6 +840,15 @@ class ServerModel(Atom):
 
         subprocess.Popen(putty_cmd)
 
+    def reply_status(self, git_result, memory_result):
+        """Open the putty client"""
+
+        self.status_text = \
+            "Memory Status:\n--------------\n{}\n\nGit HEAD:\n---------\n{}".format(
+            memory_result[0], git_result[0]
+        )
+        print(self.status_text)
+
     def reply_get_settings(self, camera_settings, capture_settings):
         """Handle reply of settings."""
 
@@ -867,6 +888,18 @@ class ServerModel(Atom):
 
         array = np.hstack((array[:, ::-1], np.ones((width*height, 1), dtype=np.uint8)*255))
         self.client_model.thumb = EImage(data=array.tostring(), format='argb32', raw_size=(width, height))
+
+    def reply_radiometric(self, angles, measurements, estimations):
+        """Handle to reply for the radiometric calibration."""
+        
+        f = Figure(figsize=(2, 1))
+        
+        for i in range(3):
+            ax = f.add_subplot(131+i)
+            ax.plot(angles, measurements[i], label="spm")
+            ax.plot(angles, estimations[i], label="cam")
+        
+        self.radiometric_figure = f
 
     def reply_sunshader_scan(self, angles, saturated_array, sun_signal, required_angle):
         f = Figure(figsize=(2, 1))
@@ -1057,11 +1090,12 @@ class ArrayModel(Atom):
         # of right, up (East, North) respectively.
         #
         #normXY = np.linalg.norm(neu_pts[:, :2], axis=1)
-        normXYZ = np.linalg.norm(neu_pts, axis=1)
-        PSI = np.arccos(neu_pts[:,2]/(normXYZ+0.00000001))
+        #normXYZ = np.linalg.norm(neu_pts, axis=1)
+        PSI = np.arccos(neu_pts[:,2])
+        PHI = np.arctan2(neu_pts[:,1], neu_pts[:,0])
         R = PSI / self.fov * self.resolution/2
-        xs = R * neu_pts[:,1]/(normXYZ+0.00000001) + self.resolution/2
-        ys = R * neu_pts[:,0]/(normXYZ+0.00000001) + self.resolution/2
+        xs = R * np.sin(PHI) + self.resolution/2
+        ys = R * np.cos(PHI) + self.resolution/2
 
         if filter_fov:
             return xs[cosPSI>0], ys[cosPSI>0]

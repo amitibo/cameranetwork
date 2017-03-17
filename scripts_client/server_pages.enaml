@@ -13,8 +13,11 @@ from enaml.stdlib.message_box import (MessageBox, about, critical, information,
 from traits_enaml.widgets.mayavi_canvas import MayaviCanvas
 
 import CameraNetwork.global_settings as gs
+from CameraNetwork import sunphotometer as spm
 from data_frame_table import DataFrameTable
 from extra import SliderText
+import glob
+import pkg_resources
 
 
 def restart_server(button, client_model, server_model):
@@ -59,102 +62,113 @@ enamldef UpdateTaskDialog(Dialog):
 enamldef MainControlsPage(Page):
     attr server_model_
 
-    HGroup:
-        VGroup:
-            GroupBox:
-                title = 'Capture Mode'
+    VGroup:
+        HGroup:
+            VGroup:
+                GroupBox:
+                    title = 'Capture Mode'
 
-                PushButton: pb_loop:
-                    text = 'Loop'
+                    PushButton: pb_loop:
+                        text = 'Loop'
+                        clicked ::
+                            root_object().client_model.send_message(server_model_, gs.MSG_TYPE_LOOP)
+
+                    PushButton: pb_calib:
+                        text = 'Calib Imgs'
+                        clicked :: root_object().client_model.send_message(server_model_, gs.MSG_TYPE_CALIB_IMGS)
+
+                    PushButton: pb_halt:
+                        text = 'Halt'
+                        clicked :: root_object().client_model.send_message(server_model_, gs.MSG_TYPE_HALT)
+
+                GroupBox:
+                    title = 'SSH'
+
+                    PushButton: pb_tunnel_on:
+                        text = 'Tunnel On'
+                        clicked :: root_object().client_model.send_message(
+                            server_model_,
+                            gs.MSG_TYPE_TUNNEL,
+                            kwds=dict(tunnel_state=True)
+                            )
+
+                    PushButton: pb_tunnel_off:
+                        text = 'Tunnel Off'
+                        clicked :: root_object().client_model.send_message(
+                            server_model_,
+                            gs.MSG_TYPE_TUNNEL,
+                            kwds=dict(tunnel_state=False)
+                            )
+
+                    PushButton: pb_putty:
+                        text = 'Putty'
+                        clicked :: root_object().client_model.send_message(server_model_, gs.MSG_TYPE_TUNNEL_CHECK)
+
+                    PushButton: pb_local:
+                        text = 'Local'
+                        clicked :: root_object().client_model.send_message(server_model_, gs.MSG_TYPE_LOCAL)
+
+            VGroup:
+                PushButton: pb_status:
+                    text = "Status"
                     clicked ::
-                        root_object().client_model.send_message(server_model_, gs.MSG_TYPE_LOOP)
+                        root_object().client_model.send_message(server_model_, gs.MSG_TYPE_STATUS)
 
-                PushButton: pb_calib:
-                    text = 'Calib Imgs'
-                    clicked :: root_object().client_model.send_message(server_model_, gs.MSG_TYPE_CALIB_IMGS)
+                PushButton: pb_settings:
+                    text = "Settings"
+                    clicked ::
+                        root_object().client_model.send_message(server_model_, gs.MSG_TYPE_GET_SETTINGS)
 
-                PushButton: pb_halt:
-                    text = 'Halt'
-                    clicked :: root_object().client_model.send_message(server_model_, gs.MSG_TYPE_HALT)
-
-            GroupBox:
-                title = 'SSH'
-
-                PushButton: pb_tunnel_on:
-                    text = 'Tunnel On'
-                    clicked :: root_object().client_model.send_message(
-                        server_model_,
-                        gs.MSG_TYPE_TUNNEL,
-                        kwds=dict(tunnel_state=True)
+                PushButton: pb_restart:
+                    text = 'Software Restart'
+                    style_class = 'gradient-button gb-yellow rounded'
+                    clicked ::
+                        btns = [DialogButton('Restart', 'accept'),
+                                DialogButton('Cancel', 'reject')]
+                        restart_server(
+                            warning(self, 'Restart Camera Software', 'Are you sure you want to restart the camera?', btns),
+                            root_object().client_model,
+                            server_model_
                         )
 
-                PushButton: pb_tunnel_off:
-                    text = 'Tunnel Off'
-                    clicked :: root_object().client_model.send_message(
-                        server_model_,
-                        gs.MSG_TYPE_TUNNEL,
-                        kwds=dict(tunnel_state=False)
+                PushButton: pb_reboot:
+                    text = 'Reboot'
+                    style_class = 'gradient-button gb-blue rounded'
+                    clicked ::
+                        btns = [DialogButton('Reboot', 'accept'),
+                                DialogButton('Cancel', 'reject')]
+                        reboot_server(
+                            warning(self, 'Reboot Camera', 'Are you sure you want to reboot the camera?', btns),
+                            root_object().client_model,
+                            server_model_
                         )
 
-                PushButton: pb_putty:
-                    text = 'Putty'
-                    clicked :: root_object().client_model.send_message(server_model_, gs.MSG_TYPE_TUNNEL_CHECK)
-
-                PushButton: pb_local:
-                    text = 'Local'
-                    clicked :: root_object().client_model.send_message(server_model_, gs.MSG_TYPE_LOCAL)
-
-        VGroup:
-            PushButton: pb_settings:
-                text = "Settings"
-                clicked ::
-                    root_object().client_model.send_message(server_model_, gs.MSG_TYPE_GET_SETTINGS)
-
-            PushButton: pb_restart:
-                text = 'Software Restart'
-                style_class = 'gradient-button gb-yellow rounded'
-                clicked ::
-                    btns = [DialogButton('Restart', 'accept'),
-                            DialogButton('Cancel', 'reject')]
-                    restart_server(
-                        warning(self, 'Restart Camera Software', 'Are you sure you want to restart the camera?', btns),
-                        root_object().client_model,
-                        server_model_
-                    )
-
-            PushButton: pb_reboot:
-                text = 'Reboot'
-                style_class = 'gradient-button gb-blue rounded'
-                clicked ::
-                    btns = [DialogButton('Reboot', 'accept'),
-                            DialogButton('Cancel', 'reject')]
-                    reboot_server(
-                        warning(self, 'Reboot Camera', 'Are you sure you want to reboot the camera?', btns),
-                        root_object().client_model,
-                        server_model_
-                    )
-
-            #PushButton: pb_update:
-                #text = 'Update'
-                #style_class = 'gradient-button gb-red rounded'
-                #clicked ::
-                    #revisions = root_object().client_model.get_revisions_list()
-                    #if revisions == []:
-                        #warning(self, 'Warning', 'Your local repository is not synced with remote.\nPlease pull/push before trying to update the cameras.')
-                    #else:
-                        #descriptions, nodes = zip(*revisions)
-                        #td = UpdateTaskDialog(
-                            #self,
-                            #revisions=list(descriptions)
-                        #)
-                        #if td.exec_():
-                            #root_object().client_model.send_message(
-                                #server_model_,
-                                #gs.MSG_TYPE_UPDATE,
-                                #kwds=dict(
-                                    #rev=nodes[descriptions.index(td.selected_revision)]
-                                #)
+                #PushButton: pb_update:
+                    #text = 'Update'
+                    #style_class = 'gradient-button gb-red rounded'
+                    #clicked ::
+                        #revisions = root_object().client_model.get_revisions_list()
+                        #if revisions == []:
+                            #warning(self, 'Warning', 'Your local repository is not synced with remote.\nPlease pull/push before trying to update the cameras.')
+                        #else:
+                            #descriptions, nodes = zip(*revisions)
+                            #td = UpdateTaskDialog(
+                                #self,
+                                #revisions=list(descriptions)
                             #)
+                            #if td.exec_():
+                                #root_object().client_model.send_message(
+                                    #server_model_,
+                                    #gs.MSG_TYPE_UPDATE,
+                                    #kwds=dict(
+                                        #rev=nodes[descriptions.index(td.selected_revision)]
+                                    #)
+                                #)
+
+        MultilineField: status:
+            text << server_model_.status_text
+            font = '9pt Courier'
+            read_only = True
 
 
 enamldef ImageControlPage(Page):
@@ -366,114 +380,175 @@ enamldef SprinklerControlPage(Page):
                 value = gs.SPRINKLER_PERIOD
 
 
-enamldef CalibrationControlPage(Page):
+enamldef IntrinsicControlPage(Page):
     attr server_model_
 
     attr exposure_us
     attr gain_db
     attr gain_boost
 
-    GroupBox:
-        title = 'Calibration'
+    Form:
+        Label:
+            text = 'nx:'
+        IntField: calib_nx:
+           minimum = 6
+           maximum = 12
+           value = 9
+        Label:
+            text = 'ny:'
+        IntField: calib_ny:
+            minimum = 5
+            maximum = 10
+            value = 6
+        Label:
+            text = 'imgs num:'
+        IntField: calib_imgs:
+            minimum = 10
+            maximum = 50
+            value = 40
+        Label:
+            text = 'imgs dely:'
+        IntField: calib_delay:
+            minimum = 1
+            maximum = 3
+            value = 2
 
-        Form:
-            Label:
-                text = 'nx:'
-            IntField: calib_nx:
-               minimum = 6
-               maximum = 12
-               value = 9
-            Label:
-                text = 'ny:'
-            IntField: calib_ny:
-                minimum = 5
-                maximum = 10
-                value = 6
-            Label:
-                text = 'imgs num:'
-            IntField: calib_imgs:
-                minimum = 10
-                maximum = 50
-                value = 40
-            Label:
-                text = 'imgs dely:'
-            IntField: calib_delay:
-                minimum = 1
-                maximum = 3
-                value = 2
-
-        PushButton: pb_calibration:
-            text = 'Calibrate'
-            clicked ::
-                box = MessageBox()
-                box.title = 'Geometric Calibration'
-                box.content = 'Do you want to do geometric calibration?'
-                box.buttons = [DialogButton('Accept', 'accept'),
-                               DialogButton('Cancel', 'reject')]
-                if sys.platform == 'win32':
-                    data, size = winutil.load_icon(winutil.OIC_INFORMATION)
-                    box.image = Image(data=data, raw_size=size, format='argb32')
-                box.set_parent(root_object())
-                box.exec_()
-                if box.buttons[0].was_clicked:
-                    root_object().client_model.send_message(
-                        server_model_,
-                        gs.MSG_TYPE_CALIBRATION,
-                        kwds=dict(
-                            nx=calib_nx.value,
-                            ny=calib_ny.value,
-                            imgs_num=calib_imgs.value,
-                            delay=calib_delay.value,
-                            exposure_us=exposure_us if exposure_us>0 else None,
-                            gain_db=gain_db if gain_db>0 else None,
-                            gain_boost=gain_boost
-                        )
-                    )
-
-        PushButton: pb_dark_image:
-            text = 'Dark Images'
-            clicked ::
-                box = MessageBox()
-                box.title = 'Dark Images'
-                box.content = 'Do you want to measure dark images?'
-                box.buttons = [DialogButton('Accept', 'accept'),
-                               DialogButton('Cancel', 'reject')]
-                if sys.platform == 'win32':
-                    data, size = winutil.load_icon(winutil.OIC_INFORMATION)
-                    box.image = Image(data=data, raw_size=size, format='argb32')
-                box.set_parent(root_object())
-                box.exec_()
-                if box.buttons[0].was_clicked:
-                    root_object().client_model.send_message(
-                        server_model_,
-                        gs.MSG_TYPE_DARK_IMAGES
-                    )
-
-        VGroup:
-            HGroup:
-                DateSelector: extrinsic_day:
-                    pass
-
-                Label:
-                    text = 'Residual Threshold:'
-                FloatField: residual_threshold:
-                    value = 1.
-
-                PushButton: pb_extrinsic:
-                    text = 'Extrinsic'
-                    clicked ::
+        HGroup:
+            PushButton: pb_calibration:
+                text = 'Intrisic Calibrate'
+                clicked ::
+                    box = MessageBox()
+                    box.title = 'Geometric Calibration'
+                    box.content = 'Do you want to do geometric calibration?'
+                    box.buttons = [DialogButton('Accept', 'accept'),
+                                   DialogButton('Cancel', 'reject')]
+                    if sys.platform == 'win32':
+                        data, size = winutil.load_icon(winutil.OIC_INFORMATION)
+                        box.image = Image(data=data, raw_size=size, format='argb32')
+                    box.set_parent(root_object())
+                    box.exec_()
+                    if box.buttons[0].was_clicked:
                         root_object().client_model.send_message(
                             server_model_,
-                            gs.MSG_TYPE_EXTRINSIC,
+                            gs.MSG_TYPE_CALIBRATION,
                             kwds=dict(
-                                date=extrinsic_day.date,
-                                residual_threshold=residual_threshold.value,
-                                save=True
+                                nx=calib_nx.value,
+                                ny=calib_ny.value,
+                                imgs_num=calib_imgs.value,
+                                delay=calib_delay.value,
+                                exposure_us=exposure_us if exposure_us>0 else None,
+                                gain_db=gain_db if gain_db>0 else None,
+                                gain_boost=gain_boost
                             )
                         )
 
-            MayaviCanvas: mcanvas:
-                scene << server_model_.extrinsic_scene
-                show_toolbar = True
+            PushButton: pb_dark_image:
+                text = 'Dark Images'
+                clicked ::
+                    box = MessageBox()
+                    box.title = 'Dark Images'
+                    box.content = 'Do you want to measure dark images?'
+                    box.buttons = [DialogButton('Accept', 'accept'),
+                                   DialogButton('Cancel', 'reject')]
+                    if sys.platform == 'win32':
+                        data, size = winutil.load_icon(winutil.OIC_INFORMATION)
+                        box.image = Image(data=data, raw_size=size, format='argb32')
+                    box.set_parent(root_object())
+                    box.exec_()
+                    if box.buttons[0].was_clicked:
+                        root_object().client_model.send_message(
+                            server_model_,
+                            gs.MSG_TYPE_DARK_IMAGES
+                        )
 
 
+enamldef ExtrinsicControlPage(Page):
+    attr server_model_
+
+    VGroup:
+        HGroup:
+            DateSelector: extrinsic_day:
+                pass
+
+            Label:
+                text = 'Residual Threshold:'
+            FloatField: residual_threshold:
+                value = 1.
+
+            PushButton: pb_extrinsic:
+                text = 'Extrinsic Calibrate'
+                clicked ::
+                    root_object().client_model.send_message(
+                        server_model_,
+                        gs.MSG_TYPE_EXTRINSIC,
+                        kwds=dict(
+                            date=extrinsic_day.date,
+                            residual_threshold=residual_threshold.value,
+                            save=True
+                        )
+                    )
+
+        MayaviCanvas: mcanvas:
+            scene << server_model_.extrinsic_scene
+            show_toolbar = True
+
+
+enamldef RadiometricControlPage(Page):
+    attr server_model_
+
+    alias sunphotometer_times: time_combo.items
+    alias selected_time: time_combo.selected
+
+    VGroup:
+        HGroup:
+            DateSelector: radiometric_day:
+                pass
+
+            PushButton: pb_day:
+                text = 'Get SP Times'
+                clicked ::
+                    #
+                    # Get alm file.
+                    #
+                    date = radiometric_day.date
+                    base_path = pkg_resources.resource_filename(
+                        'CameraNetwork',
+                        '../data/aeronet/{}/*.alm'.format(date.strftime("%Y_%m"))
+                    )
+                    path = glob.glob(base_path)
+                    if path == []:
+                        time_combo.items = []
+                    else:
+                        df = spm.parseSunPhotoMeter(path[0])
+                        spm_df = df[date.strftime("%Y-%m-%d")]
+                        spm_df = [spm_df[spm_df["Wavelength(um)"]==wl] for wl in (0.6744, 0.5000, 0.4405)]
+                        time_combo.items = [d.strftime("%H:%M:%S") for d in spm_df[0].index]
+
+            ObjectCombo: time_combo:
+                pass
+
+        HGroup:
+            Label:
+                text = 'Residual Threshold:'
+            FloatField: residual_threshold:
+                value = 1.
+
+            CheckBox: cb_save:
+               text = "Save"
+               
+            PushButton: pb_radiometric:
+                text = 'Radiometric Calibrate'
+                clicked ::
+                    root_object().client_model.send_message(
+                        server_model_,
+                        gs.MSG_TYPE_RADIOMETRIC,
+                        kwds=dict(
+                            date=radiometric_day.date,
+                            time_index=time_combo.items.index(time_combo.selected),
+                            residual_threshold=residual_threshold.value,
+                            save=cb_save.checked
+                        )
+                    )
+
+        MPLCanvas: canvas:
+            figure << server_model_.radiometric_figure

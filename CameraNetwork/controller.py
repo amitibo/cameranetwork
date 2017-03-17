@@ -1,15 +1,18 @@
 from __future__ import division
-from CameraNetwork.image_utils import FisheyeProxy
-from CameraNetwork.image_utils import Normalization
+from CameraNetwork.arduino_utils import ArduinoAPI
 from CameraNetwork.calibration import RadiometricCalibration
 from CameraNetwork.calibration import VignettingCalibration
 from CameraNetwork.cameras import IDSCamera
 import CameraNetwork.global_settings as gs
 from CameraNetwork.image_utils import calcHDR
-from CameraNetwork.arduino_utils import ArduinoAPI
+from CameraNetwork.image_utils import FisheyeProxy
+from CameraNetwork.image_utils import Normalization
+import CameraNetwork.sunphotometer as spm
 from CameraNetwork.utils import cmd_callback
+from CameraNetwork.utils import DataObj
 from CameraNetwork.utils import find_camera_orientation_ransac
 from CameraNetwork.utils import find_centroid
+from CameraNetwork.utils import getImagesDF
 from CameraNetwork.utils import mean_with_outliers
 from CameraNetwork.utils import name_time
 from CameraNetwork.utils import object_direction
@@ -17,6 +20,7 @@ from CameraNetwork.utils import RestartException
 import copy
 import cPickle
 import cv2
+from dateutil import parser as dtparser
 from datetime import datetime
 from datetime import timedelta
 import ephem
@@ -891,6 +895,99 @@ class Controller(object):
         return rotated_directions, calculated_directions, R
 
     @cmd_callback
+    @run_on_executor
+    def handle_radiometric(
+        self,
+        date,
+        time_index,
+        residual_threshold,
+        save,
+        camera_settings):
+        """Handle radiometric calibration"""
+
+        #
+        # Get almucantar file.
+        #
+        base_path = pkg_resources.resource_filename(
+            'CameraNetwork',
+            '../data/aeronet/{}/*.alm'.format(date.strftime("%Y_%m"))
+        )
+        path = glob.glob(base_path)
+        if path == []:
+            raise Exception(
+                "No sunphotometer data for date: {}".format(
+                    date.strftime("%Y-%m-%d")
+                )
+            )
+
+        #
+        # Parse the sunphotometer file.
+        #
+        df = spm.parseSunPhotoMeter(path[0])
+        spm_df = df[date.strftime("%Y-%m-%d")]
+        spm_df = [spm_df[spm_df["Wavelength(um)"]==wl] for wl in (0.6744, 0.5000, 0.4405)]
+
+        #
+        # Get the image list for this day.
+        #
+        cam_df = getImagesDF(date)
+
+        #
+        # Fit radiometric models.
+        #
+        models = []
+        measurements = []
+        estimations = []
+        for i in range(3):
+            t = spm_df[i].index[time_index]
+            angles, values, samples = \
+                self.sampleAlmucantarData(spm_df[i], t, cam_df, camera_settings)
+            model = make_pipeline(
+                PolynomialFeatures(degree=1),
+                linear_model.RANSACRegressor(residual_threshold=residual_threshold)
+            )
+            model.fit(samples[:, i].reshape((-1, 1)), values)
+            models.append(model)
+
+            measurements.append(values)
+            estimations.append(model.predict(samples[:, i].reshape((-1, 1))))
+
+        #
+        # Save the radiometric calibration.
+        #
+        if save:
+            ratios = [model.steps[1][1].estimator_.coef_[1] for model in models]
+
+            with open(gs.RADIOMETRIC_PATH, 'wb') as f:
+                cPickle.dump(dict(ratios=ratios), f)
+
+            self._radiometric = RadiometricCalibration(ratios)
+
+        #
+        # Send back the analysis.
+        #
+        return angles, measurements, estimations
+
+    def sampleAlmucantarData(self, spm_df, t, camera_df, camera_settings, resolution=301):
+        """Samples almucantar rgb values of some camera at specific time."""
+
+        angles, values = spm.readSunPhotoMeter(spm_df, t)
+        closest_time = spm.findClosestImageTime(camera_df, t, hdr='2')
+        img_datas, img = self.seekImageArray(
+            camera_df,
+            closest_time,
+            hdr_index=-1,
+            normalize=True,
+            resolution=resolution,
+            jpeg=False,
+            camera_settings=camera_settings
+        )
+        almucantar_samples, almucantar_angles, almucantar_coords, \
+               _, _, _ = spm.sampleImage(img, img_datas[0], almucantar_angles=angles)
+
+        return angles, values, almucantar_samples
+
+    @cmd_callback
     @gen.coroutine
     def handle_reset_camera(self):
         """Reset the camera. Hopefully help against bug in wrapper."""
@@ -986,6 +1083,74 @@ class Controller(object):
             [img_array], [img_data], normalize, resolution, jpeg)
 
         return img_array, img_data
+
+    def seekImageArray(
+        self,
+        df,
+        seek_time,
+        hdr_index,
+        normalize,
+        resolution,
+        jpeg,
+        camera_settings
+        ):
+        """Seek an image array."""
+
+        #
+        # Seek the array/settings.
+        #
+        original_seek_time = seek_time
+        if type(seek_time) == str:
+            seek_time = dtparser.parse(seek_time)
+
+        if type(seek_time) == datetime:
+            seek_time = pd.Timestamp(seek_time)
+
+        if type(seek_time) != pd.Timestamp:
+            raise ValueError("Cannot translate seek_time: {}}".format(
+                original_seek_time))
+
+        if hdr_index < 0:
+            mat_paths = df.loc[seek_time].values.flatten()
+        else:
+            mat_paths = df.loc[seek_time, hdr_index].values
+
+        img_arrays, img_datas = [], []
+        for mat_path in mat_paths:
+            print("Seeking: {}".format(mat_path))
+            assert os.path.exists(mat_path), "Non existing array: {}".format(mat_path)
+            img_array = sio.loadmat(mat_path)['img_array']
+
+            base_path = os.path.splitext(mat_path)[0]
+            if os.path.exists(base_path+'.json'):
+                #
+                # Support old json data files.
+                #
+                img_data = DataObj(
+                    longitude=camera_settings[gs.CAMERA_LONGITUDE],
+                    latitude=camera_settings[gs.CAMERA_LATITUDE],
+                    altitude=camera_settings[gs.CAMERA_ALTITUDE],
+                    name_time=seek_time.to_datetime()
+                )
+
+                data_path = base_path + '.json'
+                with open(data_path, mode='rb') as f:
+                    img_data.update(**json.load(f))
+
+            elif os.path.exists(base_path+'.pkl'):
+                #
+                # New pickle data files.
+                #
+                with open(base_path+'.pkl', 'rb') as f:
+                    img_data = cPickle.load(f)
+
+            img_arrays.append(img_array)
+            img_datas.append(img_data)
+
+        img_array = self.preprocess_array(
+            img_arrays, img_datas, normalize, resolution, jpeg)
+
+        return img_datas, img_array
 
     def preprocess_array(
             self,
