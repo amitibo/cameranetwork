@@ -338,6 +338,12 @@ def reboot_servers(button, client_model):
             client_model.broadcast_message(gs.MSG_TYPE_REBOOT)
 
 
+def restart_servers(button, client_model):
+    if button is not None:
+        if button.text == 'Restart':
+            client_model.broadcast_message(gs.MSG_TYPE_RESTART)
+
+
 enamldef Main(MainWindow): main:
     initial_size = (200, 200)
     title = 'Camera Client'
@@ -363,6 +369,9 @@ enamldef Main(MainWindow): main:
                         triggered :: client_model.open_tunnel(loop_item[0], loop_item[1])
 
             Action:
+                separator = True
+
+            Action:
                 text = "Loop\tCtrl+L"
                 triggered ::
                     client_model.broadcast_message(gs.MSG_TYPE_LOOP)
@@ -371,6 +380,9 @@ enamldef Main(MainWindow): main:
                 text = "Unloop\tCtrl+U"
                 triggered ::
                     client_model.broadcast_message(gs.MSG_TYPE_HALT)
+
+            Action:
+                separator = True
 
             Action:
                 text = "Status\tCtrl+M"
@@ -393,6 +405,19 @@ enamldef Main(MainWindow): main:
                                 capture_settings=client_model.capture_settings
                             )
                         )
+
+            Action:
+                separator = True
+
+            Action:
+                text = "Restart\tCtrl+T"
+                triggered ::
+                    btns = [DialogButton('Restart', 'accept'),
+                            DialogButton('Cancel', 'reject')]
+                    restart_servers(
+                        warning(main, 'Restart Cameras', 'Are you sure you want to restart all cameras?', btns),
+                        client_model
+                    )
 
             Action:
                 text = "Reboot\tCtrl+R"
