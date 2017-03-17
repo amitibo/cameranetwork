@@ -944,7 +944,7 @@ class Controller(object):
                 self.sampleAlmucantarData(spm_df[i], t, cam_df, camera_settings)
             model = make_pipeline(
                 PolynomialFeatures(degree=1),
-                RANSACRegressor(residual_threshold=residual_threshold)
+                linear_model.RANSACRegressor(residual_threshold=residual_threshold)
             )
             model.fit(samples[:, i].reshape((-1, 1)), values)
             models.append(model)
@@ -973,7 +973,7 @@ class Controller(object):
 
         angles, values = spm.readSunPhotoMeter(spm_df, t)
         closest_time = spm.findClosestImageTime(camera_df, t, hdr='2')
-        img, img_data = self.seekImageArray(
+        img_datas, img = self.seekImageArray(
             camera_df,
             closest_time,
             hdr_index=-1,
@@ -983,7 +983,7 @@ class Controller(object):
             camera_settings=camera_settings
         )
         almucantar_samples, almucantar_angles, almucantar_coords, \
-               _, _, _ = spm.sampleImage(img, img_data, almucantar_angles=angles)
+               _, _, _ = spm.sampleImage(img, img_datas[0], almucantar_angles=angles)
 
         return angles, values, almucantar_samples
 
