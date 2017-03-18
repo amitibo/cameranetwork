@@ -178,7 +178,7 @@ enamldef TimesItem(DockItem):
             vbox(
                 hbox(query_day, query_pb, spacer),
                 df,
-                hbox(resolution_lbl, resolution_fld, HDR_cb, JPEG_cb, seek_pb, spacer),
+                hbox(resolution_lbl, resolution_fld, quality_cnt, seek_pb, spacer),
             ),
         ]
 
@@ -205,15 +205,26 @@ enamldef TimesItem(DockItem):
             maximum = 1001
             value = 301
 
-        CheckBox: HDR_cb:
-            tool_tip = "Return HDR image"
-            checked = False
-            text = "HDR"
+        Container: quality_cnt:
+            constraints = [
+                hbox(HDR_cb, JPEG_cb, quality_fld),
+            ]
 
-        CheckBox: JPEG_cb:
-            tool_tip = "Use JPEG compression"
-            checked = True
-            text = "JPEG"
+            RadioButton: HDR_cb:
+                tool_tip = "Return HDR image"
+                checked = False
+                text = "HDR"
+
+            RadioButton: JPEG_cb:
+                tool_tip = "Use JPEG compression"
+                checked = True
+                text = "JPEG"
+
+            IntField: quality_fld:
+                minimum = gs.MIN_JPEG_QUALITY
+                value = 80
+                maximum = 100
+                enabled << JPEG_cb.checked
 
         PushButton: seek_pb:
             text = 'Seek'
@@ -227,7 +238,7 @@ enamldef TimesItem(DockItem):
                         seek_time=index[0],
                         hdr_index=-1 if HDR_cb.checked else index[1],
                         normalize=True,
-                        jpeg=JPEG_cb.checked,
+                        jpeg=quality_fld.value if JPEG_cb.checked else False,
                         resolution=resolution_fld.value
                     )
                 )

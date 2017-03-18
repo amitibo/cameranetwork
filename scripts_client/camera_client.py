@@ -891,14 +891,16 @@ class ServerModel(Atom):
 
     def reply_radiometric(self, angles, measurements, estimations):
         """Handle to reply for the radiometric calibration."""
-        
+
         f = Figure(figsize=(2, 1))
-        
-        for i in range(3):
+
+        for i, wl in enumerate(("Red", "Green", "Blue")):
             ax = f.add_subplot(131+i)
             ax.plot(angles, measurements[i], label="spm")
             ax.plot(angles, estimations[i], label="cam")
-        
+            ax.set_title(wl)
+            ax.legend()
+
         self.radiometric_figure = f
 
     def reply_sunshader_scan(self, angles, saturated_array, sun_signal, required_angle):

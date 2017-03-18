@@ -367,28 +367,22 @@ enamldef Main(MainWindow): main:
                     Action:
                         text = "Camera {}, port {}".format(loop_item[0], loop_item[1]['tunnel_port'])
                         triggered :: client_model.open_tunnel(loop_item[0], loop_item[1])
-
             Action:
                 separator = True
-
             Action:
                 text = "Loop\tCtrl+L"
                 triggered ::
                     client_model.broadcast_message(gs.MSG_TYPE_LOOP)
-
             Action:
                 text = "Unloop\tCtrl+U"
                 triggered ::
                     client_model.broadcast_message(gs.MSG_TYPE_HALT)
-
             Action:
                 separator = True
-
             Action:
                 text = "Status\tCtrl+M"
                 triggered ::
                     client_model.broadcast_message(gs.MSG_TYPE_STATUS)
-
             Action:
                 text = "Settings\tCtrl+S"
                 triggered ::
@@ -405,10 +399,8 @@ enamldef Main(MainWindow): main:
                                 capture_settings=client_model.capture_settings
                             )
                         )
-
             Action:
                 separator = True
-
             Action:
                 text = "Restart\tCtrl+T"
                 triggered ::
@@ -418,7 +410,6 @@ enamldef Main(MainWindow): main:
                         warning(main, 'Restart Cameras', 'Are you sure you want to restart all cameras?', btns),
                         client_model
                     )
-
             Action:
                 text = "Reboot\tCtrl+R"
                 triggered ::
@@ -444,6 +435,8 @@ enamldef Main(MainWindow): main:
                     for array_view in array_views.objects:
                         array_view.image_widget.show_principalplane = checked
             Action:
+                separator = True
+            Action:
                 checkable = True
                 text = 'Show Mask'
                 toggled ::
@@ -456,7 +449,8 @@ enamldef Main(MainWindow): main:
                     client_model.showCamerasROIs(checked)
                     for array_view in array_views.objects:
                         array_view.image_widget.show_ROI = checked
-
+            Action:
+                separator = True
             Action:
                 checkable = True
                 text = 'Show LIDAR grid'

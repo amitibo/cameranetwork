@@ -14,7 +14,7 @@ import warnings
 #
 # General
 #
-MIN_JPEG_QUALITY = 80
+MIN_JPEG_QUALITY = 70
 
 #
 # Internet watchdog
