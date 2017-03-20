@@ -39,15 +39,22 @@ Prerequisites
 To use *CameraNetwork* several software package are needed. This can be installed using the following
 commands. Copy paste these to a commandline::
 
-    > sudo apt-get install pip
+    > sudo apt-get install python-pip
     > sudo pip install paramiko
     > sudo pip install cython
-    > pip install pyzmq --install-option="--zmq=bundled"
-    > pip install tornado
-    > pip install futures
-    > sudo apt-get install numpy scipy matplotlib
-    > sudo apt-get install opencv3
-    > pip install beautifulsoup4
+    > sudo pip install pyzmq --install-option="--zmq=bundled"
+    > sudo pip install tornado
+    > sudo pip install futures
+    > sudo apt-get install python-numpy python-scipy python-matplotlib
+    > sudo pip install beautifulsoup4
+    > sudo pip install sklearn
+    > sudo pip install skimage
+    > sudo pip install ephem
+    > sudo pip install pandas
+    > sudo pip install pymap3d
+
+To install opencv3 follow a tutorial relevant to your system, e.g. on Odroid XU4 the following tutorial
+was usefull `opencvsh_for_ubuntu_mate <https://github.com/nanuyo/opencvsh_for_ubuntu_mate>`_.
 
 Some platforms might require the installation of modem software::
 

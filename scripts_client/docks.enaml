@@ -25,7 +25,7 @@ enamldef ArraysItem(DockItem):
                     exposure_lbl,
                     exposure_fld,
                     gain_cb,
-                    JPEG_cb,
+                    quality_cnt,
                     resolution_lbl,
                     resolution_fld,
                     get_pb,
@@ -54,10 +54,26 @@ enamldef ArraysItem(DockItem):
         CheckBox: gain_cb:
             text = 'Gain Boost:'
 
-        CheckBox: JPEG_cb:
-            tool_tip = "Use JPEG compression"
-            checked = True
-            text = "JPEG"
+        Container: quality_cnt:
+            constraints = [
+                hbox(HDR_cb, JPEG_cb, quality_fld),
+            ]
+
+            RadioButton: HDR_cb:
+                tool_tip = "Return HDR image"
+                checked = False
+                text = "HDR"
+
+            RadioButton: JPEG_cb:
+                tool_tip = "Use JPEG compression"
+                checked = True
+                text = "JPEG"
+
+            IntField: quality_fld:
+                minimum = gs.MIN_JPEG_QUALITY
+                value = 80
+                maximum = 100
+                enabled << JPEG_cb.checked
 
         Label: resolution_lbl:
             text = 'Resolution:'
@@ -79,7 +95,7 @@ enamldef ArraysItem(DockItem):
                         color_mode=gs.COLOR_RAW,
                         gain_boost=gain_cb.checked,
                         normalize=True,
-                        jpeg=JPEG_cb.checked,
+                        jpeg=quality_fld.value if JPEG_cb.checked else False,
                         resolution=resolution_fld.value
                     )
                 )
