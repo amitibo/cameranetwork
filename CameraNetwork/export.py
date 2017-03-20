@@ -6,6 +6,7 @@ import cPickle
 import cv2
 from enaml.application import deferred_call, is_main_thread
 import logging
+import math
 import os
 import numpy as np
 import pymap3d
@@ -145,6 +146,12 @@ def extraReconstructionData(array_model, array_view, lat0, lon0, h0):
     """Get extra data for the reconstruction
 
     This includes camera position, sun angle, time etc.
+
+    Note:
+        The coordinates are given in the following conventions:
+        1) Camera position is given in NEU.
+        2) sun_mu, sun_az are given in the SHDOM convention
+           of photons directions.
     """
 
     #
@@ -162,9 +169,6 @@ def extraReconstructionData(array_model, array_view, lat0, lon0, h0):
 
     #
     # Sun azimuth and altitude
-    # Note:
-    # The directions are converted to SHDOM convetion (direction of
-    # photons).
     #
     sun_alt, sun_az = sun_direction(
         latitude=str(array_model.latitude),
@@ -172,11 +176,15 @@ def extraReconstructionData(array_model, array_view, lat0, lon0, h0):
         altitude=array_model.altitude,
         at_time=array_model.img_data.name_time)
 
+    #
+    # Note:
+    # shdom_mu = cos(pi/2-alt-pi)=cos(-alt-pi/2)=cos(alt+pi/2)
+    #
     extra_data = \
         dict(
             at_time=array_model.img_data.name_time,
-            sun_alt=float(sun_alt)-np.pi,
-            sun_az=-float(sun_az),
+            sun_mu=math.cos(float(sun_alt)+np.pi/2),
+            sun_az=float(sun_az)-np.pi,
             x=n,
             y=e,
             z=-d,
