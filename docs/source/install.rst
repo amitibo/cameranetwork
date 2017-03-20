@@ -39,7 +39,7 @@ Prerequisites
 To use *CameraNetwork* several software package are needed. This can be installed using the following
 commands. Copy paste these to a commandline::
 
-    > sudo apt-get install python-pip
+    > sudo apt-get install python-pip git mercurial
     > sudo pip install paramiko
     > sudo pip install cython
     > sudo pip install pyzmq --install-option="--zmq=bundled"
@@ -52,9 +52,27 @@ commands. Copy paste these to a commandline::
     > sudo pip install ephem
     > sudo pip install pandas
     > sudo pip install pymap3d
+    > sudo pip install ipython
+    > sudo pip install pyfirmata
+    > sudu pip install joblib
 
 To install opencv3 follow a tutorial relevant to your system, e.g. on Odroid XU4 the following tutorial
 was usefull `opencvsh_for_ubuntu_mate <https://github.com/nanuyo/opencvsh_for_ubuntu_mate>`_.
+
+Install the python wrappers to the ids SDK::
+
+    > mkdir code
+    > cd code
+    > git clone https://github.com/amitibo/ids.git
+    > cd ids
+    > sudo python setup.py install
+
+Install the pyfisheye module::
+
+    > cd ~/code
+    > hg clone https://amitibo@bitbucket.org/amitibo/pyfisheye
+    > cd pyfisheye
+    > sudo python setup.py install
 
 Some platforms might require the installation of modem software::
 
