@@ -889,7 +889,7 @@ class ServerModel(Atom):
         array = np.hstack((array[:, ::-1], np.ones((width*height, 1), dtype=np.uint8)*255))
         self.client_model.thumb = EImage(data=array.tostring(), format='argb32', raw_size=(width, height))
 
-    def reply_radiometric(self, angles, measurements, estimations):
+    def reply_radiometric(self, angles, measurements, estimations, ratios):
         """Handle to reply for the radiometric calibration."""
 
         f = Figure(figsize=(2, 1))

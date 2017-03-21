@@ -955,9 +955,8 @@ class Controller(object):
         #
         # Save the radiometric calibration.
         #
+        ratios = [model.steps[1][1].estimator_.coef_[1] for model in models]
         if save:
-            ratios = [model.steps[1][1].estimator_.coef_[1] for model in models]
-
             with open(gs.RADIOMETRIC_PATH, 'wb') as f:
                 cPickle.dump(dict(ratios=ratios), f)
 
@@ -966,7 +965,7 @@ class Controller(object):
         #
         # Send back the analysis.
         #
-        return angles, measurements, estimations
+        return angles, measurements, estimations, ratios
 
     def sampleAlmucantarData(self, spm_df, t, camera_df, camera_settings, resolution=301):
         """Samples almucantar rgb values of some camera at specific time."""

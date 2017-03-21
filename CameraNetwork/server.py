@@ -882,7 +882,14 @@ class Server(MDPWorker):
 
     @gen.coroutine
     def handle_extrinsic(self, date, residual_threshold, save):
-        """Handle extrinsic calibration."""
+        """Handle extrinsic calibration.
+
+        Args:
+            date (datetime object): date to use for extrinsic calibration.
+            residual_threshold (float): residual threshold for the ransac
+                algorithm.
+            save (bool): Whether to save the calibration.
+        """
 
         #
         # Send command to the controller.
@@ -907,7 +914,16 @@ class Server(MDPWorker):
 
     @gen.coroutine
     def handle_radiometric(self, date, time_index, residual_threshold, save):
-        """Handle radiometric calibration."""
+        """Handle radiometric calibration.
+
+        Args:
+            date (datetime object): date to use for radiometric calibration.
+            time_index (int): Index of the sunphotometer measurement of the
+                day "date".
+            residual_threshold (float): residual threshold for the ransac
+                algorithm.
+            save (bool): Whether to save the calibration.
+        """
 
         #
         # Send command to the controller.

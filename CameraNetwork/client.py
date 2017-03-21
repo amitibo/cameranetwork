@@ -283,13 +283,18 @@ class CLIclient(object):
 
         return ServerProxy(self, servers_id)
 
-    #def __getattr__(self, name):
+    def __getattr__(self, name):
 
-        #if not hasattr(Server, 'handle_{}'.format(name)):
-            #raise AttributeError("Unkown server command: {}".format(name))
+        if not hasattr(Server, 'handle_{}'.format(name)):
+            raise AttributeError("Unkown server command: {}".format(name))
 
+        def proxy_func(servers_id, *args, **kwds):
+            return getattr(self[servers_id], name)(*args, **kwds)
 
-        #return ServerProxy(self, i)
+        proxy_func.__name__ = name
+        proxy_func.__doc__ = getattr(Server, 'handle_{}'.format(name)).__doc__
+
+        return proxy_func
 
     def start(self, proxy_params):
 
@@ -336,9 +341,11 @@ class CLIclient(object):
         #
         # Check the reply status
         #
-        for status, args_answer in zip(statuses, args_answers):
+        for status, args_answer, server_id in zip(statuses, args_answers, servers_id):
             if status !=gs.MSG_STATUS_OK:
-                raise gs.MSG_EXCEPTION_MAP[status](args_answer[0])
+                raise gs.MSG_EXCEPTION_MAP[status](
+                    "Server {} raised Exception:\n{}".format(server_id, args_answer[0])
+                )
 
         return args_answers, kwds_answers
 
