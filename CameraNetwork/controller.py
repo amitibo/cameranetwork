@@ -1256,13 +1256,7 @@ class Controller(object):
 
             img_array = self._normalization.normalize(img_array)
 
-        if not jpeg and correct_radiometric:
-            #
-            # Scale to Watts.
-            #
-            img_array = \
-                self._radiometric.applyRadiometric(img_array).astype(np.float32)
-        else:
+        if jpeg:
             #
             # Apply JPEG compression.
             # Note:
@@ -1274,6 +1268,13 @@ class Controller(object):
             f = StringIO.StringIO()
             img.save(f, format="JPEG", quality=jpeg_quality)
             img_array = np.fromstring(f.getvalue(), dtype=np.uint8)
+        else:
+            if correct_radiometric:
+                #
+                # Scale to Watts.
+                #
+                img_array = \
+                            self._radiometric.applyRadiometric(img_array).astype(np.float32)
 
         return np.ascontiguousarray(img_array)
 
