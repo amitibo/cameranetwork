@@ -928,7 +928,7 @@ class Server(MDPWorker):
         #
         # Send command to the controller.
         #
-        angles, measurements, estimations = \
+        angles, measurements, estimations, ratios = \
             yield self.push_cmd(
                 gs.RADIOMETRIC_CMD,
                 date=date,
@@ -944,7 +944,9 @@ class Server(MDPWorker):
         raise gen.Return(((), {
             'angles': angles,
             'measurements': measurements,
-            'estimations': estimations,}))
+            'estimations': estimations,
+            'ratios': ratios,
+        }))
 
     @gen.coroutine
     def handle_calibration(self, nx, ny, imgs_num, delay, exposure_us,
