@@ -222,10 +222,11 @@ class ServerProxy(object):
     """Helper class to 'automatically implement cmd api for the CLI client.
     """
 
-    def __init__(self, client, server_id):
+    def __init__(self, client, servers_id):
 
         self._client = client
-        self._server_id = server_id
+
+        self._servers_id = servers_id
 
     def __getattr__(self, name):
         """Dynamically create messages."""
@@ -241,21 +242,15 @@ class ServerProxy(object):
             #
             # Send message
             #
-            status, _, args_answer, kwds_answer = \
+            results = \
                 self._client.send_message(
-                    server_id=self._server_id,
+                    servers_id=self._servers_id,
                     cmd=name,
                     args=args,
                     kwds=kwds
                 )
 
-            #
-            # Check the reply status
-            #
-            if status != gs.MSG_STATUS_OK:
-                raise gs.MSG_EXCEPTION_MAP[status](args_answer[0])
-
-            return kwds_answer
+            return results
 
         autocmd.__doc__ = getattr(Server, 'handle_{}'.format(name)).__doc__
 
@@ -273,16 +268,28 @@ class CLIclient(object):
         self.futures = {}
         self.servers_list = []
 
-    def __getitem__(self, i):
+    def __getitem__(self, servers_id):
 
-        if i not in self.client_instance.servers:
+        if type(servers_id) not in (tuple, list):
+            servers_id = [servers_id]
+
+        unknown_servers = set(servers_id).difference(set(self.client_instance.servers))
+        if  len(unknown_servers) > 0:
             raise IndexError(
-                'Unkown server: {}. List of known servers: {}.'.format(
-                    i, self.client_instance.servers
+                'Unkown servers: {}. List of known servers: {}.'.format(
+                    unknown_servers, self.client_instance.servers
                 )
             )
 
-        return ServerProxy(self, i)
+        return ServerProxy(self, servers_id)
+
+    #def __getattr__(self, name):
+
+        #if not hasattr(Server, 'handle_{}'.format(name)):
+            #raise AttributeError("Unkown server command: {}".format(name))
+
+
+        #return ServerProxy(self, i)
 
     def start(self, proxy_params):
 
@@ -305,15 +312,35 @@ class CLIclient(object):
         thread.daemon = True
         thread.start()
 
-    def send_message(self, server_id, cmd, args=(), kwds={}, timeout=30):
-
-        future = futures.Future()
-        self.futures[server_id] = future
+    def send_message(self, servers_id, cmd, args=(), kwds={}, timeout=30):
 
         loop = ioloop.IOLoop.instance()
-        loop.add_callback(self.client_instance.send, server_address=server_id, cmd=cmd, args=args, kwds=kwds)
 
-        return future.result(timeout=timeout)
+        if type(servers_id) not in (tuple, list):
+            servers_id = [servers_id]
+
+        future_list = []
+        for server_id in servers_id:
+            future = futures.Future()
+            self.futures[server_id] = future
+            future_list.append(future)
+
+            loop.add_callback(self.client_instance.send, server_address=server_id, cmd=cmd, args=args, kwds=kwds)
+
+        results = []
+        for future in future_list:
+            results.append(future.result(timeout=timeout))
+
+        statuses, cmds, args_answers, kwds_answers = zip(*results)
+
+        #
+        # Check the reply status
+        #
+        for status, args_answer in zip(statuses, args_answers):
+            if status !=gs.MSG_STATUS_OK:
+                raise gs.MSG_EXCEPTION_MAP[status](args_answer[0])
+
+        return args_answers, kwds_answers
 
     def send_mmi(self, service, msg=[], timeout=30):
 
@@ -352,7 +379,7 @@ class CLIclient(object):
 
     def get_array(
         self,
-        server_id,
+        servers_id,
         exposure_us=500,
         gain_db=0,
         resolution=301,
@@ -362,8 +389,8 @@ class CLIclient(object):
         normalize=True
         ):
 
-        status, cmd, args, kwds = self.send_message(
-            server_id,
+        args_answers, kwds_answers = self.send_message(
+            servers_id,
             cmd=gs.MSG_TYPE_ARRAY,
             kwds=dict(
                 exposure_us=exposure_us,
@@ -375,13 +402,13 @@ class CLIclient(object):
                 normalize=normalize
             )
         )
-        if status == gs.MSG_STATUS_ERROR:
-            raise Exception(args[0])
 
-        img_array = extractImgArray(kwds['matfile'])
-        img_data = kwds['img_data']
+        img_arrays, img_datas = [], []
+        for kwds in kwds_answers:
+            img_arrays.append(extractImgArray(kwds['matfile']))
+            img_datas.append(kwds['img_data'])
 
-        return img_array, img_data
+        return img_arrays, img_datas
 
     def sunshader(
         self,
@@ -391,15 +418,14 @@ class CLIclient(object):
 
         assert angle >= 20 and angle <= 160, \
                'angle must be between 20-160, got {}'.format(angle)
-        status, cmd, args, kwds = self.send_message(
+
+        self.send_message(
             server_id,
             cmd=gs.MSG_TYPE_SUNSHADER,
             kwds=dict(
                 angle=angle
             )
         )
-        if status == gs.MSG_STATUS_ERROR:
-            raise Exception(args[0])
 
     def query(
         self,
@@ -407,19 +433,19 @@ class CLIclient(object):
         query_day
         ):
 
-        status, cmd, args, kwds = self.send_message(
+        args_answers, kwds_answers = self.send_message(
             server_id,
             cmd=gs.MSG_TYPE_QUERY,
             kwds=dict(
                 query_date=query_day
             )
         )
-        if status == gs.MSG_STATUS_ERROR:
-            raise Exception(args[0])
 
-        images_df = kwds['images_df']
+        images_dfs = []
+        for kwds in kwds_answers:
+            images_dfs.append(kwds['images_df'])
 
-        return images_df
+        return images_dfs
 
     def seek(
         self,
@@ -430,7 +456,7 @@ class CLIclient(object):
         resolution
         ):
 
-        status, cmd, args, kwds = self.send_message(
+        args_answers, kwds_answers = self.send_message(
             server_id,
             cmd=gs.MSG_TYPE_SEEK,
             kwds=dict(
@@ -441,13 +467,13 @@ class CLIclient(object):
                 resolution=resolution
             )
         )
-        if status == gs.MSG_STATUS_ERROR:
-            raise Exception(args[0])
 
-        img_array = extractImgArray(kwds['matfile'])
-        img_data = kwds['img_data']
+        img_arrays, img_datas = [], []
+        for kwds in kwds_answers:
+            img_arrays.append(extractImgArray(kwds['matfile']))
+            img_datas.append(kwds['img_data'])
 
-        return img_array, img_data
+        return img_arrays, img_datas
 
 
 def main ():
