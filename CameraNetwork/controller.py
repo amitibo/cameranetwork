@@ -1165,7 +1165,7 @@ class Controller(object):
             img_datas.append(img_data)
 
         img_array = self.preprocess_array(
-            img_arrays, img_datas, normalize, resolution, jpeg)
+            img_arrays, img_datas, normalize, resolution, jpeg, correct_radiometric)
 
         return img_datas, img_array
 
