@@ -570,7 +570,14 @@ class Server(MDPWorker):
 
     @gen.coroutine
     def handle_set_settings(self, camera_settings, capture_settings):
-        """Get camera settings"""
+        """Set camera settings
+
+        Args:
+            camera_settings (dict): Dictionary of general camera settings. If
+                None, the settings will not be changed.
+            capture_settings (dict): Dictionary of capture settings. If None,
+                the settings will not be changed.
+        """
 
         #
         # Copy the input settings camera data without the CAMERA_IDENTITY field.
