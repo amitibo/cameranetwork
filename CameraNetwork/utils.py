@@ -794,7 +794,7 @@ def getImagesDF(query_date, force=False):
             lons.append(data.longitude)
             lats.append(data.latitude)
             sns.append(data.camera_info["serial_num"])
-        else:
+        except:
             logging.error("Failed parsing data file: {}\n{}".format(
                 "{}.pkl".format(path), traceback.format_exc())
             )
@@ -813,7 +813,7 @@ def getImagesDF(query_date, force=False):
             altitude=alts,
             serial_num=sns
             ),
-        columns=('Time', 'hdr', 'path', "longitue", "latitude", "altitude", "serial_num")
+        columns=('Time', 'hdr', 'path', "longitude", "latitude", "altitude", "serial_num")
         ).set_index(['Time', 'hdr'])
 
     #

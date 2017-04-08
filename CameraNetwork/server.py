@@ -737,13 +737,15 @@ class Server(MDPWorker):
         raise gen.Return(((), dict(days_list=days)))
 
     @gen.coroutine
-    def handle_query(self, query_date):
+    def handle_query(self, query_date, force=False):
         """Seek for a previously captured (loop) array.
 
         Args:
             query_date (datetime object or string): The date for which
                 to query for images. If string is give, dateutil.parser
                 will be used for guessing the right date.
+            force (bool, optional): Force calculating the images database
+                for this day.
 
         Returns:
             A list of mat file names from the requested date.
@@ -755,7 +757,7 @@ class Server(MDPWorker):
         if type(query_date) == str:
             query_date = dtparser.parse(query_date)
 
-        new_df = getImagesDF(query_date)
+        new_df = getImagesDF(query_date, force)
 
         #
         # Cleaup possible problems in the new dataframe.
