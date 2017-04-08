@@ -747,6 +747,8 @@ class ServerModel(Atom):
 
     client_model = Typed(ClientModel)
 
+    days_list = List()
+
     images_df = Typed(pd.DataFrame)
     img_index = Tuple()
 
@@ -940,6 +942,11 @@ class ServerModel(Atom):
         #
         self.client_model.new_array_signal.emit(self.server_id, img_array, img_data)
 
+    def reply_days(self, days_list):
+        """Handle the reply for days command."""
+
+        self.days_list = [datetime.strptime(d, "%Y_%m_%d").date() for d in days_list]
+
     def reply_query(self, images_df):
         """Handle the reply for query command."""
 
@@ -948,6 +955,11 @@ class ServerModel(Atom):
     def reply_seek(self, matfile, img_data):
 
         img_array = extractImgArray(matfile)
+
+        #
+        # Draw the camera on the map.
+        #
+        self.client_model.draw_camera(self.server_id, img_data)
 
         #
         # Add new array.
