@@ -721,6 +721,22 @@ class Server(MDPWorker):
         raise gen.Return(((), dict(matfile=matfile, img_data=img_data)))
 
     @gen.coroutine
+    def handle_days(self):
+        """Check for available days.
+
+        Returns:
+            The list of captured days.
+        """
+
+        days_paths = sorted(glob.glob(os.path.join(gs.CAPTURE_PATH, "*")))
+        days = [os.path.split(p)[1] for p in days_paths]
+
+        #
+        # Send reply on next ioloop cycle.
+        #
+        raise gen.Return(((), dict(days_list=days)))
+
+    @gen.coroutine
     def handle_query(self, query_date):
         """Seek for a previously captured (loop) array.
 
