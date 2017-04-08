@@ -264,14 +264,22 @@ enamldef SeekControlPage(Page):
         Container:
             constraints = [
                 vbox(
-                    hbox(query_day, query_pb, spacer),
+                    hbox(update_pb, query_day, query_pb, spacer),
                     df,
                     hbox(resolution_lbl, resolution_fld, quality_cnt, seek_pb, spacer),
                 ),
             ]
 
-            DateSelector: query_day:
-                pass
+            PushButton: update_pb:
+                text = 'Update Days'
+                clicked ::
+                    root_object().client_model.send_message(
+                        server_model_,
+                        gs.MSG_TYPE_DAYS,
+                    )
+
+            ObjectCombo: query_day:
+                items << server_model_.days_list
 
             PushButton: query_pb:
                 text = 'Query'
@@ -279,7 +287,7 @@ enamldef SeekControlPage(Page):
                     root_object().client_model.send_message(
                         server_model_,
                         gs.MSG_TYPE_QUERY,
-                        kwds=dict(query_date=query_day.date)
+                        kwds=dict(query_date=query_day.selected),
                     )
 
             DataFrameTable: df:

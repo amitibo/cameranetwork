@@ -437,14 +437,16 @@ class CLIclient(object):
     def query(
         self,
         server_id,
-        query_day
+        query_day,
+        force=False
         ):
 
         args_answers, kwds_answers = self.send_message(
             server_id,
             cmd=gs.MSG_TYPE_QUERY,
             kwds=dict(
-                query_date=query_day
+                query_date=query_day,
+                force=force
             )
         )
 
