@@ -796,7 +796,19 @@ class Server(MDPWorker):
         """
 
         if self.last_query_df is None:
-            raise Exception("Need to first call the 'query' cmd.")
+            if type(seek_time) == str:
+                query_date = dtparser.parse(seek_time).date()
+            else:
+                query_date = seek_time.date()
+
+            new_df = getImagesDF(query_date, force=False)
+
+            #
+            # Cleaup possible problems in the new dataframe.
+            # These can arrise by duplicate indices that might be cuased
+            # by changing settings of the camera.
+            #
+            self.last_query_df = new_df.reset_index().drop_duplicates(subset=['Time', 'hdr'], keep='last').set_index(['Time', 'hdr'])
 
         img_datas, img_array = self._controller.seekImageArray(
             self.last_query_df,
