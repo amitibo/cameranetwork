@@ -121,6 +121,8 @@ class ClientModel(Atom):
 
     array_items = Dict()
 
+    days_list = List()
+
     images_df = Typed(pd.DataFrame)
     img_index = Tuple()
 
@@ -631,11 +633,18 @@ class ClientModel(Atom):
     ############################################################################
     # Handle reply to broadcast messages.
     ############################################################################
+    def reply_broadcast_days(self, server_id, days_list):
+        """Handle the broadcast reply of the days command."""
+
+        new_days_list = set(days_list + self.days_list)
+        self.days_list = [datetime.strptime(d, "%Y_%m_%d").date() for d in sorted(new_days_list)]
+
+
     def reply_broadcast_query(self, server_id, images_df):
         """Handle the broadcast reply of the query command."""
 
         logging.debug("Got reply query {}.".format(server_id))
-        images_df = images_df.rename(index=str, columns={images_df.columns[0]: server_id})
+        images_df = images_df["path"].rename(index=str, columns={images_df.columns[0]: server_id})
         if server_id in self.images_df.columns:
             self.images_df.drop(server_id, axis=1, inplace=True)
         new_df = pd.concat((self.images_df, images_df), axis=1)
