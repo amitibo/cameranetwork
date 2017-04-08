@@ -636,18 +636,20 @@ class ClientModel(Atom):
     def reply_broadcast_days(self, server_id, days_list):
         """Handle the broadcast reply of the days command."""
 
-        new_days_list = set(days_list + self.days_list)
-        self.days_list = [datetime.strptime(d, "%Y_%m_%d").date() for d in sorted(new_days_list)]
-
+        days_list = [datetime.strptime(d, "%Y_%m_%d").date() for d in days_list]
+        self.days_list = sorted(set(days_list + self.days_list))
 
     def reply_broadcast_query(self, server_id, images_df):
         """Handle the broadcast reply of the query command."""
 
         logging.debug("Got reply query {}.".format(server_id))
-        images_df = images_df["path"].rename(index=str, columns={images_df.columns[0]: server_id})
+        images_series = images_df["path"]
+        images_series.name = server_id
+
+        new_df = self.images_df.copy()
         if server_id in self.images_df.columns:
-            self.images_df.drop(server_id, axis=1, inplace=True)
-        new_df = pd.concat((self.images_df, images_df), axis=1)
+            new_df.drop(server_id, axis=1, inplace=True)
+        new_df = pd.concat((new_df, images_series), axis=1)
         new_df = new_df.reindex_axis(sorted(new_df.columns), axis=1)
 
         self.images_df = new_df
