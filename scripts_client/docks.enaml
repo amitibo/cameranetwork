@@ -25,11 +25,14 @@ enamldef ArraysItem(DockItem):
                     exposure_lbl,
                     exposure_fld,
                     gain_cb,
+                    get_pb,
+                    clear_pb,
+                    spacer,
+                ),
+                hbox(
                     quality_cnt,
                     resolution_lbl,
                     resolution_fld,
-                    get_pb,
-                    clear_pb,
                     spacer,
                 ),
                 arrays,
@@ -192,14 +195,22 @@ enamldef TimesItem(DockItem):
     Container:
         constraints = [
             vbox(
-                hbox(query_day, query_pb, spacer),
+                hbox(update_pb, query_day, query_pb, spacer),
                 df,
                 hbox(resolution_lbl, resolution_fld, quality_cnt, seek_pb, spacer),
             ),
         ]
 
-        DateSelector: query_day:
-            pass
+        PushButton: update_pb:
+            text = 'Update Days'
+            clicked ::
+                root_object().client_model.days_list = []
+                root_object().client_model.broadcast_message(
+                    gs.MSG_TYPE_DAYS,
+                )
+
+        ObjectCombo: query_day:
+            items << root_object().client_model.days_list
 
         PushButton: query_pb:
             text = 'Query'
@@ -207,7 +218,7 @@ enamldef TimesItem(DockItem):
                 root_object().client_model.clear_image_df()
                 root_object().client_model.broadcast_message(
                     gs.MSG_TYPE_QUERY,
-                    kwds=dict(query_date=query_day.date)
+                    kwds=dict(query_date=query_day.selected)
                 )
 
         DataFrameTable: df:

@@ -570,7 +570,14 @@ class Server(MDPWorker):
 
     @gen.coroutine
     def handle_set_settings(self, camera_settings, capture_settings):
-        """Get camera settings"""
+        """Set camera settings
+
+        Args:
+            camera_settings (dict): Dictionary of general camera settings. If
+                None, the settings will not be changed.
+            capture_settings (dict): Dictionary of capture settings. If None,
+                the settings will not be changed.
+        """
 
         #
         # Copy the input settings camera data without the CAMERA_IDENTITY field.
@@ -714,13 +721,31 @@ class Server(MDPWorker):
         raise gen.Return(((), dict(matfile=matfile, img_data=img_data)))
 
     @gen.coroutine
-    def handle_query(self, query_date):
+    def handle_days(self):
+        """Check for available days.
+
+        Returns:
+            The list of captured days.
+        """
+
+        days_paths = sorted(glob.glob(os.path.join(gs.CAPTURE_PATH, "*")))
+        days = [os.path.split(p)[1] for p in days_paths]
+
+        #
+        # Send reply on next ioloop cycle.
+        #
+        raise gen.Return(((), dict(days_list=days)))
+
+    @gen.coroutine
+    def handle_query(self, query_date, force=False):
         """Seek for a previously captured (loop) array.
 
         Args:
             query_date (datetime object or string): The date for which
                 to query for images. If string is give, dateutil.parser
                 will be used for guessing the right date.
+            force (bool, optional): Force calculating the images database
+                for this day.
 
         Returns:
             A list of mat file names from the requested date.
@@ -732,7 +757,7 @@ class Server(MDPWorker):
         if type(query_date) == str:
             query_date = dtparser.parse(query_date)
 
-        new_df = getImagesDF(query_date)
+        new_df = getImagesDF(query_date, force)
 
         #
         # Cleaup possible problems in the new dataframe.
@@ -771,7 +796,19 @@ class Server(MDPWorker):
         """
 
         if self.last_query_df is None:
-            raise Exception("Need to first call the 'query' cmd.")
+            if type(seek_time) == str:
+                query_date = dtparser.parse(seek_time).date()
+            else:
+                query_date = seek_time.date()
+
+            new_df = getImagesDF(query_date, force=False)
+
+            #
+            # Cleaup possible problems in the new dataframe.
+            # These can arrise by duplicate indices that might be cuased
+            # by changing settings of the camera.
+            #
+            self.last_query_df = new_df.reset_index().drop_duplicates(subset=['Time', 'hdr'], keep='last').set_index(['Time', 'hdr'])
 
         img_datas, img_array = self._controller.seekImageArray(
             self.last_query_df,

@@ -146,6 +146,11 @@ enamldef ImageDataPopup(PopupView):
     Form:
         padding = 20
         Label:
+            text = 'Serial num'
+        Field:
+            text = repr(img_data_.camera_info["serial_num"])
+            read_only = True
+        Label:
             text = 'Exposure [us]'
         Field:
             text = repr(img_data_.exposure_us)

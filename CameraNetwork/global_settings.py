@@ -115,7 +115,7 @@ UPLOAD_PATH = '"SKY_CAMS_UPLOADS/{operation}/{camera_identity}/{subfolder}/{file
 # without the exec, the shell=True option causes the shell to open a separate process with a different
 # pid.
 #
-REVERSE_AUTOSSH_CMD = "exec autossh -M {autossh_monitor_port} -v -i {identity_file} -oExitOnForwardFailure=yes -oServerAliveInterval=60 -N -R {tunnel_port}:localhost:{local_port} {server_user}@{server_ip}"
+REVERSE_AUTOSSH_CMD = 'AUTOSSH_DEBUG=1 exec autossh -M 0 -v -i {identity_file} -o "ExitOnForwardFailure yes" -o "ServerAliveInterval 30" -o "ServerAliveCountMax 3" -N -R {tunnel_port}:localhost:{local_port} {server_user}@{server_ip}'
 REVERSE_SSH_CMD = "exec ssh -i {identity_file} -oExitOnForwardFailure=yes -oServerAliveInterval=60 -N -R {tunnel_port}:localhost:{local_port} {server_user}@{server_ip}"
 SCP_CMD = "scp -i {identity_file} {src_path} {server_user}@{server_ip}:{dst_path}"
 TUNNEL_DESCRIPTION = "{tunnel_port}:localhost:{local_port} {server_user}@{server_ip}"
@@ -220,6 +220,7 @@ MSG_TYPE_ARRAY = 'array'
 MSG_TYPE_CALIBRATION = 'calibration'
 MSG_TYPE_CALIBRATION_STATUS = 'calibration_status'
 MSG_TYPE_DARK_IMAGES = 'dark_images'
+MSG_TYPE_DAYS = 'days'
 MSG_TYPE_GET_SETTINGS = 'get_settings'
 MSG_TYPE_HALT = 'halt'
 MSG_TYPE_INIT = 'init'

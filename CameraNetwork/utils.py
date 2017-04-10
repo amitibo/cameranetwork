@@ -4,6 +4,7 @@ from __future__ import division
 import CameraNetwork.global_settings as gs
 from CameraNetwork.transformation_matrices import euler_matrix
 import copy
+import cPickle
 from datetime import datetime
 from datetime import timedelta
 import ephem
@@ -740,8 +741,16 @@ def extractImgArray(matfile):
     return img_array
 
 
-def getImagesDF(query_date):
-    """Get dataframe of images captures at a specific date."""
+def getImagesDF(query_date, force=False):
+    """Get dataframe of images captures at a specific date.
+
+    Args:
+        query_date (datetime object): Day to query.
+        force (bool, optional): Force the recreation of the database.
+
+    Returns:
+        Database of images in the form of a pandas dataframe.
+    """
 
     base_path = os.path.join(
         gs.CAPTURE_PATH, query_date.strftime("%Y_%m_%d"))
@@ -750,21 +759,67 @@ def getImagesDF(query_date):
         raise Exception('Non existing day: {}'.format(base_path))
 
     image_list = sorted(glob.glob(os.path.join(base_path, '*.mat')))
-    times_list = map(lambda p: os.path.split(p)[-1], image_list)
 
-    time_stamps =  []
+    #
+    # Check if there is a valid database.
+    #
+    database_path = os.path.join(base_path, "database.pkl")
+    if os.path.exists(database_path) and not force:
+        df = pd.read_pickle(database_path)
+
+        if df.shape[0] == len(image_list):
+            return df
+
     datetimes = []
     hdrs = []
-    for time_str in times_list:
-        tmp = os.path.splitext(time_str)[0]
-        tmp_parts = tmp.split('_')
-        time_stamps.append(float(tmp_parts[0]))
+    alts = []
+    lons = []
+    lats = []
+    sns = []
+    for image_path in image_list:
+        path = os.path.splitext(image_path)[0]
+
+        #
+        # Parse the time and exposure
+        #
+        tmp_parts = os.path.split(path)[-1].split('_')
         datetimes.append(datetime(*[int(i) for i in tmp_parts[1:-1]]))
         hdrs.append(tmp_parts[-1])
 
+        try:
+            with open("{}.pkl".format(path), "rb") as f:
+                data = cPickle.load(f)
+
+            alts.append(data.altitude)
+            lons.append(data.longitude)
+            lats.append(data.latitude)
+            sns.append(data.camera_info["serial_num"])
+        except:
+            logging.error("Failed parsing data file: {}\n{}".format(
+                "{}.pkl".format(path), traceback.format_exc())
+            )
+            alts.append(None)
+            lons.append(None)
+            lats.append(None)
+            sns.append(None)
+
     new_df = pd.DataFrame(
-        data={'Time': datetimes, 'hdr': hdrs, 'path': image_list},
-        columns=('Time', 'hdr', 'path')).set_index(['Time', 'hdr'])
+        data=dict(
+            Time=datetimes,
+            hdr=hdrs,
+            path=image_list,
+            longitude=lons,
+            latitude=lats,
+            altitude=alts,
+            serial_num=sns
+            ),
+        columns=('Time', 'hdr', 'path', "longitude", "latitude", "altitude", "serial_num")
+        ).set_index(['Time', 'hdr'])
+
+    #
+    # Save the new database
+    #
+    pd.to_pickle(new_df, database_path)
 
     return new_df
 

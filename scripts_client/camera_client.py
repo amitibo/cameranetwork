@@ -121,6 +121,8 @@ class ClientModel(Atom):
 
     array_items = Dict()
 
+    days_list = List()
+
     images_df = Typed(pd.DataFrame)
     img_index = Tuple()
 
@@ -631,14 +633,23 @@ class ClientModel(Atom):
     ############################################################################
     # Handle reply to broadcast messages.
     ############################################################################
+    def reply_broadcast_days(self, server_id, days_list):
+        """Handle the broadcast reply of the days command."""
+
+        days_list = [datetime.strptime(d, "%Y_%m_%d").date() for d in days_list]
+        self.days_list = sorted(set(days_list + self.days_list))
+
     def reply_broadcast_query(self, server_id, images_df):
         """Handle the broadcast reply of the query command."""
 
         logging.debug("Got reply query {}.".format(server_id))
-        images_df = images_df.rename(index=str, columns={images_df.columns[0]: server_id})
+        images_series = images_df["path"]
+        images_series.name = server_id
+
+        new_df = self.images_df.copy()
         if server_id in self.images_df.columns:
-            self.images_df.drop(server_id, axis=1, inplace=True)
-        new_df = pd.concat((self.images_df, images_df), axis=1)
+            new_df.drop(server_id, axis=1, inplace=True)
+        new_df = pd.concat((new_df, images_series), axis=1)
         new_df = new_df.reindex_axis(sorted(new_df.columns), axis=1)
 
         self.images_df = new_df
@@ -746,6 +757,8 @@ class ServerModel(Atom):
     status_text = Str()
 
     client_model = Typed(ClientModel)
+
+    days_list = List()
 
     images_df = Typed(pd.DataFrame)
     img_index = Tuple()
@@ -940,6 +953,11 @@ class ServerModel(Atom):
         #
         self.client_model.new_array_signal.emit(self.server_id, img_array, img_data)
 
+    def reply_days(self, days_list):
+        """Handle the reply for days command."""
+
+        self.days_list = [datetime.strptime(d, "%Y_%m_%d").date() for d in days_list]
+
     def reply_query(self, images_df):
         """Handle the reply for query command."""
 
@@ -948,6 +966,11 @@ class ServerModel(Atom):
     def reply_seek(self, matfile, img_data):
 
         img_array = extractImgArray(matfile)
+
+        #
+        # Draw the camera on the map.
+        #
+        self.client_model.draw_camera(self.server_id, img_data)
 
         #
         # Add new array.

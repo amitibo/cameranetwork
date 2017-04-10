@@ -1128,9 +1128,9 @@ class Controller(object):
                 original_seek_time))
 
         if hdr_index < 0:
-            mat_paths = df.loc[seek_time].values.flatten()
+            mat_paths = df["path"].loc[seek_time].values.flatten()
         else:
-            mat_paths = df.loc[seek_time, hdr_index].values
+            mat_paths = [df["path"].loc[seek_time, hdr_index]]
 
         img_arrays, img_datas = [], []
         for mat_path in mat_paths:
