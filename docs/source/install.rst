@@ -39,7 +39,7 @@ Prerequisites
 To use *CameraNetwork* several software package are needed. This can be installed using the following
 commands. Copy paste these to a commandline::
 
-    > sudo apt-get install python-pip git mercurial
+    > sudo apt-get install python-pip git mercurial screen autossh
     > sudo pip install paramiko
     > sudo pip install cython
     > sudo pip install pyzmq --install-option="--zmq=bundled"
