@@ -25,6 +25,8 @@ import StringIO
 import subprocess
 from tornado import gen
 import traceback
+from zmq.eventloop.ioloop import ZMQIOLoop
+
 
 __all__ = [
     'DataObj',
@@ -822,6 +824,18 @@ def getImagesDF(query_date, force=False):
     pd.to_pickle(new_df, database_path)
 
     return new_df
+
+
+class PuritanicalIOLoop(ZMQIOLoop):
+    """A loop that quits when it encounters an Exception.
+    """
+
+    def handle_callback_exception(self, callback):
+        exc_type, exc_value, tb = sys.exc_info()
+        raise exc_value
+
+
+IOLoop = PuritanicalIOLoop
 
 
 if __name__ == '__main__':

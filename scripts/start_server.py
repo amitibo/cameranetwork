@@ -9,6 +9,7 @@ import CameraNetwork
 from CameraNetwork.controller import Controller
 import CameraNetwork.global_settings as gs
 from CameraNetwork.server import Server
+from CameraNetwork.utils import IOLoop
 from CameraNetwork.utils import RestartException
 from CameraNetwork.utils import CameraException
 import logging
@@ -16,7 +17,6 @@ import os
 import sys
 import time
 from tornado import gen
-from zmq.eventloop import ioloop
 
 
 def restart_program():
@@ -118,4 +118,39 @@ def main():
 
 if __name__ == '__main__':
     main()
-    ioloop.IOLoop.instance().start()
+    try:
+        IOLoop.instance().start()
+    except RestartException as e:
+        #
+        # The user requested a restart of the software.
+        #
+        logging.exception("User requested to restart program.")
+        restart_program()
+
+    except KeyboardInterrupt as e:
+        #
+        # User stopped the program.
+        #
+        logging.exception('Program stopped by user.')
+    except CameraException as e:
+        #
+        # Failed starting the camera, might be some USB problem.
+        # Note:
+        # I delay the reboot so that the tunnel will stay open and
+        # enable debugging.
+        #
+        logging.exception('Failed starting the camera. Rebooting.')
+        logging.shutdown()
+        time.sleep(120)
+        os.system('sudo reboot')
+    except Exception as e:
+        #
+        # Failed starting the camera, might be some USB problem.
+        # Note:
+        # I delay the reboot so that the tunnel will stay open and
+        # enable debugging.
+        #
+        logging.exception('Unkown error:\n{}'.format(repr(e)))
+        logging.shutdown()
+        time.sleep(120)
+        os.system('sudo reboot')
