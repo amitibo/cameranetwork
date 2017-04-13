@@ -15,7 +15,7 @@ import os
 import subprocess as sbp
 
 
-def main(base_path, debug_mode=False):
+def main(base_path, debug_mode=False, local_proxy=False):
     camera_paths = sorted(glob(os.path.join(base_path, '*')))
     camera_paths = filter(lambda p: os.path.isdir(p), camera_paths)
 
@@ -23,22 +23,23 @@ def main(base_path, debug_mode=False):
     #
     # Start the proxy.
     #
-    proxy = sbp.Popen(['python'] + ['../scripts_proxy/start_proxy.py'])
-    
+    if local_proxy:
+        proxy = sbp.Popen(['python'] + ['../scripts_proxy/start_proxy.py'])
+
     #
     # Start the client.
     #
     if not debug_mode:
         client = sbp.Popen(['python'] +
                            ['../scripts_client/camera_client.py', '--local'])
-    
+
     #
     # Start all cameras.
     #
     servers = []
     for path in camera_paths:
         servers.append(sbp.Popen(['python'] +
-                                 ['../scripts/start_server.py', '--local', path]))
+                                 ['../scripts/start_server.py','--local_path', path] + (["--local_proxy"] if local_proxy else [])))
 
     try:
         client.wait()
@@ -49,11 +50,14 @@ def main(base_path, debug_mode=False):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Start a complete local session.')
+    parser = argparse.ArgumentParser(description='Start a local session.')
     parser.add_argument(
         '--debug_mode', '-d', action='store_true',
         help="Do not start the client. The client will be started from a debugger.")
+    parser.add_argument(
+        '--local_proxy', '-l', action='store_true',
+        help="Start a local proxy.")
     parser.add_argument('base_path', help='Base path of cameras data.')
     args = parser.parse_args()
 
-    main(args.base_path)
+    main(args.base_path, args.debug_mode, args.local_proxy)

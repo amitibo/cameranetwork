@@ -108,7 +108,7 @@ class Server(MDPWorker):
     #
     #executor = futures.ThreadPoolExecutor(4)
 
-    def __init__(self, controller, identity=None, offline=False, local_path=None):
+    def __init__(self, controller, identity=None, offline=False, local_path=None, local_proxy=False):
         """
         Class that encapsulates the camera action.
 
@@ -117,6 +117,7 @@ class Server(MDPWorker):
         """
 
         self._local_mode = local_path is not None
+        self._local_proxy = local_proxy
         gs.initPaths(local_path)
 
         #
@@ -147,6 +148,8 @@ class Server(MDPWorker):
         #
         if identity == None:
             identity = str(self.camera_settings[gs.CAMERA_IDENTITY])
+            if self._local_mode:
+                identity += "L"
 
         super(Server, self).__init__(
             context=self.ctx,
@@ -248,7 +251,7 @@ class Server(MDPWorker):
         """
 
         try:
-            self.proxy_params = retrieve_proxy_parameters(self._local_mode)
+            self.proxy_params = retrieve_proxy_parameters(self._local_proxy)
         except:
             logging.error('Failed to retrieve proxy parameters. Will use default values for now.')
             self.proxy_params = json.loads(gs.DEFAULT_PROXY_PARAMS)

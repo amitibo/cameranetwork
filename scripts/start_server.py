@@ -39,6 +39,7 @@ def main():
     parser.add_argument('--identity', type=str, default=None, help='ID of the server (defaults to the value in the camera settings).')
     parser.add_argument('--offline', action='store_true', help='When set, the server will work without camera nor shader. This setup is useful for offline running.')
     parser.add_argument('--local_path', type=str, default=None, help='If set, the camera will work in local and offline mode, using the given path as home.')
+    parser.add_argument('--local_proxy', action='store_true', help='When set, the server will work against a local proxy. This setup is useful for offline running.')
     args = parser.parse_args()
 
     gs.initPaths(args.local_path)
@@ -72,7 +73,7 @@ def main():
         controller = Controller(offline=offline, local_path=args.local_path)
         server = Server(
             controller=controller, identity=args.identity,
-            offline=offline, local_path=args.local_path)
+            offline=offline, local_path=args.local_path, local_proxy=args.local_proxy)
 
         #
         # Start the server and controller
