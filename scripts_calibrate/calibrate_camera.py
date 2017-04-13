@@ -22,6 +22,7 @@ import matplotlib.pyplot as plt
 import cv2
 import time
 import cPickle
+import glob
 import winsound
 import ids
 import sys
@@ -40,7 +41,7 @@ import cPickle
 #
 DO_GEOMETRIC_CALIBRATION = True
 NX, NY = 9, 6
-GEOMETRIC_EXPOSURE = 300000
+GEOMETRIC_EXPOSURE = 500000
 GEOMETRIC_STEPS = 12
 GEOMETRIC_XMIN, GEOMETRIC_XMAX = 40, 165
 GEOMETRIC_YMIN, GEOMETRIC_YMAX = 0, 110
@@ -139,28 +140,41 @@ def main():
     # Perform geometric Calibration
     ############################################################################
     if DO_GEOMETRIC_CALIBRATION:
-        imgs = []
+        #imgs = sorted(glob.glob(os.path.join(results_path, 'geometric/*.jpg')))
+        #imgs = [cv2.imread(img) for img in imgs]
         safe_mkdirs(os.path.join(results_path, 'geometric'))
-        for img_index, (x, y) in \
-            enumerate(itertools.product(
-                np.linspace(GEOMETRIC_XMIN, GEOMETRIC_XMAX, GEOMETRIC_STEPS),
-                np.linspace(GEOMETRIC_YMIN, GEOMETRIC_YMAX, GEOMETRIC_STEPS))):
 
-            logging.debug("Moved gimbal to position: ({})".format((int(x), int(y))))
-            p.move(int(x), int(y))
-            time.sleep(GEOMETRIC_SLEEP_TIME)
+        X_grid, Y_grid = np.meshgrid(
+            np.linspace(GEOMETRIC_XMIN, GEOMETRIC_XMAX, GEOMETRIC_STEPS),
+            np.linspace(GEOMETRIC_YMIN, GEOMETRIC_YMAX, GEOMETRIC_STEPS),
+            indexing='xy')
+        X_grid = X_grid.astype(np.int32)
+        Y_grid = Y_grid.astype(np.int32)
 
-            img, _, _ = cam.capture(settings, frames_num=1)
+        imgs = []
+        img_index = 0
+        for _ in range(5):
+            raw_input("Move chessboard to new position and press any key")
+            for (x, y) in zip(
+                np.random.choice(X_grid.ravel(), size=20),
+                np.random.choice(Y_grid.ravel(), size=20)
+                ):
+                logging.debug("Moved gimbal to position: ({})".format((int(x), int(y))))
+                p.move(int(x), int(y))
+                time.sleep(GEOMETRIC_SLEEP_TIME)
 
-            #
-            # Save image for debuging the calibration process.
-            #
-            cv2.imwrite(
-                os.path.join(results_path, 'geometric', 'img_{}.jpg'.format(img_index)),
-                img
-            )
+                img, _, _ = cam.capture(settings, frames_num=1)
 
-            imgs.append(img)
+                #
+                # Save image for debuging the calibration process.
+                #
+                cv2.imwrite(
+                    os.path.join(results_path, 'geometric', 'img_{:03}.jpg'.format(img_index)),
+                    img
+                )
+
+                img_index += 1
+                imgs.append(img)
 
         #
         # Use the fisheye model
@@ -193,7 +207,7 @@ def main():
                 cv2.imshow("Reprojected img", rep_img)
                 cv2.waitKey(500)
                 cv2.imwrite(
-                    os.path.join(results_path, 'reprojection', 'img_{}.jpg'.format(img_index)),
+                    os.path.join(results_path, 'reprojection', 'img_{:03}.jpg'.format(img_index)),
                     rep_img
                 )
                 vec_cnt += 1
@@ -279,7 +293,6 @@ def main():
 
     measurements = []
     for i, (x, y) in enumerate(zip(X_grid.ravel(), Y_grid.ravel())):
-
         sys.stdout.write('x={}, y={}...\t'.format(x, y))
 
         p.move(x, y)
