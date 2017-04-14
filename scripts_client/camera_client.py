@@ -551,6 +551,15 @@ class ClientModel(Atom):
     def handle_new_server_cb(self, server_id):
         """Deffer the callback to the gui loop."""
 
+        #
+        # Ignore local servers.
+        # TODO:
+        # Add a flag that controls this behaviour.
+        #
+        if server_id.endswith("L"):
+            logging.debug("Local server: {} ignored.".format(server_id))
+            return
+
         deferred_call(self.add_server, server_id)
 
     def handle_server_failure_cb(self, server_id):
