@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# coding: utf-8
 
 from __future__ import division
 import CameraNetwork.global_settings as gs
@@ -24,6 +25,7 @@ from sklearn import linear_model
 import StringIO
 import subprocess
 from tornado import gen
+from tornado.ioloop import PollIOLoop
 import traceback
 from zmq.eventloop.ioloop import ZMQIOLoop
 
@@ -833,6 +835,30 @@ class PuritanicalIOLoop(ZMQIOLoop):
     def handle_callback_exception(self, callback):
         exc_type, exc_value, tb = sys.exc_info()
         raise exc_value
+
+    @staticmethod
+    def instance(*args, **kwargs):
+        """Returns a global `IOLoop` instance.
+
+        Most applications have a single, global `IOLoop` running on the
+        main thread.  Use this method to get this instance from
+        another thread.  To get the current thread's `IOLoop`, use `current()`.
+        """
+        #
+        # install PuritanicalIOLoop as the active IOLoop implementation
+        #
+        PollIOLoop.configure(PuritanicalIOLoop)
+        return PollIOLoop.instance(*args, **kwargs)
+
+    @staticmethod
+    def current(*args, **kwargs):
+        """Returns the current thread’s IOLoop.
+        """
+        #
+        # install PuritanicalIOLoop as the active IOLoop implementation
+        #
+        PollIOLoop.configure(PuritanicalIOLoop)
+        return PollIOLoop.current(*args, **kwargs)
 
 
 IOLoop = PuritanicalIOLoop

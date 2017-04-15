@@ -9,6 +9,7 @@ from CameraNetwork.utils import getImagesDF
 from CameraNetwork.utils import handler
 from CameraNetwork.utils import handler_no_answer
 from CameraNetwork.utils import identify_server
+from CameraNetwork.utils import IOLoop
 from CameraNetwork.utils import load_camera_data
 from CameraNetwork.utils import name_time
 from CameraNetwork.utils import RestartException
@@ -49,8 +50,6 @@ from tornado.concurrent import Future
 from tornado.concurrent import run_on_executor
 import traceback
 import zmq
-from zmq.eventloop import ioloop
-from zmq.eventloop import zmqstream
 
 
 def restart_program():
@@ -162,8 +161,6 @@ class Server(MDPWorker):
         self._offline = offline
         self.capture_state = False
 
-        self.last_query_df = None
-
         #
         # Start the upload thread.
         # Note:
@@ -204,7 +201,7 @@ class Server(MDPWorker):
         # Stop the IOLoop
         #
         logging.info('Stopping the ioloop')
-        ioloop.IOLoop.instance().stop()
+        IOLoop.instance().stop()
 
         #
         # Close the tunnel.
@@ -229,7 +226,7 @@ class Server(MDPWorker):
             #
             # Start the different timers.
             #
-            ioloop.IOLoop.current().spawn_callback(self.sunshader_timer)
+            IOLoop.current().spawn_callback(self.sunshader_timer)
 
             #
             # If the start_loop is set, start the capture loop.
@@ -237,7 +234,7 @@ class Server(MDPWorker):
             if start_capture or self.capture_settings[gs.START_LOOP]:
                 self.capture_state = True
 
-                ioloop.IOLoop.current().spawn_callback(self.loop_timer)
+                IOLoop.current().spawn_callback(self.loop_timer)
         else:
             #
             # Start in offline mode.
@@ -273,7 +270,7 @@ class Server(MDPWorker):
     def on_request(self, msg):
         """Callback for receiving a message."""
 
-        ioloop.IOLoop.current().spawn_callback(self._on_request, msg)
+        IOLoop.current().spawn_callback(self._on_request, msg)
 
     @gen.coroutine
     def _on_request(self, msg):
@@ -378,6 +375,7 @@ class Server(MDPWorker):
             except Exception as e:
                 logging.error('Error while processing the sunshder timer:\n{}'.format(
                     traceback.format_exc()))
+                raise
 
             yield nxt
 
@@ -555,7 +553,7 @@ class Server(MDPWorker):
         save_camera_data(gs.GENERAL_SETTINGS_PATH, gs.CAPTURE_SETTINGS_PATH,
             None, self.capture_settings)
 
-        ioloop.IOLoop.current().spawn_callback(self.loop_timer)
+        IOLoop.current().spawn_callback(self.loop_timer)
 
     @gen.coroutine
     def handle_get_settings(self):
@@ -767,12 +765,12 @@ class Server(MDPWorker):
         # These can arrise by duplicate indices that might be cuased
         # by changing settings of the camera.
         #
-        self.last_query_df = new_df.reset_index().drop_duplicates(subset=['Time', 'hdr'], keep='last').set_index(['Time', 'hdr'])
+        query_df = new_df.reset_index().drop_duplicates(subset=['Time', 'hdr'], keep='last').set_index(['Time', 'hdr'])
 
         #
         # Send reply on next ioloop cycle.
         #
-        raise gen.Return(((), dict(images_df=self.last_query_df)))
+        raise gen.Return(((), dict(images_df=query_df)))
 
     @gen.coroutine
     def handle_seek(
@@ -798,23 +796,22 @@ class Server(MDPWorker):
 
         """
 
-        if self.last_query_df is None:
-            if type(seek_time) == str:
-                query_date = dtparser.parse(seek_time).date()
-            else:
-                query_date = seek_time.date()
+        if type(seek_time) == str:
+            query_date = dtparser.parse(seek_time).date()
+        else:
+            query_date = seek_time.date()
 
-            new_df = getImagesDF(query_date, force=False)
+        new_df = getImagesDF(query_date, force=False)
 
-            #
-            # Cleaup possible problems in the new dataframe.
-            # These can arrise by duplicate indices that might be cuased
-            # by changing settings of the camera.
-            #
-            self.last_query_df = new_df.reset_index().drop_duplicates(subset=['Time', 'hdr'], keep='last').set_index(['Time', 'hdr'])
+        #
+        # Cleaup possible problems in the new dataframe.
+        # These can arrise by duplicate indices that might be cuased
+        # by changing settings of the camera.
+        #
+        query_df = new_df.reset_index().drop_duplicates(subset=['Time', 'hdr'], keep='last').set_index(['Time', 'hdr'])
 
         img_datas, img_array = self._controller.seekImageArray(
-            self.last_query_df,
+            query_df,
             seek_time,
             hdr_index,
             normalize,

@@ -13,6 +13,7 @@ from CameraNetwork.utils import DataObj
 from CameraNetwork.utils import find_camera_orientation_ransac
 from CameraNetwork.utils import find_centroid
 from CameraNetwork.utils import getImagesDF
+from CameraNetwork.utils import IOLoop
 from CameraNetwork.utils import mean_with_outliers
 from CameraNetwork.utils import name_time
 from CameraNetwork.utils import object_direction
@@ -57,7 +58,6 @@ from tornado.concurrent import Future
 from tornado.concurrent import run_on_executor
 from tornado.queues import PriorityQueue as tPriorityQueue
 import traceback
-from zmq.eventloop import ioloop
 
 
 def interpolate_dark_images(exposure, exposures, dark_images):
@@ -344,7 +344,7 @@ class Controller(object):
         #
         # Start the loop of reading commands of the cmd queue.
         #
-        ioloop.IOLoop.current().spawn_callback(self.process_cmds)
+        IOLoop.current().spawn_callback(self.process_cmds)
 
     def start_camera(self):
         logging.info("Starting camera")
