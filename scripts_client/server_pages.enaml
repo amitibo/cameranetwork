@@ -268,6 +268,8 @@ enamldef SeekControlPage(Page):
                     df,
                     hbox(resolution_lbl, resolution_fld, quality_cnt, seek_pb, spacer),
                 ),
+                df.height == 250,
+                query_day.width == 90,
             ]
 
             PushButton: update_pb:

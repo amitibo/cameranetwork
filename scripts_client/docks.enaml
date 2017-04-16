@@ -199,6 +199,7 @@ enamldef TimesItem(DockItem):
                 df,
                 hbox(resolution_lbl, resolution_fld, quality_cnt, seek_pb, spacer),
             ),
+            query_day.width == 90
         ]
 
         PushButton: update_pb:
