@@ -109,8 +109,11 @@ class MainWindow(QtGui.QWidget):
             # Create image widgets
             #
             image_item = pg.ImageItem()
+            image_label = pg.LabelItem(text=server_id)
+            image_label.scale(1, -1)
             self.view.addItem(image_item)
-            self.image_items[server_id] = image_item
+            self.view.addItem(image_label)
+            self.image_items[server_id] = (image_item, image_label)
 
         self.df = pd.concat(df_list, axis=1, keys=server_id_list)
 
@@ -131,18 +134,23 @@ class MainWindow(QtGui.QWidget):
         row = self.df.iloc[img_index]
         self.label.setText(repr(row.name))
 
-        for server_id, image_item in self.image_items.items():
+        for server_id, (image_item, image_label) in self.image_items.items():
             server_data = row[server_id]
             if not np.isfinite(server_data["thumb_index"]):
                 image_item.hide()
+                image_label.hide()
                 continue
 
             x, y = convertMapData(server_data["latitude"], server_data["longitude"], 0)
+            x = int(x/10)
+            y = int(y/10)
 
             image_item.show()
+            image_label.show()
             image_item.setImage(self.thumbs[server_id][int(server_data["thumb_index"])])
-            image_item.setRect(QtCore.QRectF(int(x/10), int(y/10), 100, 100))
-
+            image_item.setRect(QtCore.QRectF(x, y, 100, 100))
+            image_label.setX(x)
+            image_label.setY(y+120)
 
 if __name__ == '__main__':
     app = QtGui.QApplication(sys.argv)
