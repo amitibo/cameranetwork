@@ -1007,37 +1007,6 @@ class Controller(object):
 
     @cmd_callback
     @run_on_executor
-    def handle_thumbnail(self, settings, normalize):
-
-        #
-        # Set the camera to small size.
-        #
-        self._camera.small_size()
-
-        #
-        # Capture the thumbnail.
-        #
-        img_array, exposure_us, gain_db = self._camera.capture(settings)
-        np.save('/home/odroid/tmp.npy', img_array)
-
-        #
-        # Change camera back to large size.
-        #
-        self._camera.large_size()
-
-        #
-        # Check if there is a need to normalize
-        #
-        if normalize and self._normalization is not None:
-            img_array = self._normalization.normalize(img_array)
-
-        #
-        # Send back the image.
-        #
-        return img_array, exposure_us, gain_db
-
-    @cmd_callback
-    @run_on_executor
     def handle_array(self, capture_settings, frames_num, normalize, jpeg,
                      resolution, img_data):
 
@@ -1112,6 +1081,8 @@ class Controller(object):
                 When calculating radiometric correction, it is important NOT to
                 fix the measurements.
         """
+
+        logging.debug("Seeking time: {} and hdr: {}".format(seek_time, hdr_index))
 
         #
         # Seek the array/settings.

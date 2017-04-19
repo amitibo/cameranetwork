@@ -821,6 +821,14 @@ def getImagesDF(query_date, force=False):
         ).set_index(['Time', 'hdr'])
 
     #
+    # Cleaup possible problems in the new dataframe.
+    # These can arrise by duplicate indices that might be cuased
+    # by changing settings of the camera.
+    #
+    new_df = new_df.reset_index().drop_duplicates(
+        subset=['Time', 'hdr'], keep='last').set_index(['Time', 'hdr'])
+
+    #
     # Save the new database
     #
     pd.to_pickle(new_df, database_path)

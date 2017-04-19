@@ -239,7 +239,7 @@ MSG_TYPE_EXTRINSIC = 'extrinsic'
 MSG_TYPE_SPRINKLER = 'sprinkler'
 MSG_TYPE_SUNSHADER = 'sunshader'
 MSG_TYPE_SUNSHADER_SCAN = 'sunshader_scan'
-MSG_TYPE_THUMBNAIL = 'thumbnail'
+MSG_TYPE_THUMBNAILS = 'thumbnails'
 MSG_TYPE_TUNNEL = 'tunnel'
 MSG_TYPE_TUNNEL_CHECK = 'tunnel_details'
 MSG_TYPE_LOCAL = 'local_ip'
@@ -311,7 +311,6 @@ SPRINKLER_CMD = 'sprinkler'
 SUNSHADER_CMD = 'sunshader'
 SUNSHADER_UPDATE_CMD = 'sunshader_update'
 SUNSHADER_SCAN_CMD = 'sunshader_scan'
-THUMBNAIL_CMD = 'thumbnail'
 
 #
 # Day/Night parameters
