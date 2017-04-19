@@ -62,10 +62,15 @@ class MainWindow(QtGui.QWidget):
         #
         # Create the main window
         #
-        self.win = pg.GraphicsWindow(title="Basic plotting examples")
-        self.horizontalLayout = QtGui.QHBoxLayout(self)
-        self.horizontalLayout.addWidget(self.win)
-        self.view = self.win.addViewBox()
+        self.verticalLayout = QtGui.QVBoxLayout(self)
+        self.label = QtGui.QLabel(self)
+        self.verticalLayout.addWidget(self.label)
+
+        self.cameras_view = pg.GraphicsWindow(title="Basic plotting examples")
+        self.horizontalLayout = QtGui.QHBoxLayout()
+        self.horizontalLayout.addWidget(self.cameras_view)
+        self.view = self.cameras_view.addViewBox()
+        self.verticalLayout.addLayout(self.horizontalLayout)
 
         #
         # lock the aspect ratio so pixels are always square
@@ -124,6 +129,7 @@ class MainWindow(QtGui.QWidget):
         #
         img_index = int(self.w1.value())
         row = self.df.iloc[img_index]
+        self.label.setText(repr(row.name))
 
         for server_id, image_item in self.image_items.items():
             server_data = row[server_id]
