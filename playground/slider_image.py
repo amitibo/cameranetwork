@@ -11,34 +11,33 @@ import glob
 import numpy as np
 import os
 import pandas as pd
+import pymap3d
 import pyqtgraph as pg
+pg.setConfigOptions(imageAxisOrder='row-major')
 import skimage.io as io
 import sys
 
 
+def convertMapData(lat, lon, hgt, lat0=32.775776, lon0=35.024963, alt0=229):
+    """Convert lat/lon/height data to grid data."""
+
+    n, e, d = pymap3d.geodetic2ned(
+        lat, lon, hgt,
+        lat0=lat0, lon0=lon0, h0=alt0)
+
+    x, y, z = e, n, -d
+
+    return x, y
+
+
 class Slider(QtGui.QWidget):
-    def __init__(self, minimum, maximum, parent=None):
+    def __init__(self, maximum, parent=None):
         super(Slider, self).__init__(parent=parent)
-
-        #
-        # Create a font for the label
-        #
-        font = QtGui.QFont()
-        font.setFamily(QtCore.QString.fromUtf8("FreeMono"))
-        font.setBold(True)
-
-        #
-        # Create the label
-        #
-        self.verticalLayout = QtGui.QVBoxLayout(self)
-        self.label = QtGui.QLabel(self)
-        self.label.setFont(font)
-        self.verticalLayout.addWidget(self.label)
 
         #
         # Create the Slider (centered)
         #
-        self.horizontalLayout = QtGui.QHBoxLayout()
+        self.horizontalLayout = QtGui.QHBoxLayout(self)
         spacerItem = QtGui.QSpacerItem(0, 20, QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Minimum)
         self.horizontalLayout.addItem(spacerItem)
         self.slider = QtGui.QSlider(self)
@@ -46,18 +45,12 @@ class Slider(QtGui.QWidget):
         self.horizontalLayout.addWidget(self.slider)
         spacerItem1 = QtGui.QSpacerItem(0, 20, QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Minimum)
         self.horizontalLayout.addItem(spacerItem1)
-        self.verticalLayout.addLayout(self.horizontalLayout)
         self.resize(self.sizeHint())
 
-        self.minimum = minimum
-        self.maximum = maximum
-        self.slider.valueChanged.connect(self.setLabelValue)
-        self.setLabelValue(self.slider.value())
+        self.slider.setMaximum(maximum)
 
-    def setLabelValue(self, value):
-        self.value = self.minimum + \
-            float(value) / (self.slider.maximum() - self.slider.minimum()) * (self.maximum - self.minimum)
-        self.label.setText("{0:.02g}".format(self.value))
+    def value(self):
+        return self.slider.value()
 
 
 class MainWindow(QtGui.QWidget):
@@ -101,7 +94,6 @@ class MainWindow(QtGui.QWidget):
                     indices.append(index)
                     index += 1
                 except:
-                    images.append(None)
                     indices.append(None)
 
             self.thumbs[server_id] = images
@@ -120,7 +112,7 @@ class MainWindow(QtGui.QWidget):
         #
         # Create the thumbnail slider
         #
-        self.w1 = Slider(0, len(self.df)-1)
+        self.w1 = Slider(len(self.df)-1)
         self.horizontalLayout.addWidget(self.w1)
         self.w1.slider.valueChanged.connect(lambda: self.update())
 
@@ -130,20 +122,20 @@ class MainWindow(QtGui.QWidget):
         #
         # Get the current image time/index.
         #
-        img_index = int(self.w1.value)
+        img_index = int(self.w1.value())
         row = self.df.iloc[img_index]
 
-        coord = 0
         for server_id, image_item in self.image_items.items():
-            coord += 50
             server_data = row[server_id]
             if not np.isfinite(server_data["thumb_index"]):
                 image_item.hide()
                 continue
 
+            x, y = convertMapData(server_data["latitude"], server_data["longitude"], 0)
+
             image_item.show()
             image_item.setImage(self.thumbs[server_id][int(server_data["thumb_index"])])
-            image_item.setRect(QtCore.QRectF(coord, coord, 100, 100))
+            image_item.setRect(QtCore.QRectF(int(x/10), int(y/10), 100, 100))
 
 
 if __name__ == '__main__':
