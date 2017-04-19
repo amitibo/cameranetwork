@@ -711,13 +711,6 @@ def safe_make_dirs(path):
 def extractImgArray(matfile):
     """Extract the image from matfile"""
 
-    #
-    # This function is used in the GUI.
-    # I am not sure that PIL is installed the same on the odroid.
-    # Therefore I import Image from here inside the function.
-    #
-    from PIL import Image
-
     data = buff2dict(matfile)
     img_array = data["img_array"]
 
@@ -726,22 +719,47 @@ def extractImgArray(matfile):
     # is int (quality) and bool.
     #
     if data["jpeg"]:
-        buff = StringIO.StringIO(img_array.tostring())
-        img = Image.open(buff)
-        width, height = img.size
-        array = np.array(img.getdata(), np.uint8)
-
-        #
-        # Handle gray scale image
-        #
-        if array.ndim == 1:
-            array.shape = (-1, 1)
-            array = np.hstack((array, array, array))
-
-        img_array = array.reshape(height, width, 3)
+        img_array = buff2Array(img_array)
     else:
         img_array = np.ascontiguousarray(img_array)
 
+    return img_array
+
+
+def extractThumbnails(matfile):
+    """Extract an array of thumbnails from a matfile"""
+
+    data = buff2dict(matfile)
+    thumbnails_buffs = data["thumbnails"].flatten()
+
+    thumbnails = [buff2Array(thumb_buffer) for thumb_buffer in thumbnails_buffs]
+
+    return thumbnails
+
+
+def buff2Array(jpg_buffer):
+    """Convert a jpeg buffer (in the form of a uint8 array) to image."""
+
+    #
+    # This function is used in the GUI.
+    # I am not sure that PIL is installed the same on the odroid.
+    # Therefore I import Image from here inside the function.
+    #
+    from PIL import Image
+
+    buff = StringIO.StringIO(jpg_buffer.tostring())
+    img = Image.open(buff)
+    width, height = img.size
+    array = np.array(img.getdata(), np.uint8)
+
+    #
+    # Handle gray scale image
+    #
+    if array.ndim == 1:
+        array.shape = (-1, 1)
+        array = np.hstack((array, array, array))
+
+    img_array = array.reshape(height, width, 3)
     return img_array
 
 
