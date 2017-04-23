@@ -204,6 +204,7 @@ CALIBRATION_FAILED = 'Failed'
 CALIBRATION_RUNNING = 'Running'
 
 EXTRINSIC_CALIBRATION_MIN_PTS = 50
+EXTRINSIC_SETTINGS_FILENAME = ".extrinsic_data.npy"
 
 DEFAULT_NORMALIZATION_SIZE = 501
 
@@ -353,7 +354,7 @@ def initPaths(HOME_PATH=None):
     # Calibration parameters
     #
     CALIBRATION_SETTINGS_PATH = os.path.join(HOME_PATH, '.calibration_data.dat')
-    EXTRINSIC_SETTINGS_PATH = os.path.join(HOME_PATH, '.extrinsic_data.npy')
+    EXTRINSIC_SETTINGS_PATH = os.path.join(HOME_PATH, EXTRINSIC_SETTINGS_FILENAME)
     SUN_POSITIONS_PATH = os.path.join(HOME_PATH, 'sun_positions')
     DARK_IMAGES_PATH = os.path.join(HOME_PATH, 'dark_images')
 

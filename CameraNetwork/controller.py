@@ -864,11 +864,11 @@ class Controller(object):
         # Calculated direction (using the ephem package.)
         #
         calculated_directions = []
-        for date in positions_df.index:
+        for d in positions_df.index:
             calculated_directions.append(
                 object_direction(
                     celestial_class=ephem.Sun,
-                    date=date,
+                    date=d,
                     latitude=latitude,
                     longitude=longitude,
                     altitude=altitude
@@ -888,7 +888,17 @@ class Controller(object):
         self._normalization.R = R
         if save:
             np.save(gs.EXTRINSIC_SETTINGS_PATH, R)
-
+            #
+            # Save a copy in the calibration day.
+            #
+            np.save(
+                os.path.join(
+                    gs.CAPTURE_PATH,
+                    date,
+                    gs.EXTRINSIC_SETTINGS_FILENAME
+                    ),
+                R
+            )
         #
         # Send back the analysis.
         #
@@ -1110,6 +1120,23 @@ class Controller(object):
             mat_paths = df["path"].loc[seek_time].values.flatten()
         else:
             mat_paths = [df["path"].loc[seek_time, hdr_index]]
+
+        #
+        # Check if there a need to update the extrinsic calibration.
+        #
+        extrinsic_path = os.path.join(
+            gs.CAPTURE_PATH,
+            seek_time.strftime("%Y_%m_%d"),
+            gs.EXTRINSIC_SETTINGS_FILENAME
+        )
+        if os.path.exists(extrinsic_path):
+            try:
+                self._normalization.R = np.load(extrinsic_path)
+            except:
+                logging.error(
+                    "Failed loading extrinsic data from {}\n{}".format(
+                    extrinsic_path, traceback.format_exc())
+                )
 
         img_arrays, img_datas = [], []
         for mat_path in mat_paths:
