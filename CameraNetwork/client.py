@@ -263,10 +263,11 @@ class CLIclient(object):
     Useful for interfacing with cameras from Ipython or from scripts.
     """
 
-    def __init__(self):
+    def __init__(self, timeout=30):
 
         self.futures = {}
         self.servers_list = []
+        self.timeout = timeout
 
     def __getitem__(self, servers_id):
 
@@ -317,7 +318,11 @@ class CLIclient(object):
         thread.daemon = True
         thread.start()
 
-    def send_message(self, servers_id, cmd, args=(), kwds={}, timeout=30):
+    def send_message(self, servers_id, cmd, args=(), kwds={}):
+        """Send a message to (possibly) multiple servers.
+
+        The same message is sent to all servers.
+        """
 
         loop = ioloop.IOLoop.instance()
 
@@ -334,7 +339,7 @@ class CLIclient(object):
 
         results = []
         for future in future_list:
-            results.append(future.result(timeout=timeout))
+            results.append(future.result(timeout=self.timeout))
 
         statuses, cmds, args_answers, kwds_answers = zip(*results)
 

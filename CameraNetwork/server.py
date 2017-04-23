@@ -105,7 +105,7 @@ class Server(MDPWorker):
     #
     # Thread pull
     #
-    #executor = futures.ThreadPoolExecutor(4)
+    executor = futures.ThreadPoolExecutor(4)
 
     def __init__(self, controller, identity=None, offline=False, local_path=None, local_proxy=False):
         """
@@ -178,11 +178,6 @@ class Server(MDPWorker):
         #
         self.tunnel_process = None
         self.tunnel_port = None
-
-        #
-        # Thread pull
-        #
-        self._executor = futures.ThreadPoolExecutor(8)
 
         #
         # link to the controller
@@ -610,50 +605,80 @@ class Server(MDPWorker):
 
         raise gen.Return(((ret_msg,), {}))
 
-    @gen.coroutine
-    def handle_thumbnail(
+    @run_on_executor
+    def handle_thumbnails(
             self,
-            exposure_us=None,
-            gain_db=None,
-            gain_boost=True,
-            color_mode=gs.COLOR_RGB,
-            normalize=False):
-        """Capture a thumbnail"""
+            query_date,
+            time_period="30T",
+            resolution=201,
+            hdr_index="2"):
+        """Download thumbnails of a specific days
+
+        Args:
+            query_date (datetime object or string): The date for which
+                to query for images. If string is give, dateutil.parser
+                will be used for guessing the right date.
+            time_period (string, optional): The sampling period. Defaults
+                to every half an hour.
+            resolution (int, optional): The resolution of the thumbnail.
+            hdr_index (int, optional): The hdr index of the thumbnail.
+
+        Return:
+            List of thumbnails, dataframe describing the thumbnails.
+        """
+
+        hdr_index = str(hdr_index)
 
         #
-        # Schedule capture of the thumbnail.
+        # Form file names.
         #
-        img_array, exposure_us, gain_db = \
-            yield self.push_cmd(
-                gs.THUMBNAIL_CMD,
-                priority=50,
-                settings={
-                    "exposure_us": exposure_us,
-                    "gain_db": gain_db,
-                    "gain_boost": gain_boost,
-                    "color_mode": color_mode,
-                    },
-                normalize=normalize,
-            )
+        if type(query_date) == str:
+            query_date = dtparser.parse(query_date)
 
-        #
-        # Convert the image to PIL and compress it to png.
-        #
-        img = Image.fromarray(img_array)
-        draw = ImageDraw.Draw(img)
-        draw.text(
-            (0, 0),
-            "exposure_us: {exposure_us}, gain_db: {gain_db}".format(
-                exposure_us=exposure_us, gain_db=gain_db),
-            (255,255,255) if img_array.ndim == 3 else 255
-        )
-        f = StringIO.StringIO()
-        img.save(f, format="JPEG")
+        def custom_resampler(array_like):
+            if array_like.shape[0] == 0:
+                return None
+            return array_like.iloc[-1]
+
+        query_df = getImagesDF(query_date, force=True)
+        thumbs_df = query_df.xs(hdr_index, level="hdr").resample(
+            rule=time_period,
+            label="right").apply(custom_resampler).dropna()
+
+        new_inds, new_rows = [], []
+        thumbnails = []
+        for ind, row in thumbs_df.iterrows():
+            try:
+                _, thumb_array = self._controller.seekImageArray(
+                    query_df,
+                    seek_time=ind,
+                    hdr_index=hdr_index,
+                    normalize=True,
+                    resolution=resolution,
+                    jpeg=True,
+                    camera_settings=self.camera_settings
+                )
+                new_inds.append(ind)
+                new_rows.append(row)
+                thumbnails.append(thumb_array)
+            except:
+                #
+                # Sampling the "right" time creates a time sample
+                # that might not be in the data frame (e.g. hdr=0).
+                #
+                pass
 
         #
         # Send reply on next ioloop cycle.
+        # The array is sent as mat file to save
+        # band width
         #
-        raise gen.Return(((), {'thumbnail': f.getvalue()}))
+        matfile = dict2buff(dict(thumbnails=thumbnails, jpeg=True))
+
+        return (), dict(
+            thumbnails=matfile,
+            thumbs_df=pd.DataFrame.from_records(new_rows, index=new_inds)
+        )
 
     @gen.coroutine
     def handle_array(
@@ -758,14 +783,7 @@ class Server(MDPWorker):
         if type(query_date) == str:
             query_date = dtparser.parse(query_date)
 
-        new_df = getImagesDF(query_date, force)
-
-        #
-        # Cleaup possible problems in the new dataframe.
-        # These can arrise by duplicate indices that might be cuased
-        # by changing settings of the camera.
-        #
-        query_df = new_df.reset_index().drop_duplicates(subset=['Time', 'hdr'], keep='last').set_index(['Time', 'hdr'])
+        query_df = getImagesDF(query_date, force)
 
         #
         # Send reply on next ioloop cycle.
@@ -801,14 +819,7 @@ class Server(MDPWorker):
         else:
             query_date = seek_time.date()
 
-        new_df = getImagesDF(query_date, force=False)
-
-        #
-        # Cleaup possible problems in the new dataframe.
-        # These can arrise by duplicate indices that might be cuased
-        # by changing settings of the camera.
-        #
-        query_df = new_df.reset_index().drop_duplicates(subset=['Time', 'hdr'], keep='last').set_index(['Time', 'hdr'])
+        query_df = getImagesDF(query_date, force=False)
 
         img_datas, img_array = self._controller.seekImageArray(
             query_df,
