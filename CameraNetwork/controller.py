@@ -200,7 +200,7 @@ class Controller(object):
                     try:
                         shutil.copyfile(
                             os.path.join(self.calibration_path, file_name),
-                            gs.CALIBRATION_SETTINGS_PATH)
+                            dst_path)
                     except Exception as e:
                         logging.error("Failed copying calibration data: {}\n{}".format(
                             file_name, traceback.format_exc()))
