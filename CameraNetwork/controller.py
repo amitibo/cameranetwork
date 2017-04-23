@@ -184,26 +184,26 @@ class Controller(object):
         #
         # Check if the data exisits in the data folder of the code.
         # If so, the data is copied to the home folder.
+        # Note:
+        # This is done to support old cameras that were not calibrated using the testbench.
         #
+        self.calibration_path = None
         if self.camera_serial_num is not None:
-            base_path = pkg_resources.resource_filename(__name__, '../data/calibration/')
-            base_path = os.path.join(base_path, self.camera_serial_num)
+            self.calibration_path = pkg_resources.resource_filename(__name__, '../data/calibration/')
+            self.calibration_path = os.path.join(self.calibration_path, self.camera_serial_num)
 
-            if os.path.exists(base_path):
-                try:
-                    shutil.copyfile(
-                        os.path.join(base_path, 'fisheye.pkl'),
-                        gs.CALIBRATION_SETTINGS_PATH)
-                    shutil.copyfile(
-                        os.path.join(base_path, 'vignetting.pkl'),
-                        gs.VIGNETTING_PATH)
-                    #shutil.copyfile(
-                        #os.path.join(base_path, 'radiometric.pkl'),
-                        #gs.RADIOMETRIC_PATH)
-                except Exception as e:
-                    logging.error("Failed copying calibration data:\n{}".format(
-                        traceback.format_exc()))
-                    shutil.rmtree(base_path)
+            if os.path.exists(self.calibration_path):
+                for file_name, dst_path in zip(
+                    ('fisheye.pkl', 'vignetting.pkl', 'radiometric.pkl'),
+                    (gs.CALIBRATION_SETTINGS_PATH, gs.VIGNETTING_PATH, gs.RADIOMETRIC_PATH)
+                    ):
+                    try:
+                        shutil.copyfile(
+                            os.path.join(self.calibration_path, file_name),
+                            gs.CALIBRATION_SETTINGS_PATH)
+                    except Exception as e:
+                        logging.error("Failed copying calibration data: {}\n{}".format(
+                            file_name, traceback.format_exc()))
 
         #
         # Try to load calibration data.
@@ -960,6 +960,14 @@ class Controller(object):
             with open(gs.RADIOMETRIC_PATH, 'wb') as f:
                 cPickle.dump(dict(ratios=ratios), f)
 
+            if self.calibration_path is not None:
+                #
+                # Store the radiometric data in the repo folder.
+                #
+                shutil.copyfile(
+                    gs.RADIOMETRIC_PATH,
+                    os.path.join(self.calibration_path, 'radiometric.pkl'),
+                )
             self._radiometric = RadiometricCalibration(ratios)
 
         #
