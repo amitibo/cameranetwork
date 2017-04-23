@@ -153,18 +153,21 @@ class Normalization(object):
         x = np.sin(self._PSI) * np.cos(self._PHI)
         y = np.sin(self._PSI) * np.sin(self._PHI)
 
-        XYZ = np.hstack((x.reshape(-1, 1), y.reshape(-1, 1), z.reshape(-1, 1)))
+        self.XYZ = np.hstack((x.reshape(-1, 1), y.reshape(-1, 1), z.reshape(-1, 1)))
 
+        self.update_rotation()
+
+    def update_rotation(self):
         #
         # Rot is the rotation applied to the camera coordinates to turn into world coordinates.
         # So I multiply from the right (like multiplying with the inverse of the matrix).
         #
         logging.info(self._Rot)
-        XYZ_rotated = np.dot(XYZ, self._Rot)
+        XYZ_rotated = np.dot(self.XYZ, self._Rot)
         YXmap = self._fisheye_model.projectPoints(XYZ_rotated)
 
-        self._Xmap = np.array(YXmap[:, 1], dtype=np.float32).reshape(X.shape)
-        self._Ymap = np.array(YXmap[:, 0], dtype=np.float32).reshape(Y.shape)
+        self._Xmap = np.array(YXmap[:, 1], dtype=np.float32).reshape((self.resolution, self.resolution))
+        self._Ymap = np.array(YXmap[:, 0], dtype=np.float32).reshape((self.resolution, self.resolution))
         self._Xmap[~self.mask] = -1
         self._Ymap[~self.mask] = -1
 
@@ -174,8 +177,11 @@ class Normalization(object):
 
     @R.setter
     def R(self, R):
+        if (self._Rot is not None) and np.array_equal(R, self._Rot):
+            return
+
         self._Rot = R
-        self.calc_normalization_map(self.resolution)
+        self.update_rotation()
 
     def normalize(self, img):
         """Normalize Image
