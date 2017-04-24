@@ -133,6 +133,11 @@ class ClientModel(Atom):
     sunshader_required_angle = Int()
 
     #
+    # Either view local/remote servers.
+    #
+    view_local = Bool()
+
+    #
     # Reconstruction parameters
     # The default values are the Technion lidar position
     #
@@ -552,12 +557,13 @@ class ClientModel(Atom):
         """Deffer the callback to the gui loop."""
 
         #
-        # Ignore local servers.
-        # TODO:
-        # Add a flag that controls this behaviour.
+        # Ignore local/remote servers.
         #
-        if server_id.endswith("L"):
+        if not self.view_local and server_id.endswith("L"):
             logging.debug("Local server: {} ignored.".format(server_id))
+            return
+        elif self.view_local and not server_id.endswith("L"):
+            logging.debug("Remote server: {} ignored.".format(server_id))
             return
 
         deferred_call(self.add_server, server_id)
@@ -1322,7 +1328,7 @@ class Controller(Atom):
             array_view.image_widget.updateLIDARgridPts(xs=xs, ys=ys)
 
 
-def main(local_mode):
+def main(local_mode, view_local):
     """Main doc"""
 
     gs.initPaths()
@@ -1340,7 +1346,7 @@ def main(local_mode):
     #
     # Instansiate the data model
     #
-    client_model = ClientModel()
+    client_model = ClientModel(view_local=view_local)
     client_model.start_camera_thread(local_mode)
 
     #
@@ -1360,6 +1366,7 @@ def main(local_mode):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Start the camera client application')
     parser.add_argument('--local', action='store_true', help='Run in local mode.')
+    parser.add_argument('--view_local', action='store_true', help='View local cameras.')
     args = parser.parse_args()
 
-    main(args.local)
+    main(args.local, args.view_local)

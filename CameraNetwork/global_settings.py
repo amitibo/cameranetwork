@@ -204,7 +204,10 @@ CALIBRATION_FAILED = 'Failed'
 CALIBRATION_RUNNING = 'Running'
 
 EXTRINSIC_CALIBRATION_MIN_PTS = 50
-EXTRINSIC_SETTINGS_FILENAME = ".extrinsic_data.npy"
+EXTRINSIC_SETTINGS_FILENAME = "extrinsic_data.npy"
+RADIOMETRIC_SETTINGS_FILENAME = "radiometric.pkl"
+VIGNETTING_SETTINGS_FILENAME = "vignetting.pkl"
+INTRINSIC_SETTINGS_FILENAME = "fisheye.pkl"
 
 DEFAULT_NORMALIZATION_SIZE = 501
 
@@ -334,26 +337,26 @@ def initPaths(HOME_PATH=None):
     global CAPTURE_SETTINGS_PATH
     global DEFAULT_LOG_FOLDER
     global MASK_PATH
-    global CALIBRATION_SETTINGS_PATH
+    global INTRINSIC_SETTINGS_PATH
     global EXTRINSIC_SETTINGS_PATH
     global SUN_POSITIONS_PATH
     global DARK_IMAGES_PATH
     global UPLOAD_CMD
-    global VIGNETTING_PATH
-    global RADIOMETRIC_PATH
+    global VIGNETTING_SETTINGS_PATH
+    global RADIOMETRIC_SETTINGS_PATH
 
     CAPTURE_PATH = os.path.join(HOME_PATH, 'captured_images')
     GENERAL_SETTINGS_PATH = os.path.join(HOME_PATH, '.camera_data.json')
     CAPTURE_SETTINGS_PATH = os.path.join(HOME_PATH, '.capture_data.json')
-    VIGNETTING_PATH = os.path.join(HOME_PATH, '.vignetting.pkl')
-    RADIOMETRIC_PATH = os.path.join(HOME_PATH, '.radiometric.pkl')
+    VIGNETTING_SETTINGS_PATH = os.path.join(HOME_PATH, VIGNETTING_SETTINGS_FILENAME)
+    RADIOMETRIC_SETTINGS_PATH = os.path.join(HOME_PATH, RADIOMETRIC_SETTINGS_FILENAME)
     DEFAULT_LOG_FOLDER = os.path.join(HOME_PATH, 'camera_logs')
     MASK_PATH = os.path.join(HOME_PATH, 'mask_img.mat')
 
     #
     # Calibration parameters
     #
-    CALIBRATION_SETTINGS_PATH = os.path.join(HOME_PATH, '.calibration_data.dat')
+    INTRINSIC_SETTINGS_PATH = os.path.join(HOME_PATH, INTRINSIC_SETTINGS_FILENAME)
     EXTRINSIC_SETTINGS_PATH = os.path.join(HOME_PATH, EXTRINSIC_SETTINGS_FILENAME)
     SUN_POSITIONS_PATH = os.path.join(HOME_PATH, 'sun_positions')
     DARK_IMAGES_PATH = os.path.join(HOME_PATH, 'dark_images')

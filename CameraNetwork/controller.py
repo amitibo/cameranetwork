@@ -171,7 +171,22 @@ class Controller(object):
     def camera_serial_num(self):
 
         if self._camera is None:
-            return None
+            #
+            # If no camera is connected (offline mode). Read the serial
+            # number from an arbitrary image from the last day.
+            #
+            days_paths = sorted(glob.glob(os.path.join(gs.CAPTURE_PATH, "*")))
+            datas_list = sorted(glob.glob(os.path.join(days_paths[-1], '*.pkl')))
+
+            for data_path in datas_list:
+                try:
+                    with open(data_path, "rb") as f:
+                        data = cPickle.load(f)
+                    break
+                except:
+                    pass
+
+            return data.camera_info["serial_num"]
 
         return self._camera.info['serial_num']
 
@@ -194,8 +209,8 @@ class Controller(object):
 
             if os.path.exists(self.calibration_path):
                 for file_name, dst_path in zip(
-                    ('fisheye.pkl', 'vignetting.pkl', 'radiometric.pkl'),
-                    (gs.CALIBRATION_SETTINGS_PATH, gs.VIGNETTING_PATH, gs.RADIOMETRIC_PATH)
+                    (gs.INTRINSIC_SETTINGS_FILENAME, gs.VIGNETTING_SETTINGS_FILENAME, gs.RADIOMETRIC_SETTINGS_FILENAME),
+                    (gs.INTRINSIC_SETTINGS_PATH, gs.VIGNETTING_SETTINGS_PATH, gs.RADIOMETRIC_SETTINGS_PATH)
                     ):
                     try:
                         shutil.copyfile(
@@ -208,9 +223,9 @@ class Controller(object):
         #
         # Try to load calibration data.
         #
-        if os.path.exists(gs.CALIBRATION_SETTINGS_PATH):
+        if os.path.exists(gs.INTRINSIC_SETTINGS_PATH):
             self._fe = fisheye.load_model(
-                gs.CALIBRATION_SETTINGS_PATH, calib_img_shape=(1200, 1600))
+                gs.INTRINSIC_SETTINGS_PATH, calib_img_shape=(1200, 1600))
 
             #
             # Creating the normalization object.
@@ -229,7 +244,7 @@ class Controller(object):
         # Load vignetting settings.
         #
         try:
-            self._vignetting = VignettingCalibration.load(gs.VIGNETTING_PATH)
+            self._vignetting = VignettingCalibration.load(gs.VIGNETTING_SETTINGS_PATH)
         except:
             self._vignetting = VignettingCalibration()
             logging.error(
@@ -240,7 +255,7 @@ class Controller(object):
         # Load radiometric calibration.
         #
         try:
-            self._radiometric = RadiometricCalibration.load(gs.RADIOMETRIC_PATH)
+            self._radiometric = RadiometricCalibration.load(gs.RADIOMETRIC_SETTINGS_PATH)
         except:
             self._radiometric = RadiometricCalibration()
             logging.error(
@@ -743,7 +758,7 @@ class Controller(object):
             show_imgs=False
         )
         logging.debug("Finished calibration. RMS: {}.".format(rms))
-        self._fe.save(gs.CALIBRATION_SETTINGS_PATH)
+        self._fe.save(gs.INTRINSIC_SETTINGS_PATH)
 
         #
         # Creating the normalization object.
@@ -967,16 +982,22 @@ class Controller(object):
         #
         ratios = [model.steps[1][1].estimator_.coef_[1] for model in models]
         if save:
-            with open(gs.RADIOMETRIC_PATH, 'wb') as f:
+            logging.info("Save radiometric calibration in home folder.")
+
+            with open(gs.RADIOMETRIC_SETTINGS_PATH, 'wb') as f:
                 cPickle.dump(dict(ratios=ratios), f)
 
+            #
+            # serial_num
+            #
             if self.calibration_path is not None:
+                logging.info("Save radiometric calibration in repo.")
                 #
                 # Store the radiometric data in the repo folder.
                 #
                 shutil.copyfile(
-                    gs.RADIOMETRIC_PATH,
-                    os.path.join(self.calibration_path, 'radiometric.pkl'),
+                    gs.RADIOMETRIC_SETTINGS_PATH,
+                    os.path.join(self.calibration_path, gs.RADIOMETRIC_SETTINGS_FILENAME),
                 )
             self._radiometric = RadiometricCalibration(ratios)
 

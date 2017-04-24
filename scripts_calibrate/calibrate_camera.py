@@ -333,8 +333,8 @@ def main():
     # Calculate Vignetting correction.
     #
     vc = VignettingCalibration.readMeasurements(results_path)
-    vc.save(os.path.join(results_path, '.vignetting.pkl'))
-    vc.save(os.path.join(data_path, 'vignetting.pkl'))
+    vc.save(os.path.join(results_path, gs.VIGNETTING_SETTINGS_FILENAME))
+    vc.save(os.path.join(data_path, gs.VIGNETTING_SETTINGS_FILENAME))
     print("The STD Vignetting Error per color is: {}".format(vc._stds))
 
     #
