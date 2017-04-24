@@ -126,6 +126,29 @@ class Controller(object):
         self._offline = offline
 
         #
+        # Set the camera serial_num
+        #
+        self._last_serial_num = None
+        if self._camera is not None:
+            self._last_serial_num = self._camera.info['serial_num']
+        else:
+            #
+            # If no camera is connected (offline mode). Read the serial
+            # number from an arbitrary image from the last day.
+            #
+            days_paths = sorted(glob.glob(os.path.join(gs.CAPTURE_PATH, "*")))
+            datas_list = sorted(glob.glob(os.path.join(days_paths[-1], '*.pkl')))
+
+            for data_path in datas_list:
+                try:
+                    with open(data_path, "rb") as f:
+                        data = cPickle.load(f)
+                    self._last_serial_num = data.camera_info["serial_num"]
+                    break
+                except:
+                    pass
+
+        #
         # Load the camera calibration information.
         #
         self.loadCameraCalibration()
@@ -167,58 +190,38 @@ class Controller(object):
         else:
             self.sky_mask_base = None
 
-    @property
-    def camera_serial_num(self):
-
-        if self._camera is None:
-            #
-            # If no camera is connected (offline mode). Read the serial
-            # number from an arbitrary image from the last day.
-            #
-            days_paths = sorted(glob.glob(os.path.join(gs.CAPTURE_PATH, "*")))
-            datas_list = sorted(glob.glob(os.path.join(days_paths[-1], '*.pkl')))
-
-            for data_path in datas_list:
-                try:
-                    with open(data_path, "rb") as f:
-                        data = cPickle.load(f)
-                    break
-                except:
-                    pass
-
-            return data.camera_info["serial_num"]
-
-        return self._camera.info['serial_num']
-
     def loadCameraCalibration(self):
         """Load camera calibration data
 
         Load the intrinsic and radiometric calibration data.
         """
 
+        if self._last_serial_num is None:
+            return
+
         #
         # Check if the data exisits in the data folder of the code.
         # If so, the data is copied to the home folder.
         # Note:
-        # This is done to support old cameras that were not calibrated using the testbench.
+        # This is done to support old cameras that were not calibrated
+        # using the testbench.
         #
-        self.calibration_path = None
-        if self.camera_serial_num is not None:
-            self.calibration_path = pkg_resources.resource_filename(__name__, '../data/calibration/')
-            self.calibration_path = os.path.join(self.calibration_path, self.camera_serial_num)
+        self.calibration_path = os.path.join(
+            pkg_resources.resource_filename(__name__, '../data/calibration/'),
+            self._last_serial_num)
 
-            if os.path.exists(self.calibration_path):
-                for file_name, dst_path in zip(
-                    (gs.INTRINSIC_SETTINGS_FILENAME, gs.VIGNETTING_SETTINGS_FILENAME, gs.RADIOMETRIC_SETTINGS_FILENAME),
-                    (gs.INTRINSIC_SETTINGS_PATH, gs.VIGNETTING_SETTINGS_PATH, gs.RADIOMETRIC_SETTINGS_PATH)
-                    ):
-                    try:
-                        shutil.copyfile(
-                            os.path.join(self.calibration_path, file_name),
-                            dst_path)
-                    except Exception as e:
-                        logging.error("Failed copying calibration data: {}\n{}".format(
-                            file_name, traceback.format_exc()))
+        if os.path.exists(self.calibration_path):
+            for file_name, dst_path in zip(
+                (gs.INTRINSIC_SETTINGS_FILENAME, gs.VIGNETTING_SETTINGS_FILENAME, gs.RADIOMETRIC_SETTINGS_FILENAME),
+                (gs.INTRINSIC_SETTINGS_PATH, gs.VIGNETTING_SETTINGS_PATH, gs.RADIOMETRIC_SETTINGS_PATH)
+                ):
+                try:
+                    shutil.copyfile(
+                        os.path.join(self.calibration_path, file_name),
+                        dst_path)
+                except Exception as e:
+                    logging.error("Failed copying calibration data: {}\n{}".format(
+                        file_name, traceback.format_exc()))
 
         #
         # Try to load calibration data.
@@ -1088,7 +1091,12 @@ class Controller(object):
         # Preprocess the array before sending it.
         #
         img_array = self.preprocess_array(
-            [img_array], [img_data], normalize, resolution, jpeg)
+            [img_array],
+            [img_data],
+            img_data.capture_time,
+            normalize,
+            resolution,
+            jpeg)
 
         return img_array, img_data
 
@@ -1142,23 +1150,6 @@ class Controller(object):
         else:
             mat_paths = [df["path"].loc[seek_time, hdr_index]]
 
-        #
-        # Check if there a need to update the extrinsic calibration.
-        #
-        extrinsic_path = os.path.join(
-            gs.CAPTURE_PATH,
-            seek_time.strftime("%Y_%m_%d"),
-            gs.EXTRINSIC_SETTINGS_FILENAME
-        )
-        if os.path.exists(extrinsic_path):
-            try:
-                self._normalization.R = np.load(extrinsic_path)
-            except:
-                logging.error(
-                    "Failed loading extrinsic data from {}\n{}".format(
-                    extrinsic_path, traceback.format_exc())
-                )
-
         img_arrays, img_datas = [], []
         for mat_path in mat_paths:
             print("Seeking: {}".format(mat_path))
@@ -1192,7 +1183,13 @@ class Controller(object):
             img_datas.append(img_data)
 
         img_array = self.preprocess_array(
-            img_arrays, img_datas, normalize, resolution, jpeg, correct_radiometric)
+            img_arrays,
+            img_datas,
+            seek_time,
+            normalize,
+            resolution,
+            jpeg,
+            correct_radiometric)
 
         return img_datas, img_array
 
@@ -1200,6 +1197,7 @@ class Controller(object):
             self,
             img_arrays,
             img_datas,
+            img_time,
             normalize,
             resolution,
             jpeg=False,
@@ -1219,6 +1217,34 @@ class Controller(object):
             If multiple arrays/data are passed to the function, these are merged to
             an HDR image.
         """
+
+        #
+        # Check if there is a need to update the calibration settings.
+        # Note:
+        # This handles the case that the same server_id was used with
+        # different cameras.
+        #
+        serial_num = img_datas[0].camera_info["serial_num"]
+        if self._last_serial_num != serial_num:
+            self._last_serial_num = serial_num
+            self.loadCameraCalibration()
+
+        #
+        # Check if there a need to update the extrinsic calibration.
+        #
+        extrinsic_path = os.path.join(
+            gs.CAPTURE_PATH,
+            img_time.strftime("%Y_%m_%d"),
+            gs.EXTRINSIC_SETTINGS_FILENAME
+        )
+        if os.path.exists(extrinsic_path):
+            try:
+                self._normalization.R = np.load(extrinsic_path)
+            except:
+                logging.error(
+                    "Failed loading extrinsic data from {}\n{}".format(
+                    extrinsic_path, traceback.format_exc())
+                )
 
         #
         # if raw image, subtract the dark image and apply vignetting.
