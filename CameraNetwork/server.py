@@ -929,7 +929,7 @@ class Server(MDPWorker):
             'required_angle':required_angle,}))
 
     @gen.coroutine
-    def handle_extrinsic(self, date, residual_threshold, save):
+    def handle_extrinsic(self, date, residual_threshold, save, default_position=False):
         """Handle extrinsic calibration.
 
         Args:
@@ -937,7 +937,18 @@ class Server(MDPWorker):
             residual_threshold (float): residual threshold for the ransac
                 algorithm.
             save (bool): Whether to save the calibration.
+            default_position (bool): Use the default (EE) Lon/Lat/Alt coords. This
+                is useful before doing radiometric calibration.
         """
+
+        if default_position:
+            latitude = gs.DEFAULT_LATITUDE
+            longitude = gs.DEFAULT_LONGITUDE
+            altitude = gs.DEFAULT_ALTITUDE
+        else:
+            latitude = self.camera_settings[gs.CAMERA_LATITUDE]
+            longitude = self.camera_settings[gs.CAMERA_LONGITUDE]
+            altitude = self.camera_settings[gs.CAMERA_ALTITUDE]
 
         #
         # Send command to the controller.
@@ -946,9 +957,9 @@ class Server(MDPWorker):
             yield self.push_cmd(
                 gs.EXTRINSIC_CMD,
                 date=date.strftime("%Y_%m_%d"),
-                latitude=self.camera_settings[gs.CAMERA_LATITUDE],
-                longitude=self.camera_settings[gs.CAMERA_LONGITUDE],
-                altitude=self.camera_settings[gs.CAMERA_ALTITUDE],
+                latitude=latitude,
+                longitude=longitude,
+                altitude=altitude,
                 residual_threshold=residual_threshold,
                 save=save)
 
