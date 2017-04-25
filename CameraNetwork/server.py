@@ -950,6 +950,9 @@ class Server(MDPWorker):
             longitude = self.camera_settings[gs.CAMERA_LONGITUDE]
             altitude = self.camera_settings[gs.CAMERA_ALTITUDE]
 
+        if type(date) == str:
+            date = dtparser.parse(date)
+
         #
         # Send command to the controller.
         #
@@ -983,6 +986,9 @@ class Server(MDPWorker):
                 algorithm.
             save (bool): Whether to save the calibration.
         """
+
+        if type(date) == str:
+            date = dtparser.parse(date)
 
         #
         # Send command to the controller.

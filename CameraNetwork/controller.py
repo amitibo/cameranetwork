@@ -260,10 +260,8 @@ class Controller(object):
         try:
             self._radiometric = RadiometricCalibration.load(gs.RADIOMETRIC_SETTINGS_PATH)
         except:
-            self._radiometric = RadiometricCalibration()
-            logging.error(
-                "Failed loading radiometric data:\n{}".format(
-                    traceback.format_exc()))
+            self._radiometric = RadiometricCalibration(gs.DEFAULT_RADIOMETRIC_SETTINGS)
+            logging.debug("Failed loading radiometric data. Will use the default values.")
 
     def loadDarkImages(self):
         """Load dark images from disk.

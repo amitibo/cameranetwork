@@ -466,8 +466,16 @@ enamldef ExtrinsicControlPage(Page):
 
     VGroup:
         HGroup:
-            DateSelector: extrinsic_day:
-                pass
+            PushButton: update_pb:
+                text = 'Update Days'
+                clicked ::
+                    root_object().client_model.send_message(
+                        server_model_,
+                        gs.MSG_TYPE_DAYS,
+                    )
+
+            ObjectCombo: query_day:
+                items << server_model_.days_list
 
             Label:
                 text = 'Residual Threshold:'
@@ -485,7 +493,7 @@ enamldef ExtrinsicControlPage(Page):
                         server_model_,
                         gs.MSG_TYPE_EXTRINSIC,
                         kwds=dict(
-                            date=extrinsic_day.date,
+                            date=query_day.selected,
                             residual_threshold=residual_threshold.value,
                             save=True,
                             default_position=cb_default_pos.checked
@@ -505,8 +513,16 @@ enamldef RadiometricControlPage(Page):
 
     VGroup:
         HGroup:
-            DateSelector: radiometric_day:
-                pass
+            PushButton: update_pb:
+                text = 'Update Days'
+                clicked ::
+                    root_object().client_model.send_message(
+                        server_model_,
+                        gs.MSG_TYPE_DAYS,
+                    )
+
+            ObjectCombo: query_day:
+                items << server_model_.days_list
 
             PushButton: pb_day:
                 text = 'Get SP Times'
@@ -514,7 +530,7 @@ enamldef RadiometricControlPage(Page):
                     #
                     # Get alm file.
                     #
-                    date = radiometric_day.date
+                    date = query_day.selected
                     base_path = pkg_resources.resource_filename(
                         'CameraNetwork',
                         '../data/aeronet/{}/*.alm'.format(date.strftime("%Y_%m"))
