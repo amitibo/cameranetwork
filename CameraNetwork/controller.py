@@ -126,6 +126,29 @@ class Controller(object):
         self._offline = offline
 
         #
+        # Set the camera serial_num
+        #
+        self._last_serial_num = None
+        if self._camera is not None:
+            self._last_serial_num = self._camera.info['serial_num']
+        else:
+            #
+            # If no camera is connected (offline mode). Read the serial
+            # number from an arbitrary image from the last day.
+            #
+            days_paths = sorted(glob.glob(os.path.join(gs.CAPTURE_PATH, "*")))
+            datas_list = sorted(glob.glob(os.path.join(days_paths[-1], '*.pkl')))
+
+            for data_path in datas_list:
+                try:
+                    with open(data_path, "rb") as f:
+                        data = cPickle.load(f)
+                    self._last_serial_num = data.camera_info["serial_num"]
+                    break
+                except:
+                    pass
+
+        #
         # Load the camera calibration information.
         #
         self.loadCameraCalibration()
@@ -167,50 +190,45 @@ class Controller(object):
         else:
             self.sky_mask_base = None
 
-    @property
-    def camera_serial_num(self):
-
-        if self._camera is None:
-            return None
-
-        return self._camera.info['serial_num']
-
     def loadCameraCalibration(self):
         """Load camera calibration data
 
         Load the intrinsic and radiometric calibration data.
         """
 
+        if self._last_serial_num is None:
+            return
+
         #
         # Check if the data exisits in the data folder of the code.
         # If so, the data is copied to the home folder.
+        # Note:
+        # This is done to support old cameras that were not calibrated
+        # using the testbench.
         #
-        if self.camera_serial_num is not None:
-            base_path = pkg_resources.resource_filename(__name__, '../data/calibration/')
-            base_path = os.path.join(base_path, self.camera_serial_num)
+        self.calibration_path = os.path.join(
+            pkg_resources.resource_filename(__name__, '../data/calibration/'),
+            self._last_serial_num)
 
-            if os.path.exists(base_path):
+        if os.path.exists(self.calibration_path):
+            for file_name, dst_path in zip(
+                (gs.INTRINSIC_SETTINGS_FILENAME, gs.VIGNETTING_SETTINGS_FILENAME, gs.RADIOMETRIC_SETTINGS_FILENAME),
+                (gs.INTRINSIC_SETTINGS_PATH, gs.VIGNETTING_SETTINGS_PATH, gs.RADIOMETRIC_SETTINGS_PATH)
+                ):
                 try:
                     shutil.copyfile(
-                        os.path.join(base_path, 'fisheye.pkl'),
-                        gs.CALIBRATION_SETTINGS_PATH)
-                    shutil.copyfile(
-                        os.path.join(base_path, 'vignetting.pkl'),
-                        gs.VIGNETTING_PATH)
-                    #shutil.copyfile(
-                        #os.path.join(base_path, 'radiometric.pkl'),
-                        #gs.RADIOMETRIC_PATH)
+                        os.path.join(self.calibration_path, file_name),
+                        dst_path)
                 except Exception as e:
-                    logging.error("Failed copying calibration data:\n{}".format(
-                        traceback.format_exc()))
-                    shutil.rmtree(base_path)
+                    logging.error("Failed copying calibration data: {}\n{}".format(
+                        file_name, traceback.format_exc()))
 
         #
         # Try to load calibration data.
         #
-        if os.path.exists(gs.CALIBRATION_SETTINGS_PATH):
+        if os.path.exists(gs.INTRINSIC_SETTINGS_PATH):
             self._fe = fisheye.load_model(
-                gs.CALIBRATION_SETTINGS_PATH, calib_img_shape=(1200, 1600))
+                gs.INTRINSIC_SETTINGS_PATH, calib_img_shape=(1200, 1600))
 
             #
             # Creating the normalization object.
@@ -229,7 +247,7 @@ class Controller(object):
         # Load vignetting settings.
         #
         try:
-            self._vignetting = VignettingCalibration.load(gs.VIGNETTING_PATH)
+            self._vignetting = VignettingCalibration.load(gs.VIGNETTING_SETTINGS_PATH)
         except:
             self._vignetting = VignettingCalibration()
             logging.error(
@@ -240,7 +258,7 @@ class Controller(object):
         # Load radiometric calibration.
         #
         try:
-            self._radiometric = RadiometricCalibration.load(gs.RADIOMETRIC_PATH)
+            self._radiometric = RadiometricCalibration.load(gs.RADIOMETRIC_SETTINGS_PATH)
         except:
             self._radiometric = RadiometricCalibration()
             logging.error(
@@ -743,7 +761,7 @@ class Controller(object):
             show_imgs=False
         )
         logging.debug("Finished calibration. RMS: {}.".format(rms))
-        self._fe.save(gs.CALIBRATION_SETTINGS_PATH)
+        self._fe.save(gs.INTRINSIC_SETTINGS_PATH)
 
         #
         # Creating the normalization object.
@@ -864,11 +882,11 @@ class Controller(object):
         # Calculated direction (using the ephem package.)
         #
         calculated_directions = []
-        for date in positions_df.index:
+        for d in positions_df.index:
             calculated_directions.append(
                 object_direction(
                     celestial_class=ephem.Sun,
-                    date=date,
+                    date=d,
                     latitude=latitude,
                     longitude=longitude,
                     altitude=altitude
@@ -888,7 +906,17 @@ class Controller(object):
         self._normalization.R = R
         if save:
             np.save(gs.EXTRINSIC_SETTINGS_PATH, R)
-
+            #
+            # Save a copy in the calibration day.
+            #
+            np.save(
+                os.path.join(
+                    gs.CAPTURE_PATH,
+                    date,
+                    gs.EXTRINSIC_SETTINGS_FILENAME
+                    ),
+                R
+            )
         #
         # Send back the analysis.
         #
@@ -957,9 +985,23 @@ class Controller(object):
         #
         ratios = [model.steps[1][1].estimator_.coef_[1] for model in models]
         if save:
-            with open(gs.RADIOMETRIC_PATH, 'wb') as f:
+            logging.info("Save radiometric calibration in home folder.")
+
+            with open(gs.RADIOMETRIC_SETTINGS_PATH, 'wb') as f:
                 cPickle.dump(dict(ratios=ratios), f)
 
+            #
+            # serial_num
+            #
+            if self.calibration_path is not None:
+                logging.info("Save radiometric calibration in repo.")
+                #
+                # Store the radiometric data in the repo folder.
+                #
+                shutil.copyfile(
+                    gs.RADIOMETRIC_SETTINGS_PATH,
+                    os.path.join(self.calibration_path, gs.RADIOMETRIC_SETTINGS_FILENAME),
+                )
             self._radiometric = RadiometricCalibration(ratios)
 
         #
@@ -1007,37 +1049,6 @@ class Controller(object):
 
     @cmd_callback
     @run_on_executor
-    def handle_thumbnail(self, settings, normalize):
-
-        #
-        # Set the camera to small size.
-        #
-        self._camera.small_size()
-
-        #
-        # Capture the thumbnail.
-        #
-        img_array, exposure_us, gain_db = self._camera.capture(settings)
-        np.save('/home/odroid/tmp.npy', img_array)
-
-        #
-        # Change camera back to large size.
-        #
-        self._camera.large_size()
-
-        #
-        # Check if there is a need to normalize
-        #
-        if normalize and self._normalization is not None:
-            img_array = self._normalization.normalize(img_array)
-
-        #
-        # Send back the image.
-        #
-        return img_array, exposure_us, gain_db
-
-    @cmd_callback
-    @run_on_executor
     def handle_array(self, capture_settings, frames_num, normalize, jpeg,
                      resolution, img_data):
 
@@ -1080,7 +1091,12 @@ class Controller(object):
         # Preprocess the array before sending it.
         #
         img_array = self.preprocess_array(
-            [img_array], [img_data], normalize, resolution, jpeg)
+            [img_array],
+            [img_data],
+            img_data.capture_time,
+            normalize,
+            resolution,
+            jpeg)
 
         return img_array, img_data
 
@@ -1112,6 +1128,8 @@ class Controller(object):
                 When calculating radiometric correction, it is important NOT to
                 fix the measurements.
         """
+
+        logging.debug("Seeking time: {} and hdr: {}".format(seek_time, hdr_index))
 
         #
         # Seek the array/settings.
@@ -1165,7 +1183,13 @@ class Controller(object):
             img_datas.append(img_data)
 
         img_array = self.preprocess_array(
-            img_arrays, img_datas, normalize, resolution, jpeg, correct_radiometric)
+            img_arrays,
+            img_datas,
+            seek_time,
+            normalize,
+            resolution,
+            jpeg,
+            correct_radiometric)
 
         return img_datas, img_array
 
@@ -1173,6 +1197,7 @@ class Controller(object):
             self,
             img_arrays,
             img_datas,
+            img_time,
             normalize,
             resolution,
             jpeg=False,
@@ -1192,6 +1217,34 @@ class Controller(object):
             If multiple arrays/data are passed to the function, these are merged to
             an HDR image.
         """
+
+        #
+        # Check if there is a need to update the calibration settings.
+        # Note:
+        # This handles the case that the same server_id was used with
+        # different cameras.
+        #
+        serial_num = img_datas[0].camera_info["serial_num"]
+        if self._last_serial_num != serial_num:
+            self._last_serial_num = serial_num
+            self.loadCameraCalibration()
+
+        #
+        # Check if there a need to update the extrinsic calibration.
+        #
+        extrinsic_path = os.path.join(
+            gs.CAPTURE_PATH,
+            img_time.strftime("%Y_%m_%d"),
+            gs.EXTRINSIC_SETTINGS_FILENAME
+        )
+        if os.path.exists(extrinsic_path):
+            try:
+                self._normalization.R = np.load(extrinsic_path)
+            except:
+                logging.error(
+                    "Failed loading extrinsic data from {}\n{}".format(
+                    extrinsic_path, traceback.format_exc())
+                )
 
         #
         # if raw image, subtract the dark image and apply vignetting.

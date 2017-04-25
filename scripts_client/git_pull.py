@@ -38,7 +38,7 @@ def set_hosts():
     credentials_dict = camera_client.send_mmi(MDP.MMI_TUNNELS)
 
     ports = {k: v['tunnel_port'] for \
-             k, v in credentials_dict.items() if k in camera_client.servers_list}
+             k, v in credentials_dict.items() if not k.endswith("L") and k in camera_client.servers_list}
 
     global hosts_map
     hosts_map = {'odroid@{ip}:{port}'.format(ip=proxy_params['ip'], port=port): k for k, port in ports.items()}

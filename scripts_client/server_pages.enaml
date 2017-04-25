@@ -143,28 +143,6 @@ enamldef MainControlsPage(Page):
                             server_model_
                         )
 
-                #PushButton: pb_update:
-                    #text = 'Update'
-                    #style_class = 'gradient-button gb-red rounded'
-                    #clicked ::
-                        #revisions = root_object().client_model.get_revisions_list()
-                        #if revisions == []:
-                            #warning(self, 'Warning', 'Your local repository is not synced with remote.\nPlease pull/push before trying to update the cameras.')
-                        #else:
-                            #descriptions, nodes = zip(*revisions)
-                            #td = UpdateTaskDialog(
-                                #self,
-                                #revisions=list(descriptions)
-                            #)
-                            #if td.exec_():
-                                #root_object().client_model.send_message(
-                                    #server_model_,
-                                    #gs.MSG_TYPE_UPDATE,
-                                    #kwds=dict(
-                                        #rev=nodes[descriptions.index(td.selected_revision)]
-                                    #)
-                                #)
-
         MultilineField: status:
             text << server_model_.status_text
             font = '9pt Courier'
@@ -496,6 +474,10 @@ enamldef ExtrinsicControlPage(Page):
             FloatField: residual_threshold:
                 value = 0.05
 
+            CheckBox: cb_default_pos:
+                tool_tip = "Use default Lon/Lat/Alt. Useful in conjuction with radiometric calibration."
+                text = "Default Postion"
+
             PushButton: pb_extrinsic:
                 text = 'Extrinsic Calibrate'
                 clicked ::
@@ -505,7 +487,8 @@ enamldef ExtrinsicControlPage(Page):
                         kwds=dict(
                             date=extrinsic_day.date,
                             residual_threshold=residual_threshold.value,
-                            save=True
+                            save=True,
+                            default_position=cb_default_pos.checked
                         )
                     )
 
