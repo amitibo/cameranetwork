@@ -507,7 +507,7 @@ class ClientModel(Atom):
 
         dst_path = os.path.join(
             base_path,
-            self.img_index[0].to_datetime().strftime("%Y_%m_%d_%H_%M_%S.pkl")
+            self.img_index[0].to_pydatetime().strftime("%Y_%m_%d_%H_%M_%S.pkl")
         )
 
         rois_dict = {}
@@ -516,7 +516,7 @@ class ClientModel(Atom):
         for server_id, (_, array_view) in self.array_items.items():
             rois_dict[server_id] = array_view.ROI.saveState()
             masks_dict[server_id] = array_view.mask_ROI.saveState()
-            array_shapes[server_id] = array_view.img_array.shape
+            array_shapes[server_id] = array_view.img_array.shape[:2]
 
         with open(dst_path, 'wb') as f:
             cPickle.dump((rois_dict, masks_dict, array_shapes), f)
@@ -1193,7 +1193,7 @@ class Controller(Atom):
             #
             # Update the view.
             #
-            old_array_shape = array_view.img_array.shape
+            old_array_shape = array_view.img_array.shape[:2]
             array_view.img_array = img_array
             array_view.img_data = img_data
             array_view.image_widget.update_ROI_resolution(old_array_shape)

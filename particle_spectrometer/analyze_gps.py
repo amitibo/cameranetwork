@@ -42,17 +42,18 @@ def main():
     ax = df.plot(figsize=(12, 12), title="Particle Distribution")
     ax.set_xlabel("Time")
     ax.set_ylabel("Particles/Liter")
-    
-    fig, axes = plt.subplots(nrows=1, ncols=2, sharey=True, figsize=(12, 6))
-    axes[0].plot(COLUMNS, df.iloc[300])
-    axes[1].plot(COLUMNS, df.iloc[300])
-    axes[1].set_xlim(0, 5)
-    axes[0].set_xlabel("Sizes um")
-    axes[1].set_xlabel("Sizes um")
-    axes[0].set_ylabel("Particles/Liter")
-    axes[1].set_ylabel("Particles/Liter")
-    plt.suptitle("Particle Distribution at: {}".format(df.index[300]))
-    
+
+    for ind in (-150, -100, -50):
+        fig, axes = plt.subplots(nrows=1, ncols=2, sharey=True, figsize=(12, 6))
+        axes[0].semilogy(COLUMNS, df.iloc[ind])
+        axes[1].semilogy(COLUMNS, df.iloc[ind])
+        axes[1].set_xlim(0, 5)
+        axes[0].set_xlabel("Sizes um")
+        axes[1].set_xlabel("Sizes um")
+        axes[0].set_ylabel("Particles/Liter")
+        axes[1].set_ylabel("Particles/Liter")
+        plt.suptitle("Particle Distribution at: {}".format(df.index[ind]))
+        
     alt_df = pd.DataFrame(data={"Altitude":alt, "Relative Altitude":relative_alt}, index=indices, columns=["Altitude", "Relative Altitude"])
     ax = alt_df.plot(title="Flight Altitude")
     ax.set_xlabel("Time")

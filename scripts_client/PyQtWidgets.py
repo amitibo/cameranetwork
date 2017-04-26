@@ -282,7 +282,7 @@ class PyQtImageView(PyQtGraphLayoutWidget):
 
         s = float(self.img_array.shape[0]) / float(old_shape[0])
         c = np.array(old_shape)/2
-        t = np.array(self.img_array)/2 -c
+        t = np.array(self.img_array.shape[:2])/2 -c
         self.ROI.scale(s, center=c)
         self.ROI.translate((t[0], t[1]))
         self.mask_ROI.scale(s, center=c)
