@@ -6,10 +6,14 @@ https://gist.github.com/blink1073/7411284
 from atom.api import Instance, Signal, Str, Int, observe, List, Bool
 from enaml.qt import QtCore, QtGui
 from enaml.widgets.api import *
+import math
 import numpy as np
 from pyqtgraph import opengl as gl
 import pyqtgraph as pg
 pg.setConfigOptions(imageAxisOrder='row-major')
+
+
+MASK_INIT_RESOLUTION = 20
 
 
 class PyQtGraphLayoutWidget(RawWidget):
@@ -210,13 +214,17 @@ class PyQtImageView(PyQtGraphLayoutWidget):
 
         plot_area.addItem(self.principalplane_scatter)
 
-    def drawROIs(self, plot_area):
+    def drawROIs(self, plot_area, img_shape):
         """Initialize the ROI markers"""
 
         #
         # Mask ROI
         #
-        self.mask_ROI = pg.PolyLineROI([[0,0], [10,10], [10,30], [30,10]], closed=True)
+        angles = np.linspace(0, 2*np.pi, MASK_INIT_RESOLUTION)
+        xs = img_shape[0] * (1 + 0.9 * np.cos(angles)) / 2
+        ys = img_shape[1] * (1 + 0.9 * np.sin(angles)) / 2
+        mask_positions = np.vstack((xs, ys)).T
+        self.mask_ROI = pg.PolyLineROI(mask_positions, closed=True)
         self.mask_ROI.setVisible(False)
 
         plot_area.vb.addItem(self.mask_ROI)
@@ -265,6 +273,20 @@ class PyQtImageView(PyQtGraphLayoutWidget):
         self.ROI_signal.emit(
             {'server_id': self.server_id, 'pts': pts, 'shape': self.img_array.shape}
         )
+
+    def update_ROI_resolution(self, old_shape):
+        """Update the ROI_resolution.
+
+        Used to fix the save ROI resolution to new array resolution.
+        """
+
+        s = float(self.img_array.shape[0]) / float(old_shape[0])
+        c = np.array(old_shape)/2
+        t = np.array(self.img_array)/2 -c
+        self.ROI.scale(s, center=c)
+        self.ROI.translate((t[0], t[1]))
+        self.mask_ROI.scale(s, center=c)
+        self.mask_ROI.translate((t[0], t[1]))
 
     @observe('img_array')
     def update_img_array(self, change):
@@ -423,7 +445,7 @@ class PyQtImageView(PyQtGraphLayoutWidget):
         #
         # Setup the ROIs
         #
-        self.drawROIs(plot_area)
+        self.drawROIs(plot_area, self.img_array.shape)
 
         win.resize(400, 400)
 

@@ -25,6 +25,7 @@ import matplotlib.mlab as ml
 from mayavi.tools.mlab_scene_model import MlabSceneModel
 from mayavi.tools.figure import clf
 import os
+import pkg_resources
 import pymap3d
 import random
 import scipy.io as sio
@@ -496,46 +497,44 @@ class ClientModel(Atom):
 
         self.export_progress = int(100*progress_ratio)
 
-    def save_rois(self, base_path='.'):
+    def save_rois(self, base_path=None):
         """Save the current ROIS for later use."""
 
-        dst_path = os.path.join(base_path, 'ROIS.pkl')
+        if base_path is None:
+            base_path = pkg_resources.resource_filename("CameraNetwork", "../data/ROIS")
+            if not os.path.exists(base_path):
+                os.makedirs(base_path)
+
+        dst_path = os.path.join(
+            base_path,
+            self.img_index[0].to_datetime().strftime("%Y_%m_%d_%H_%M_%S.pkl")
+        )
 
         rois_dict = {}
         masks_dict = {}
+        array_shapes = {}
         for server_id, (_, array_view) in self.array_items.items():
             rois_dict[server_id] = array_view.ROI.saveState()
             masks_dict[server_id] = array_view.mask_ROI.saveState()
+            array_shapes[server_id] = array_view.img_array.shape
 
         with open(dst_path, 'wb') as f:
-            cPickle.dump((rois_dict, masks_dict), f)
+            cPickle.dump((rois_dict, masks_dict, array_shapes), f)
 
     def load_rois(self, path='./ROIS.pkl'):
         """Apply the saved rois on the current arrays."""
 
         try:
             with open(path, 'rb') as f:
-                tmp = cPickle.load(f)
+                rois_dict, masks_dict, array_shapes = cPickle.load(f)
 
-            if type(tmp) is tuple:
-                rois_dict, masks_dict = tmp
-            else:
-                #
-                # Support older type ROI pickle that did not
-                # include the mask ROI.
-                #
-                rois_dict = tmp
-                masks_dict = None
-
-            for server_id, roi in rois_dict.items():
-                if server_id not in self.array_items:
+            for server_id, (_, array_view) in self.array_items.items():
+                if server_id not in rois_dict:
                     continue
 
-                _, array_view = self.array_items[server_id]
-                array_view.ROI.setState(roi)
-
-                if masks_dict is not None:
-                    array_view.mask_ROI.setState(masks_dict[server_id])
+                array_view.ROI.setState(rois_dict[server_id])
+                array_view.mask_ROI.setState(masks_dict[server_id])
+                array_view.image_widget.update_ROI_resolution(array_shapes[server_id])
 
         except Exception as e:
             logging.error(
@@ -1194,8 +1193,10 @@ class Controller(Atom):
             #
             # Update the view.
             #
+            old_array_shape = array_view.img_array.shape
             array_view.img_array = img_array
             array_view.img_data = img_data
+            array_view.image_widget.update_ROI_resolution(old_array_shape)
 
             array_view.Almucantar_coords = Almucantar_coords
             array_view.PrincipalPlane_coords = PrincipalPlane_coords
