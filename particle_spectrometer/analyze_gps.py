@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 import pandas as pd
+from scipy.interpolate import interp1d
 
 COLUMNS = [0.25, 0.28, 0.3, 0.35, 0.4, 0.45, 0.5, 0.58, 0.65, 0.7, 0.8, 1, 1.3, 1.6, 2, 2.5, 3, 3.5, 4, 5, 6.5, 7.5, 8.5, 10, 12.5, 15, 17.5, 20, 25, 30, 32]
 
@@ -28,7 +29,7 @@ def main():
                 # ignore corrupt data.
                 #
                 continue
-            
+
             t = datetime.datetime(*[int(i) for i in os.path.split(file_path)[-1].split('.')[0].split('_')])
             indices.append(t)
             data.append(d['data'])
@@ -36,54 +37,61 @@ def main():
             lon.append(d['coords']['lon']*1e-7)
             alt.append(d['coords']['alt']*1e-3)
             relative_alt.append(d['coords']['relative_alt']*1e-3)
-                
+
     data = np.array(data)[..., :-1]
     df = pd.DataFrame(data=data, index=indices, columns=COLUMNS)
     ax = df.plot(figsize=(12, 12), title="Particle Distribution")
     ax.set_xlabel("Time")
     ax.set_ylabel("Particles/Liter")
 
+    columns = np.linspace(COLUMNS[0], COLUMNS[-1], 300)
+
     for ind in (-150, -100, -50):
-        fig, axes = plt.subplots(nrows=1, ncols=2, sharey=True, figsize=(12, 6))
-        axes[0].semilogy(COLUMNS, df.iloc[ind])
-        axes[1].semilogy(COLUMNS, df.iloc[ind])
-        axes[1].set_xlim(0, 5)
+
+        dist = df.iloc[ind].values
+        dist_dense = interp1d(COLUMNS, dist)(columns)
+
+        fig, axes = plt.subplots(nrows=1, ncols=2, figsize=(12, 6))
+        axes[0].semilogy(COLUMNS, dist)
         axes[0].set_xlabel("Sizes um")
-        axes[1].set_xlabel("Sizes um")
         axes[0].set_ylabel("Particles/Liter")
-        axes[1].set_ylabel("Particles/Liter")
+
+        axes[1].loglog(columns, 4. / 3 * np.pi * columns**3 * dist_dense)
+        axes[1].set_xlabel("Sizes um")
+        axes[1].set_ylabel("dV/d(log(r))")
+
         plt.suptitle("Particle Distribution at: {}".format(df.index[ind]))
-        
+
     alt_df = pd.DataFrame(data={"Altitude":alt, "Relative Altitude":relative_alt}, index=indices, columns=["Altitude", "Relative Altitude"])
     ax = alt_df.plot(title="Flight Altitude")
     ax.set_xlabel("Time")
     ax.set_ylabel("Altitude [m]")
-    
+
     plt.figure()
     plt.scatter(lon, lat, label="Flight")
     plt.axis('equal')
     plt.title("Geo Position")
     plt.xlabel("Longitude")
     plt.ylabel("Latitude")
-    
+
     #
     # Add the Technion
     #
     data_x = [35.024967]
     data_y = [32.775730]
     plt.plot(data_x, data_y, 'or', label="Technion")
-    
+
     #
     # Add Megido
     #
     data_x = [35.234186]
     data_y = [32.597122]
     plt.plot(data_x, data_y, '*b', label="Megido")
-    
+
     plt.legend()
-    
+
     plt.show()
-    
+
 
 if __name__ == '__main__':
     main()
