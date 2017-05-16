@@ -456,10 +456,12 @@ enamldef Main(MainWindow): main:
                         array_view.image_widget.show_ROI = checked
             Action:
                 separator = True
+
             Action:
                 checkable = True
                 text = 'Show LIDAR grid'
                 toggled ::
+                    client_model.showGrid(checked)
                     for array_view in array_views.objects:
                         array_view.image_widget.show_LIDAR_grid = checked
 

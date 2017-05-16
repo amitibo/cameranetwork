@@ -72,7 +72,7 @@ import time
 
 
 ROI_length = 6000
-
+MAP_ZSCALE = 3
 
 def loadMapData():
     """Load height data for map visualization."""
@@ -88,6 +88,24 @@ def loadMapData():
     return lat[100:400, 1100:1400], lon[100:400, 1100:1400], hgt[100:400, 1100:1400]
 
 
+def calcSeaMask(hgt_array):
+    """Calc a masking to the sea.
+
+    Note:
+    This code is empirical, and should be adjusted if grid sizes change.
+    """
+
+    hgt_u8 = (255 * (hgt_array-hgt_array.min())/(hgt_array.max()-hgt_array.min())).astype(np.uint8)
+
+    mask = (hgt_u8>7).astype(np.uint8)*255
+    kernel_open = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
+    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel_open)
+    kernel_close = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (16, 16))
+    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel_close)
+    mask[250:, 250:] = 255
+
+    return mask < 255
+
 def convertMapData(lat, lon, hgt, lat0=32.775776, lon0=35.024963, alt0=229):
     """Convert lat/lon/height data to grid data."""
 
@@ -97,13 +115,14 @@ def convertMapData(lat, lon, hgt, lat0=32.775776, lon0=35.024963, alt0=229):
 
     x, y, z = e, n, -d
 
-    xi = np.linspace(-10000, 10000, 100)
-    yi = np.linspace(-10000, 10000, 100)
+    xi = np.linspace(-10000, 10000, 300)
+    yi = np.linspace(-10000, 10000, 300)
     X, Y = np.meshgrid(xi, yi)
 
     Z = ml.griddata(y.flatten(), x.flatten(), z.flatten(), yi, xi, interp='linear')
+    Z_mask = calcSeaMask(Z)
 
-    return X, Y, Z
+    return X, Y, Z, Z_mask
 
 
 class ClientModel(Atom):
@@ -130,6 +149,7 @@ class ClientModel(Atom):
     map_coords = Tuple()
     map_scene = Typed(MlabSceneModel)
     cameras_ROIs = Dict()
+    grid_cube = List()
 
     sunshader_required_angle = Int()
 
@@ -154,12 +174,12 @@ class ClientModel(Atom):
     delx = Float(100)
     dely = Float(100)
     delz = Float(100)
-    TOG = Float(3000)
+    TOG = Float(6000)
     GRID_ECEF = Tuple()
     GRID_NED = Tuple()
-    grid_mode = Str()
-    grid_width = Float(3000)
-    grid_length = Float(5000)
+    grid_mode = Str("Manual")
+    grid_width = Float(6000)
+    grid_length = Float(6000)
 
     #
     # Sunshader mask threshold used in grabcut algorithm.
@@ -221,7 +241,7 @@ class ClientModel(Atom):
         # Draw a point at the camera center.
         #
         self.map_scene.mlab.points3d(
-            [x], [y], [z],
+            [x], [y], [MAP_ZSCALE * z],
             color=(1, 0, 0), mode='sphere', scale_mode='scalar', scale_factor=500,
             figure=self.map_scene.mayavi_scene
         )
@@ -246,7 +266,7 @@ class ClientModel(Atom):
         roi_mesh = self.map_scene.mlab.triangular_mesh(
             x_,
             y_,
-            z_,
+            MAP_ZSCALE * z_,
             triangles,
             color=(0.5, 0.5, 0.5),
             opacity=0.2
@@ -256,7 +276,7 @@ class ClientModel(Atom):
         #
         # Write the id of the camera.
         #
-        self.map_scene.mlab.text3d(x, y, z+50, server_id, color=(0, 0, 0), scale=500.)
+        #self.map_scene.mlab.text3d(x, y, z+50, server_id, color=(0, 0, 0), scale=500.)
 
     def draw_grid(self):
         """Draw the reconstruction grid on the map."""
@@ -265,16 +285,39 @@ class ClientModel(Atom):
             return
 
         X, Y, Z = self.GRID_NED
-        X, Y, Z = np.meshgrid(X, Y, -Z)
+        x_min, x_max = X.min(), X.max()
+        y_min, y_max = Y.min(), Y.max()
+        z_min, z_max = Z.min(), Z.max()
+
+        x = np.array((x_min, x_max, x_max, x_min, x_min, x_max, x_max, x_min))
+        y = np.array((y_min, y_min, y_max, y_max, y_min, y_min, y_max, y_max))
+        z = np.array((z_min, z_min, z_min, z_min, z_max, z_max, z_max, z_max))
+
+        triangles = [
+            (0, 1, 5),
+            (1, 2, 6),
+            (2, 3, 7),
+            (3, 0, 4),
+            (0, 5, 4),
+            (1, 6, 5),
+            (2, 7, 6),
+            (3, 4, 7),
+            (4, 5, 6),
+            (6, 7, 4)
+        ]
 
         #
-        # Draw a point at the camera center.
+        # Draw the camera ROI
         #
-        self.map_scene.mlab.points3d(
-            X, Y, Z,
-            color=(1, 1, 1), mode='point',
-            figure=self.map_scene.mayavi_scene
+        grid_mesh = self.map_scene.mlab.triangular_mesh(
+            x,
+            y,
+            -z,
+            triangles,
+            color=(0, 0, 1),
+            opacity=0.2
         )
+        self.grid_cube = [grid_mesh]
 
     def updateROImesh(self, server_id, pts, shape):
         """Update the 3D visualization of the ROI."""
@@ -296,8 +339,13 @@ class ClientModel(Atom):
         z_ = np.insert(z + ROI_length * np.cos(psi), 0, z)
 
         roi_mesh.mlab_source.set(
-            x=x_, y=y_, z=z_
+            x=x_, y=y_, z=MAP_ZSCALE * z_
         )
+
+    def showGrid(self, checked):
+        """Show/Hide the grid cube visualization."""
+
+        self.grid_cube[0].visible = checked
 
     def showCamerasROIs(self, checked):
         """Show/Hide the camera's ROI visualization."""
@@ -311,8 +359,8 @@ class ClientModel(Atom):
         mayavi_scene = self.map_scene.mayavi_scene
         self.cameras_ROIs = dict()
         clf(figure=mayavi_scene)
-        X, Y, Z = self.map_coords
-        self.map_scene.mlab.surf(Y, X, Z, figure=mayavi_scene)
+        X, Y, Z, Z_mask = self.map_coords
+        self.map_scene.mlab.surf(Y, X, MAP_ZSCALE * Z, figure=mayavi_scene, mask=Z_mask)
 
     def start_camera_thread(self, local_mode):
         """Start a camera client on a separate thread."""
