@@ -27,7 +27,7 @@ from CameraNetwork.mdp import MDP
 import numpy as np
 import time
 
-from PyQtWidgets import PyQtImageView
+from CameraNetwork.PyQtWidgets import PyQtImageView
 
 
 ################################################################################

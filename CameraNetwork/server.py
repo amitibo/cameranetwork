@@ -611,7 +611,8 @@ class Server(MDPWorker):
             query_date,
             time_period="30T",
             resolution=201,
-            hdr_index="2"):
+            hdr_index="2",
+            jpeg=True):
         """Download thumbnails of a specific days
 
         Args:
@@ -622,6 +623,8 @@ class Server(MDPWorker):
                 to every half an hour.
             resolution (int, optional): The resolution of the thumbnail.
             hdr_index (int, optional): The hdr index of the thumbnail.
+            jpeg (bool/int): Whether to return an array or compressed JPEG. If int,
+                then it will be used as quality of the JPEG.
 
         Return:
             List of thumbnails, dataframe describing the thumbnails.
