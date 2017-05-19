@@ -14,7 +14,7 @@ from traits_enaml.widgets.mayavi_canvas import MayaviCanvas
 
 import CameraNetwork.global_settings as gs
 from CameraNetwork import sunphotometer as spm
-from data_frame_table import DataFrameTable
+from CameraNetwork.data_frame_table import DataFrameTable
 from extra import SliderText
 import glob
 import pkg_resources
@@ -62,86 +62,99 @@ enamldef UpdateTaskDialog(Dialog):
 enamldef MainControlsPage(Page):
     attr server_model_
 
-    VGroup:
-        HGroup:
-            VGroup:
-                GroupBox:
-                    title = 'Capture Mode'
+    Container:
+        constraints = [
+            hbox(
+                vbox(
+                    capture_gbx,
+                    ssh_gbx,
+                    general_gbx,
+                    width=100
+                ),
+                status
+            ),
+        ]
 
-                    PushButton: pb_loop:
-                        text = 'Loop'
-                        clicked ::
-                            root_object().client_model.send_message(server_model_, gs.MSG_TYPE_LOOP)
 
-                    PushButton: pb_calib:
-                        text = 'Calib Imgs'
-                        clicked :: root_object().client_model.send_message(server_model_, gs.MSG_TYPE_CALIB_IMGS)
+        GroupBox: capture_gbx:
+            title = 'Capture Mode'
 
-                    PushButton: pb_halt:
-                        text = 'Halt'
-                        clicked :: root_object().client_model.send_message(server_model_, gs.MSG_TYPE_HALT)
+            PushButton: pb_loop:
+                text = 'Loop'
+                clicked ::
+                    root_object().client_model.send_message(server_model_, gs.MSG_TYPE_LOOP)
 
-                GroupBox:
-                    title = 'SSH'
+            PushButton: pb_calib:
+                text = 'Calib Imgs'
+                clicked :: root_object().client_model.send_message(server_model_, gs.MSG_TYPE_CALIB_IMGS)
 
-                    PushButton: pb_tunnel_on:
-                        text = 'Tunnel On'
-                        clicked :: root_object().client_model.send_message(
-                            server_model_,
-                            gs.MSG_TYPE_TUNNEL,
-                            kwds=dict(tunnel_state=True)
-                            )
+            PushButton: pb_halt:
+                text = 'Halt'
+                clicked :: root_object().client_model.send_message(server_model_, gs.MSG_TYPE_HALT)
 
-                    PushButton: pb_tunnel_off:
-                        text = 'Tunnel Off'
-                        clicked :: root_object().client_model.send_message(
-                            server_model_,
-                            gs.MSG_TYPE_TUNNEL,
-                            kwds=dict(tunnel_state=False)
-                            )
+        GroupBox: ssh_gbx:
+            title = 'SSH'
 
-                    PushButton: pb_putty:
-                        text = 'Putty'
-                        clicked :: root_object().client_model.send_message(server_model_, gs.MSG_TYPE_TUNNEL_CHECK)
+            PushButton: pb_tunnel_on:
+                text = 'Tunnel On'
+                clicked :: root_object().client_model.send_message(
+                    server_model_,
+                    gs.MSG_TYPE_TUNNEL,
+                    kwds=dict(tunnel_state=True)
+                    )
 
-                    PushButton: pb_local:
-                        text = 'Local'
-                        clicked :: root_object().client_model.send_message(server_model_, gs.MSG_TYPE_LOCAL)
+            PushButton: pb_tunnel_off:
+                text = 'Tunnel Off'
+                clicked :: root_object().client_model.send_message(
+                    server_model_,
+                    gs.MSG_TYPE_TUNNEL,
+                    kwds=dict(tunnel_state=False)
+                    )
 
-            VGroup:
-                PushButton: pb_status:
-                    text = "Status"
-                    clicked ::
-                        root_object().client_model.send_message(server_model_, gs.MSG_TYPE_STATUS)
+            PushButton: pb_putty:
+                text = 'Putty'
+                clicked :: root_object().client_model.send_message(server_model_, gs.MSG_TYPE_TUNNEL_CHECK)
 
-                PushButton: pb_settings:
-                    text = "Settings"
-                    clicked ::
-                        root_object().client_model.send_message(server_model_, gs.MSG_TYPE_GET_SETTINGS)
+            PushButton: pb_local:
+                text = 'Local'
+                clicked :: root_object().client_model.send_message(server_model_, gs.MSG_TYPE_LOCAL)
 
-                PushButton: pb_restart:
-                    text = 'Software Restart'
-                    style_class = 'gradient-button gb-yellow rounded'
-                    clicked ::
-                        btns = [DialogButton('Restart', 'accept'),
-                                DialogButton('Cancel', 'reject')]
-                        restart_server(
-                            warning(self, 'Restart Camera Software', 'Are you sure you want to restart the camera?', btns),
-                            root_object().client_model,
-                            server_model_
-                        )
+        GroupBox: general_gbx:
+            title = 'General'
 
-                PushButton: pb_reboot:
-                    text = 'Reboot'
-                    style_class = 'gradient-button gb-blue rounded'
-                    clicked ::
-                        btns = [DialogButton('Reboot', 'accept'),
-                                DialogButton('Cancel', 'reject')]
-                        reboot_server(
-                            warning(self, 'Reboot Camera', 'Are you sure you want to reboot the camera?', btns),
-                            root_object().client_model,
-                            server_model_
-                        )
+            PushButton: pb_status:
+                text = "Status"
+                clicked ::
+                    root_object().client_model.send_message(server_model_, gs.MSG_TYPE_STATUS)
+
+            PushButton: pb_settings:
+                text = "Settings"
+                clicked ::
+                    root_object().client_model.send_message(server_model_, gs.MSG_TYPE_GET_SETTINGS)
+
+            PushButton: pb_restart:
+                text = 'Software Restart'
+                style_class = 'gradient-button gb-yellow rounded'
+                clicked ::
+                    btns = [DialogButton('Restart', 'accept'),
+                            DialogButton('Cancel', 'reject')]
+                    restart_server(
+                        warning(self, 'Restart Camera Software', 'Are you sure you want to restart the camera?', btns),
+                        root_object().client_model,
+                        server_model_
+                    )
+
+            PushButton: pb_reboot:
+                text = 'Reboot'
+                style_class = 'gradient-button gb-blue rounded'
+                clicked ::
+                    btns = [DialogButton('Reboot', 'accept'),
+                            DialogButton('Cancel', 'reject')]
+                    reboot_server(
+                        warning(self, 'Reboot Camera', 'Are you sure you want to reboot the camera?', btns),
+                        root_object().client_model,
+                        server_model_
+                    )
 
         MultilineField: status:
             text << server_model_.status_text

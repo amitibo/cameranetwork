@@ -48,7 +48,6 @@ from zmq.eventloop import ioloop
 import CameraNetwork
 from CameraNetwork import global_settings as gs
 from CameraNetwork.export import exportToShdom
-from CameraNetwork.visualization import (convertMapData, loadMapData)
 from CameraNetwork.mdp import MDP
 from CameraNetwork.radiosonde import load_radiosonde
 from CameraNetwork.sunphotometer import calcSunphometerCoords
@@ -56,6 +55,7 @@ from CameraNetwork.utils import buff2dict
 from CameraNetwork.utils import DataObj
 from CameraNetwork.utils import extractImgArray
 from CameraNetwork.utils import sun_direction
+from CameraNetwork.visualization import (convertMapData, loadMapData)
 
 import ephem
 import numpy as np
@@ -69,10 +69,7 @@ import pandas as pd
 #
 import matplotlib
 matplotlib.use('Qt4Agg')
-
 from matplotlib.figure import Figure
-import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
 
 
 ROI_length = 6000
