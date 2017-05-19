@@ -1,0 +1,79 @@
+from enaml.layout.api import *
+from enaml.stdlib.fields import IntField, FloatField
+from enaml.widgets.api import *
+
+
+#
+# Message Popup
+#
+enamldef MsgDataPopup(PopupView):
+    foreground = 'white'
+    background = 'rgba(30, 30, 30, 0.85)'
+    
+    attr msg_data
+
+    Container:
+        MultilineField:
+            text << msg_data
+
+
+#
+# Thumbnail popup window.
+# Note:
+# Currently not used. Left as reference.
+#
+enamldef ThumbPopup(PopupView):
+    foreground = 'white'
+    background = 'rgba(30, 30, 30, 0.85)'
+    window_type = 'tool_tip'
+    
+    attr img
+
+    Container:
+        constraints = [
+            vbox(img_view),
+        ]
+        ImageView: img_view:
+            scale_to_fit = True
+            allow_upscaling = True
+            preserve_aspect_ratio = True
+            image << img
+
+
+#
+# Popup showing image data.
+#
+enamldef ImageDataPopup(PopupView):
+    window_type = 'popup'
+
+    attr img_data_
+
+    Form:
+        padding = 20
+        Label:
+            text = 'Serial num'
+        Field:
+            text = repr(img_data_.camera_info["serial_num"])
+            read_only = True
+        Label:
+            text = 'Exposure [us]'
+        Field:
+            text = repr(img_data_.exposure_us)
+            read_only = True
+        Label:
+            text = 'Gain'
+        Field:
+            text = repr(img_data_.gain_db)
+            read_only = True
+        Label:
+            text = 'Gain Boost'
+        Field:
+            text = repr(img_data_.gain_boost)
+            read_only = True
+        Label:
+            text = 'Time'
+        Field:
+            text = str(img_data_.name_time)
+            read_only = True
+
+

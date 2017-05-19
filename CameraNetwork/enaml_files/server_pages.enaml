@@ -69,10 +69,11 @@ enamldef MainControlsPage(Page):
                     capture_gbx,
                     ssh_gbx,
                     general_gbx,
-                    width=100
                 ),
                 status
             ),
+            capture_gbx.width == 150,
+            align('left', capture_gbx, ssh_gbx, general_gbx),
         ]
 
 

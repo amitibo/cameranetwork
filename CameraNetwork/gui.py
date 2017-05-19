@@ -11,6 +11,7 @@ from __future__ import division
 import enaml
 from enaml.application import deferred_call, is_main_thread
 from enaml.image import Image as EImage
+from enaml.layout.dock_layout import InsertDockBarItem
 from enaml.qt.qt_application import QtApplication
 
 from atom.api import Atom, Bool, Enum, Signal, Float, Int, Str, Unicode, \
@@ -20,9 +21,7 @@ from atom.api import Atom, Bool, Enum, Signal, Float, Int, Str, Unicode, \
 # Import the enaml view.
 #
 with enaml.imports():
-    from CameraNetwork.enaml_files.camera_view import Main, update_dockarea_servers, \
-         new_thumbnail, critical, new_array, clear_arrays, \
-         open_settings
+    from CameraNetwork.enaml_files.camera_view import (ArrayView, Main, ServerItem)
 
 import copy
 import cPickle
@@ -74,6 +73,114 @@ from matplotlib.figure import Figure
 
 ROI_length = 6000
 MAP_ZSCALE = 3
+
+
+################################################################################
+# Callback for the controller
+################################################################################
+def update_dockarea_servers(dock_area, model):
+    """Update the dockarea for new servers
+    """
+
+    current_items = {}
+    for item in dock_area.dock_items():
+        if not item.name.startswith('camera'):
+            continue
+        item.enabled = False
+        current_items[item.server_id] = item
+
+    previous_item = ''
+    ids_list = sorted(model.servers_dict.keys())
+    for server_id in ids_list:
+        server = model.servers_dict[server_id]
+
+        if server_id in current_items.keys():
+            current_items[server_id].enabled = True
+            current_items[server_id].server_model = server
+            continue
+
+        name = 'camera_%s' % server_id
+        title = 'Camera %s' % server_id
+
+        item = ServerItem(
+            dock_area,
+            name=name,
+            title=title,
+            server_model=server,
+            server_id=server_id,
+            closable=False
+        )
+        index = ids_list.index(server_id)
+        if previous_item == '':
+            dock_area.update_layout(
+                InsertDockBarItem(item=item.name, index=index))
+        else:
+            dock_area.update_layout(
+                InsertDockBarItem(item=item.name, target=previous_item, index=index))
+        previous_item = item.name
+
+
+def new_array(
+        array_views,
+        server_id,
+        img_array,
+        img_data,
+        view_index,
+        Almucantar_coords,
+        PrincipalPlane_coords):
+    """Update the dockarea with new array
+    """
+
+    if img_array.ndim == 4:
+        img_array = np.mean(img_array, axis=3).astype(np.uint8)
+
+    array_view = ArrayView(
+                    title=server_id,
+                    server_id=server_id,
+                    img_array=img_array,
+                    img_data=img_data,
+                    Almucantar_coords=Almucantar_coords,
+                    PrincipalPlane_coords=PrincipalPlane_coords
+                    )
+
+    array_views.objects.insert(view_index, array_view)
+
+    return array_view
+
+
+def clear_arrays(array_views):
+    """Clear the dockarea from all arrays
+    """
+
+    while array_views.objects:
+        array_views.objects.pop()
+
+
+def new_thumbnail(img):
+    thumb_win = ThumbPopup(
+        img=img,
+    )
+    thumb_win.show()
+
+
+def open_settings(main_view, client_model, server_model):
+    """Open settings popup window."""
+
+    hresult = SettingsDialog(
+        main_view,
+        client_model=client_model,
+        server_model=server_model
+    ).exec_()
+
+    if hresult:
+        client_model.send_message(
+            server_model,
+            gs.MSG_TYPE_SET_SETTINGS,
+            kwds=dict(
+                camera_settings=server_model.camera_settings,
+                capture_settings=server_model.capture_settings
+            )
+        )
 
 
 class ClientModel(Atom):

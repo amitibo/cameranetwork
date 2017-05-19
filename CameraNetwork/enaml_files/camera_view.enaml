@@ -10,13 +10,12 @@ from enaml.stdlib.task_dialog import (TaskDialogBody, TaskDialogCommandArea,
 from enaml.stdlib.message_box import (MessageBox, about, critical, information,
     question, warning)
 
-from extra import GradientButtonSheet
-from extra import MsgDataPopup
-from extra import ThumbPopup
-from settings import GlobalSettingsDialog
-from settings import SettingsDialog
-from settings import ReconstructDialog
-from server_pages import (MainControlsPage, ImageControlPage, SeekControlPage,
+from .extra import GradientButtonSheet
+from .popups import (ImageDataPopup, MsgDataPopup, ThumbPopup)
+from .settings import GlobalSettingsDialog
+from .settings import SettingsDialog
+from .settings import ReconstructDialog
+from .server_pages import (MainControlsPage, ImageControlPage, SeekControlPage,
     SunshaderControlPage, SprinklerControlPage, IntrinsicControlPage,
     ExtrinsicControlPage, RadiometricControlPage)
 
@@ -28,148 +27,6 @@ import numpy as np
 import time
 
 from CameraNetwork.PyQtWidgets import PyQtImageView
-
-
-################################################################################
-# Callback for the controller
-################################################################################
-def update_dockarea_servers(dock_area, model):
-    """Update the dockarea for new servers
-    """
-
-    current_items = {}
-    for item in dock_area.dock_items():
-        if not item.name.startswith('camera'):
-            continue
-        item.enabled = False
-        current_items[item.server_id] = item
-
-    previous_item = ''
-    ids_list = sorted(model.servers_dict.keys())
-    for server_id in ids_list:
-        server = model.servers_dict[server_id]
-
-        if server_id in current_items.keys():
-            current_items[server_id].enabled = True
-            current_items[server_id].server_model = server
-            continue
-
-        name = 'camera_%s' % server_id
-        title = 'Camera %s' % server_id
-
-        item = ServerItem(
-            dock_area,
-            name=name,
-            title=title,
-            server_model=server,
-            server_id=server_id,
-            closable=False
-        )
-        index = ids_list.index(server_id)
-        if previous_item == '':
-            dock_area.update_layout(
-                InsertDockBarItem(item=item.name, index=index))
-        else:
-            dock_area.update_layout(
-                InsertDockBarItem(item=item.name, target=previous_item, index=index))
-        previous_item = item.name
-
-
-def new_array(
-        array_views,
-        server_id,
-        img_array,
-        img_data,
-        view_index,
-        Almucantar_coords,
-        PrincipalPlane_coords):
-    """Update the dockarea with new array
-    """
-
-    if img_array.ndim == 4:
-        img_array = np.mean(img_array, axis=3).astype(np.uint8)
-
-    array_view = ArrayView(
-                    title=server_id,
-                    server_id=server_id,
-                    img_array=img_array,
-                    img_data=img_data,
-                    Almucantar_coords=Almucantar_coords,
-                    PrincipalPlane_coords=PrincipalPlane_coords
-                    )
-
-    array_views.objects.insert(view_index, array_view)
-
-    return array_view
-
-
-def clear_arrays(array_views):
-    """Clear the dockarea from all arrays
-    """
-
-    while array_views.objects:
-        array_views.objects.pop()
-
-
-def new_thumbnail(img):
-    thumb_win = ThumbPopup(
-        img=img,
-    )
-    thumb_win.show()
-
-
-def open_settings(main_view, client_model, server_model):
-    """Open settings popup window."""
-
-    hresult = SettingsDialog(
-        main_view,
-        client_model=client_model,
-        server_model=server_model
-    ).exec_()
-
-    if hresult:
-        client_model.send_message(
-            server_model,
-            gs.MSG_TYPE_SET_SETTINGS,
-            kwds=dict(
-                camera_settings=server_model.camera_settings,
-                capture_settings=server_model.capture_settings
-            )
-        )
-
-
-enamldef ImageDataPopup(PopupView):
-    window_type = 'popup'
-
-    attr img_data_
-
-    Form:
-        padding = 20
-        Label:
-            text = 'Serial num'
-        Field:
-            text = repr(img_data_.camera_info["serial_num"])
-            read_only = True
-        Label:
-            text = 'Exposure [us]'
-        Field:
-            text = repr(img_data_.exposure_us)
-            read_only = True
-        Label:
-            text = 'Gain'
-        Field:
-            text = repr(img_data_.gain_db)
-            read_only = True
-        Label:
-            text = 'Gain Boost'
-        Field:
-            text = repr(img_data_.gain_boost)
-            read_only = True
-        Label:
-            text = 'Time'
-        Field:
-            text = str(img_data_.name_time)
-            read_only = True
 
 
 enamldef ArrayView(FlowItem):
