@@ -391,6 +391,46 @@ class Map3dModel(Atom):
             roi_mesh.visible = change["value"]
 
 
+class TimesModel(Atom):
+    """Model of the capture times tables."""
+    
+    days_list = List()
+    images_df = Typed(pd.DataFrame)
+    img_index = Tuple()
+
+    def _default_images_df(self):
+        """Initialize an empty data frame."""
+
+        df = pd.DataFrame(columns=('Time', 'hdr')).set_index(['Time', 'hdr'])
+        return df
+
+    def updateDays(self, days_list):
+        """Update the list of available days."""
+
+        days_list = [datetime.strptime(d, "%Y_%m_%d").date() for d in days_list]
+        self.days_list = sorted(set(days_list + self.days_list))
+
+    def updateTimes(self, server_id, images_df):
+        """Update the times table."""
+
+        images_series = images_df["path"]
+        images_series.name = server_id
+
+
+        new_df = self.images_df.copy()
+        if server_id in self.images_df.columns:
+            new_df.drop(server_id, axis=1, inplace=True)
+        new_df = pd.concat((new_df, images_series), axis=1)
+        new_df = new_df.reindex_axis(sorted(new_df.columns), axis=1)
+
+        self.images_df = new_df
+
+    def clear(self):
+        """Clear the times table."""
+        
+        self.images_df = self._default_images_df()
+
+
 ################################################################################
 # Main model.
 ################################################################################
@@ -408,6 +448,7 @@ class ClientModel(Atom):
     #
     logger = Typed(LoggerModel)
     map3d = Typed(Map3dModel)
+    times = Typed(TimesModel)
     
     servers_dict = Dict()
     tunnels_dict = Dict()
@@ -418,11 +459,6 @@ class ClientModel(Atom):
     settings_signal = Signal()
 
     array_items = Dict()
-
-    days_list = List()
-
-    images_df = Typed(pd.DataFrame)
-    img_index = Tuple()
 
     sunshader_required_angle = Int()
 
@@ -489,11 +525,10 @@ class ClientModel(Atom):
             GRID_NED=self.GRID_NED
         )
 
-    def _default_images_df(self):
-        """Initialize an empty data frame."""
-
-        df = pd.DataFrame(columns=('Time', 'hdr')).set_index(['Time', 'hdr'])
-        return df
+    def _default_times(self):
+        """Initialize the times model."""
+        
+        return TimesModel()
 
     def _default_GRID_NED(self):
         """Initialize the reconstruction grid."""
@@ -830,23 +865,14 @@ class ClientModel(Atom):
     def reply_broadcast_days(self, server_id, days_list):
         """Handle the broadcast reply of the days command."""
 
-        days_list = [datetime.strptime(d, "%Y_%m_%d").date() for d in days_list]
-        self.days_list = sorted(set(days_list + self.days_list))
+        self.times.updateDays(days_list)
 
     def reply_broadcast_query(self, server_id, images_df):
         """Handle the broadcast reply of the query command."""
 
         logging.debug("Got reply query {}.".format(server_id))
-        images_series = images_df["path"]
-        images_series.name = server_id
-
-        new_df = self.images_df.copy()
-        if server_id in self.images_df.columns:
-            new_df.drop(server_id, axis=1, inplace=True)
-        new_df = pd.concat((new_df, images_series), axis=1)
-        new_df = new_df.reindex_axis(sorted(new_df.columns), axis=1)
-
-        self.images_df = new_df
+        
+        self.times.updateTimes(server_id, images_df)
 
     def reply_broadcast_seek(self, server_id, matfile, img_data):
         """Handle the broadcast reply of the seek command."""
@@ -866,11 +892,6 @@ class ClientModel(Atom):
     ############################################################################
     # General.
     ############################################################################
-    def clear_image_df(self):
-        """Reset the images dataframe."""
-
-        self.images_df = self._default_images_df()
-
     def clear_arrays(self):
         """Clear the arrays panel."""
 

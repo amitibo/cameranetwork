@@ -217,6 +217,8 @@ enamldef MapperItem(DockItem):
 enamldef TimesItem(DockItem):
 
     attr map3d
+    attr times
+    attr main
 
     Container:
         constraints = [
@@ -231,26 +233,26 @@ enamldef TimesItem(DockItem):
         PushButton: update_pb:
             text = 'Update Days'
             clicked ::
-                root_object().client_model.days_list = []
-                root_object().client_model.broadcast_message(
+                times.days_list = []
+                main.broadcast_message(
                     gs.MSG_TYPE_DAYS,
                 )
 
         ObjectCombo: query_day:
-            items << root_object().client_model.days_list
+            items << times.days_list
 
         PushButton: query_pb:
             text = 'Query'
             clicked ::
-                root_object().client_model.clear_image_df()
-                root_object().client_model.broadcast_message(
+                times.clear()
+                main.broadcast_message(
                     gs.MSG_TYPE_QUERY,
                     kwds=dict(query_date=query_day.selected)
                 )
 
         DataFrameTable: df:
-            data_frame << root_object().client_model.images_df
-            selected_index >> root_object().client_model.img_index
+            data_frame << times.images_df
+            selected_index >> times.img_index
 
         Label: resolution_lbl:
             text = 'Resolution:'
@@ -285,8 +287,8 @@ enamldef TimesItem(DockItem):
             clicked ::
                 map3d.draw_map()
                 map3d.draw_grid()
-                index = root_object().client_model.img_index
-                root_object().client_model.broadcast_message(
+                index = times.img_index
+                main.broadcast_message(
                     gs.MSG_TYPE_SEEK,
                     kwds=dict(
                         seek_time=index[0],

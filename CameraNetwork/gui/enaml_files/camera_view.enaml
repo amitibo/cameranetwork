@@ -22,7 +22,7 @@ from CameraNetwork.mdp import MDP
 import numpy as np
 import time
 
-from CameraNetwork.PyQtWidgets import PyQtImageView
+from CameraNetwork.gui.PyQtWidgets import PyQtImageView
 
 
 enamldef ArrayView(FlowItem):
@@ -157,8 +157,10 @@ enamldef ServerItem(DockItem):
 # The main dockarea.
 ################################################################################
 enamldef MyDockArea(DockArea):
+    attr main_model
     attr logger_model
     attr map3d_model
+    attr times_model
     
     alias array_views: arrays_dockitem.array_views
 
@@ -183,6 +185,8 @@ enamldef MyDockArea(DockArea):
 
     TimesItem: times_dockitem:
         map3d = map3d_model
+        main = main_model
+        times = times_model
         name = 'times'
         title = 'Times'
         closable = False
@@ -346,7 +350,9 @@ enamldef Main(MainWindow): main:
         MyDockArea: dock_area:
             logger_model = client_model.logger
             map3d_model = client_model.map3d
-
+            times_model = client_model.times
+            main_model = client_model
+            
     StatusBar:
         StatusItem:
             Label:
