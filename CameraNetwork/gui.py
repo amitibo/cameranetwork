@@ -132,6 +132,10 @@ def new_array(
     """
 
     if img_array.ndim == 4:
+        #
+        # Multiple images are reduced to single frame
+        # by averaging.
+        #
         img_array = np.mean(img_array, axis=3).astype(np.uint8)
 
     array_view = ArrayView(
@@ -183,15 +187,46 @@ def open_settings(main_view, client_model, server_model):
         )
 
 
+#
+# Model to log and display error messages.
+#
+class LoggerModel(Atom):
+    """Model of the Exception logger."""
+    
+    text = Str()
+    
+    def log(self, server_id, msg):
+        """Add a log message."""
+        
+        self.text = self.text + "Server {} raised an error:\n" \
+            "=========================\n{}".format(server_id, msg)
+
+    def clear(self):
+        """Clear all messages."""
+        
+        self.text = ""
+
+
+#
+#
+#
 class ClientModel(Atom):
     """The data model of the client."""
-
-    servers_dict = Dict()
-    tunnels_dict = Dict()
+    
+    #
+    # Communication objects with the camera network.
+    #
     thread = Typed(Thread)
     client_instance = Typed(CameraNetwork.Client)
+
+    #
+    # Sub models.
+    #
+    logger = Typed(LoggerModel)
+    
+    servers_dict = Dict()
+    tunnels_dict = Dict()
     thumb = Typed(EImage)
-    logger_text = Str()
 
     new_array_signal = Signal()
     clear_arrays_signal = Signal()
@@ -258,6 +293,11 @@ class ClientModel(Atom):
     # Progress bar value for export status
     #
     export_progress = Int()
+
+    def _default_logger(self):
+        """Initialize the logger object."""
+
+        return LoggerModel()
 
     def _default_images_df(self):
         """Initialize an empty data frame."""
@@ -711,22 +751,14 @@ class ClientModel(Atom):
 
         if status == gs.MSG_STATUS_ERROR:
             #
-            # Display the error message.
+            # Log the error message.
             #
-            self.logger_text = self.logger_text + \
-                'Server {} raised an error:\n=========================\n{}'.format(
-                    server_id, args[0])
+            self.logger.log(server_id, args[0])
 
             return
 
         #
-        # Check if cmd failed
-        #
-        if status == gs.MSG_STATUS_ERROR:
-            return
-
-        #
-        # Show reply in msg box.
+        # Update the msg box.
         #
         if server_id in self.servers_dict:
             self.servers_dict[server_id].put_msg_in(status, cmd, args, kwds)
@@ -1426,6 +1458,10 @@ class Controller(Atom):
             array_view.image_widget.updateLIDARgridPts(xs=xs, ys=ys)
 
 
+################################################################################
+#
+# Entry point to start the GUI.
+#
 def startGUI(local_mode, view_local):
     """Start the GUI of the camera network."""
 

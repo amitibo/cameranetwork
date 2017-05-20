@@ -154,20 +154,23 @@ enamldef ArraysItem(DockItem):
 #
 enamldef LoggerItem(DockItem):
 
+    attr logger
+    
     Container:
         constraints = [
-            hbox(logger, clear)
+            hbox(log_field, clear)
         ]
-        MultilineField: logger:
+        
+        MultilineField: log_field:
             name = 'line-collector'
-            text << root_object().client_model.logger_text
+            text << logger.text
             font = '9pt Courier'
             read_only = True
 
         PushButton: clear:
             text = 'Clear'
             clicked ::
-                root_object().client_model.logger_text = ''
+                logger.clear()
 
 
 ################################################################################

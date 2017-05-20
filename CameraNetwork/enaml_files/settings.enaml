@@ -1,3 +1,4 @@
+from enaml.core.api import Looper
 from enaml.layout.api import *
 from enaml.stdlib.dialog_buttons import DialogButtonBox, DialogButton
 from enaml.stdlib.fields import IntField, FloatField
@@ -299,4 +300,34 @@ enamldef ReconstructDialog(Dialog): popup:
                 DialogButton('OK', 'accept'),
                 DialogButton('Cancel', 'reject'),
             ]
+
+
+#
+# A dialog that allows filtering the displayed cameras.
+#
+enamldef CameraListDialog(Dialog): popup:
+    title = 'Camera View Selection'
+    attr client_model
+
+    Container:
+        constraints = [
+            vbox(
+                scroller,
+                bbox
+            ),
+            #align('left', scroller, bbox),
+        ]
+
+        ScrollArea: scroller:
+            Container:
+                Looper: looper:
+                    iterable << client_model.servers_dict.values()
+                    CheckBox:
+                        text = 'pb %s' % loop_index
+
+        DialogButtonBox: bbox:
+            buttons = [
+                DialogButton('OK', 'accept'),
+            ]
+
 

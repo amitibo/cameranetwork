@@ -12,9 +12,7 @@ from enaml.stdlib.message_box import (MessageBox, about, critical, information,
 
 from .extra import GradientButtonSheet
 from .popups import (ImageDataPopup, MsgDataPopup, ThumbPopup)
-from .settings import GlobalSettingsDialog
-from .settings import SettingsDialog
-from .settings import ReconstructDialog
+from .settings import (GlobalSettingsDialog, SettingsDialog, ReconstructDialog, CameraListDialog)
 from .server_pages import (MainControlsPage, ImageControlPage, SeekControlPage,
     SunshaderControlPage, SprinklerControlPage, IntrinsicControlPage,
     ExtrinsicControlPage, RadiometricControlPage)
@@ -161,6 +159,8 @@ enamldef ServerItem(DockItem):
 # The main dockarea.
 ################################################################################
 enamldef MyDockArea(DockArea):
+    attr logger_model
+    
     alias array_views: arrays_dockitem.array_views
 
     layout = HSplitLayout(
@@ -176,6 +176,7 @@ enamldef MyDockArea(DockArea):
         closable = False
 
     LoggerItem: logger_dockitem:
+        logger = logger_model
         name = 'logger'
         title = 'Logger'
         closable = False
@@ -285,6 +286,13 @@ enamldef Main(MainWindow): main:
         Menu:
             title = "&View"
             Action:
+                text = 'Cameras List'
+                triggered ::
+                    hresult = CameraListDialog(
+                        main,
+                        client_model=client_model,
+                    ).exec_()
+            Action:
                 checkable = True
                 text = 'Show Almucantar'
                 toggled ::
@@ -336,7 +344,7 @@ enamldef Main(MainWindow): main:
 
     Container:
         MyDockArea: dock_area:
-            pass
+            logger_model = client_model.logger
 
     StatusBar:
         StatusItem:

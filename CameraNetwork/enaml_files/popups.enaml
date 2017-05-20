@@ -75,5 +75,3 @@ enamldef ImageDataPopup(PopupView):
         Field:
             text = str(img_data_.name_time)
             read_only = True
-
-
