@@ -1,4 +1,4 @@
-from docks import ArraysItem, LoggerItem, MapperItem, TimesItem
+from .docks import ArraysItem, LoggerItem, MapperItem, TimesItem
 
 from enaml.layout.api import *
 from enaml.core.api import Include, Conditional, Looper

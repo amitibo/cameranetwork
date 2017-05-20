@@ -21,7 +21,8 @@ from atom.api import Atom, Bool, Enum, Signal, Float, Int, Str, Unicode, \
 # Import the enaml view.
 #
 with enaml.imports():
-    from CameraNetwork.enaml_files.camera_view import (ArrayView, Main, ServerItem)
+    from CameraNetwork.gui.enaml_files.camera_view import (
+        ArrayView, Main, ServerItem)
 
 import copy
 import cPickle

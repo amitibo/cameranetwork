@@ -9,7 +9,7 @@ import argparse
 
 import CameraNetwork
 import CameraNetwork.global_settings as gs
-import CameraNetwork.gui as gui
+from CameraNetwork.gui.main import startGUI
 
 
 def main(local_mode, view_local):
@@ -24,7 +24,7 @@ def main(local_mode, view_local):
         log_path='client_logs',
     )
 
-    gui.startGUI(local_mode, view_local)
+    startGUI(local_mode, view_local)
 
 
 if __name__ == '__main__':

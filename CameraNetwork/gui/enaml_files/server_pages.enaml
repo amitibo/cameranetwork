@@ -14,8 +14,8 @@ from traits_enaml.widgets.mayavi_canvas import MayaviCanvas
 
 import CameraNetwork.global_settings as gs
 from CameraNetwork import sunphotometer as spm
-from CameraNetwork.data_frame_table import DataFrameTable
-from extra import SliderText
+from CameraNetwork.gui.data_frame_table import DataFrameTable
+from .extra import SliderText
 import glob
 import pkg_resources
 
