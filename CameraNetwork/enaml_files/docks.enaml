@@ -15,6 +15,8 @@ from traits_enaml.widgets.mayavi_canvas import MayaviCanvas
 #
 enamldef ArraysItem(DockItem):
 
+    attr map3d
+    
     alias arrays_area
     alias array_views
 
@@ -87,8 +89,8 @@ enamldef ArraysItem(DockItem):
         PushButton: get_pb:
             text = 'Get'
             clicked ::
-                root_object().client_model.draw_map()
-                root_object().client_model.draw_grid()
+                map3d.draw_map()
+                map3d.draw_grid()
                 root_object().client_model.broadcast_message(
                     gs.MSG_TYPE_ARRAY,
                     kwds=dict(
@@ -178,22 +180,43 @@ enamldef LoggerItem(DockItem):
 # Shows a map of haifa with visualization of the cameras.
 #
 enamldef MapperItem(DockItem):
-
+    
+    attr map3d
+    
     Container:
         constraints = [
-            vbox(mcanvas)
+            vbox(
+                mcanvas,
+                hbox(
+                    grid_cb,
+                    ROIs_cb,
+                    spacer
+                ),
+            ),
         ]
 
         MayaviCanvas: mcanvas:
-            scene << root_object().client_model.map_scene
+            scene << map3d.map_scene
             show_toolbar = True
 
+        CheckBox: grid_cb:
+            tool_tip = "Show the reconstrction grid"
+            checked := map3d.show_grid
+            text = "Show Grid"
+
+        CheckBox: ROIs_cb:
+            tool_tip = "Show the camera ROIs"
+            checked := map3d.show_ROIs
+            text = "Show ROIs"
+            
 
 ################################################################################
 # Times
 # Allows querying, displaying and seeking time table of captured images.
 #
 enamldef TimesItem(DockItem):
+
+    attr map3d
 
     Container:
         constraints = [
@@ -260,8 +283,8 @@ enamldef TimesItem(DockItem):
         PushButton: seek_pb:
             text = 'Seek'
             clicked ::
-                root_object().client_model.draw_map()
-                root_object().client_model.draw_grid()
+                map3d.draw_map()
+                map3d.draw_grid()
                 index = root_object().client_model.img_index
                 root_object().client_model.broadcast_message(
                     gs.MSG_TYPE_SEEK,

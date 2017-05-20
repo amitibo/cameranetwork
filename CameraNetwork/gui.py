@@ -30,6 +30,7 @@ from datetime import datetime
 import json
 import logging
 import math
+from mayavi.modules.surface import Surface
 from mayavi.tools.mlab_scene_model import MlabSceneModel
 from mayavi.tools.figure import clf
 import os
@@ -187,9 +188,9 @@ def open_settings(main_view, client_model, server_model):
         )
 
 
-#
-# Model to log and display error messages.
-#
+################################################################################
+# Sub models.
+################################################################################
 class LoggerModel(Atom):
     """Model of the Exception logger."""
     
@@ -207,9 +208,191 @@ class LoggerModel(Atom):
         self.text = ""
 
 
-#
-#
-#
+class Map3dModel(Atom):
+    """Model of the 3D map, showing the terrain, cameras and reconstruction."""
+    
+    map_scene = Typed(MlabSceneModel)
+    map_coords = Tuple()
+    
+    cameras_ROIs = Dict()
+    grid_cube = Typed(Surface)
+    
+    #
+    # Flags for controlling the map details.
+    #
+    show_ROIs = Bool(False)
+    show_grid = Bool(False)
+    
+    latitude = Float(32.775776)
+    longitude = Float(35.024963)
+    altitude = Int(229)
+    
+    GRID_NED = Tuple()
+
+    def _default_map_scene(self):
+        """Draw the default map scene."""
+
+        #
+        # Load the map data.
+        #
+        self.map_coords = loadMapData()
+
+        #
+        # Create the mayavi scene.
+        #
+        scene = MlabSceneModel()
+        return scene
+
+    def draw_camera(self, server_id, img_data):
+        """Draw a camera on the map."""
+
+        n, e, d = pymap3d.geodetic2ned(
+            img_data.latitude, img_data.longitude, img_data.altitude,
+            lat0=self.latitude, lon0=self.longitude, h0=self.altitude)
+        x, y, z = e, n, -d
+
+        #
+        # Draw a red sphere at the camera center.
+        #
+        self.map_scene.mlab.points3d(
+            [x], [y], [MAP_ZSCALE * z],
+            color=(1, 0, 0), mode='sphere',
+            scale_mode='scalar', scale_factor=500,
+            figure=self.map_scene.mayavi_scene
+        )
+
+        #
+        # Draw the camera ROI
+        #
+        triangles = [
+            (0, 1, 2),
+            (0, 2, 4),
+            (0, 4, 3),
+            (0, 3, 1),
+        ]
+
+        phi = [0, np.pi/2, np.pi, 0]
+        psi = [np.pi/10] * 4
+
+        x_ = np.insert(x + ROI_length * np.sin(phi), 0, x)
+        y_ = np.insert(y + ROI_length * np.cos(phi), 0, y)
+        z_ = np.insert(z + ROI_length * np.cos(psi), 0, z)
+
+        roi_mesh = self.map_scene.mlab.triangular_mesh(
+            x_,
+            y_,
+            MAP_ZSCALE * z_,
+            triangles,
+            color=(0.5, 0.5, 0.5),
+            opacity=0.2
+        )
+        roi_mesh.visible = self.show_ROIs
+        self.cameras_ROIs[server_id] = roi_mesh
+
+        #
+        # Write the id of the camera.
+        #
+        self.map_scene.mlab.text3d(x, y, z+50, server_id, color=(0, 0, 0), scale=500.)
+
+    def draw_grid(self):
+        """Draw the reconstruction grid/cube on the map."""
+
+        if self.GRID_NED == ():
+            return
+
+        X, Y, Z = self.GRID_NED
+        x_min, x_max = X.min(), X.max()
+        y_min, y_max = Y.min(), Y.max()
+        z_min, z_max = Z.min(), Z.max()
+
+        x = np.array((x_min, x_max, x_max, x_min, x_min, x_max, x_max, x_min))
+        y = np.array((y_min, y_min, y_max, y_max, y_min, y_min, y_max, y_max))
+        z = np.array((z_min, z_min, z_min, z_min, z_max, z_max, z_max, z_max))
+
+        triangles = [
+            (0, 1, 5),
+            (1, 2, 6),
+            (2, 3, 7),
+            (3, 0, 4),
+            (0, 5, 4),
+            (1, 6, 5),
+            (2, 7, 6),
+            (3, 4, 7),
+            (4, 5, 6),
+            (6, 7, 4)
+        ]
+
+        grid_mesh = self.map_scene.mlab.triangular_mesh(
+            x,
+            y,
+            -z,
+            triangles,
+            color=(0, 0, 1),
+            opacity=0.2
+        )
+        self.grid_cube = grid_mesh
+        grid_mesh.visible = self.show_grid
+
+    def draw_map(self):
+        """Clear the map view and draw elevation map."""
+
+        mayavi_scene = self.map_scene.mayavi_scene
+        self.cameras_ROIs = dict()
+        clf(figure=mayavi_scene)
+        X, Y, Z, Z_mask = convertMapData(
+            self.map_coords[0],
+            self.map_coords[1],
+            self.map_coords[2],
+            lat0=self.latitude,
+            lon0=self.longitude,
+            alt0=self.altitude,
+        )
+
+        self.map_scene.mlab.surf(Y, X, MAP_ZSCALE * Z, figure=mayavi_scene, mask=Z_mask)
+
+    def updateROImesh(self, server_id, pts, shape):
+        """Update the 3D visualization of the camera ROI."""
+
+        center = float(shape[0]) / 2
+
+        pts = (pts - center) / center
+        X, Y = pts[:, 0], pts[:, 1]
+
+        phi = np.arctan2(X, Y)
+        psi = np.pi/2 * np.sqrt(X**2 + Y**2)
+
+        roi_mesh = self.cameras_ROIs[server_id]
+
+        x, y, z = roi_mesh.mlab_source.points[0]
+
+        x_ = np.insert(x + ROI_length * np.sin(phi), 0, x)
+        y_ = np.insert(y + ROI_length * np.cos(phi), 0, y)
+        z_ = np.insert(z + ROI_length * np.cos(psi), 0, z)
+
+        roi_mesh.mlab_source.set(
+            x=x_, y=y_, z=MAP_ZSCALE * z_
+        )
+
+    @observe("show_grid")
+    def _showGrid(self, change):
+        """Show/Hide the grid cube visualization."""
+
+        if self.grid_cube is None:
+            return
+
+        self.grid_cube.visible = change["value"]
+
+    @observe("show_ROIs")
+    def _showCamerasROIs(self, change):
+        """Show/Hide the camera's ROI visualization."""
+
+        for roi_mesh in self.cameras_ROIs.values():
+            roi_mesh.visible = change["value"]
+
+
+################################################################################
+# Main model.
+################################################################################
 class ClientModel(Atom):
     """The data model of the client."""
     
@@ -223,6 +406,7 @@ class ClientModel(Atom):
     # Sub models.
     #
     logger = Typed(LoggerModel)
+    map3d = Typed(Map3dModel)
     
     servers_dict = Dict()
     tunnels_dict = Dict()
@@ -238,11 +422,6 @@ class ClientModel(Atom):
 
     images_df = Typed(pd.DataFrame)
     img_index = Tuple()
-
-    map_coords = Tuple()
-    map_scene = Typed(MlabSceneModel)
-    cameras_ROIs = Dict()
-    grid_cube = List()
 
     sunshader_required_angle = Int()
 
@@ -294,10 +473,20 @@ class ClientModel(Atom):
     #
     export_progress = Int()
 
+    ############################################################################
+    # Default constructors
+    ############################################################################
     def _default_logger(self):
         """Initialize the logger object."""
 
         return LoggerModel()
+
+    def _default_map3d(self):
+        """Initialize the map 3D."""
+
+        return Map3dModel(
+            GRID_NED=self.GRID_NED
+        )
 
     def _default_images_df(self):
         """Initialize an empty data frame."""
@@ -305,161 +494,16 @@ class ClientModel(Atom):
         df = pd.DataFrame(columns=('Time', 'hdr')).set_index(['Time', 'hdr'])
         return df
 
-    def _default_map_scene(self):
-        """Draw the default map scene."""
+    def _default_GRID_NED(self):
+        """Initialize the reconstruction grid."""
 
-        #
-        # Load the map data.
-        #
-        lat, lon, hgt = loadMapData()
-        self.map_coords = convertMapData(
-            lat,
-            lon,
-            hgt,
-            lat0=self.latitude,
-            lon0=self.longitude,
-            alt0=self.altitude,
-        )
-
-        #
-        # Create the mayavi scene.
-        #
-        scene = MlabSceneModel()
-        return scene
-
-    def draw_camera(self, server_id, img_data):
-        """Draw a camera on the map."""
-
-        n, e, d = pymap3d.geodetic2ned(
-            img_data.latitude, img_data.longitude, img_data.altitude,
-            lat0=self.latitude, lon0=self.longitude, h0=self.altitude)
-        x, y, z = e, n, -d
-
-        #
-        # Draw a point at the camera center.
-        #
-        self.map_scene.mlab.points3d(
-            [x], [y], [MAP_ZSCALE * z],
-            color=(1, 0, 0), mode='sphere', scale_mode='scalar', scale_factor=500,
-            figure=self.map_scene.mayavi_scene
-        )
-
-        #
-        # Draw the camera ROI
-        #
-        triangles = [
-            (0, 1, 2),
-            (0, 2, 4),
-            (0, 4, 3),
-            (0, 3, 1),
-        ]
-
-        phi = [0, np.pi/2, np.pi, 0]
-        psi = [np.pi/10] * 4
-
-        x_ = np.insert(x + ROI_length * np.sin(phi), 0, x)
-        y_ = np.insert(y + ROI_length * np.cos(phi), 0, y)
-        z_ = np.insert(z + ROI_length * np.cos(psi), 0, z)
-
-        roi_mesh = self.map_scene.mlab.triangular_mesh(
-            x_,
-            y_,
-            MAP_ZSCALE * z_,
-            triangles,
-            color=(0.5, 0.5, 0.5),
-            opacity=0.2
-        )
-        self.cameras_ROIs[server_id] = roi_mesh
-
-        #
-        # Write the id of the camera.
-        #
-        #self.map_scene.mlab.text3d(x, y, z+50, server_id, color=(0, 0, 0), scale=500.)
-
-    def draw_grid(self):
-        """Draw the reconstruction grid on the map."""
-
-        if self.GRID_NED == ():
-            return
-
-        X, Y, Z = self.GRID_NED
-        x_min, x_max = X.min(), X.max()
-        y_min, y_max = Y.min(), Y.max()
-        z_min, z_max = Z.min(), Z.max()
-
-        x = np.array((x_min, x_max, x_max, x_min, x_min, x_max, x_max, x_min))
-        y = np.array((y_min, y_min, y_max, y_max, y_min, y_min, y_max, y_max))
-        z = np.array((z_min, z_min, z_min, z_min, z_max, z_max, z_max, z_max))
-
-        triangles = [
-            (0, 1, 5),
-            (1, 2, 6),
-            (2, 3, 7),
-            (3, 0, 4),
-            (0, 5, 4),
-            (1, 6, 5),
-            (2, 7, 6),
-            (3, 4, 7),
-            (4, 5, 6),
-            (6, 7, 4)
-        ]
-
-        #
-        # Draw the camera ROI
-        #
-        grid_mesh = self.map_scene.mlab.triangular_mesh(
-            x,
-            y,
-            -z,
-            triangles,
-            color=(0, 0, 1),
-            opacity=0.2
-        )
-        self.grid_cube = [grid_mesh]
-
-    def updateROImesh(self, server_id, pts, shape):
-        """Update the 3D visualization of the ROI."""
-
-        center = float(shape[0])/2
-
-        pts = (pts - center) / center
-        X, Y = pts[:, 0], pts[:, 1]
-
-        phi = np.arctan2(X, Y)
-        psi = np.pi/2 * np.sqrt(X**2 + Y**2)
-
-        roi_mesh = self.cameras_ROIs[server_id]
-
-        x, y, z = roi_mesh.mlab_source.points[0]
-
-        x_ = np.insert(x + ROI_length * np.sin(phi), 0, x)
-        y_ = np.insert(y + ROI_length * np.cos(phi), 0, y)
-        z_ = np.insert(z + ROI_length * np.cos(psi), 0, z)
-
-        roi_mesh.mlab_source.set(
-            x=x_, y=y_, z=MAP_ZSCALE * z_
-        )
-
-    def showGrid(self, checked):
-        """Show/Hide the grid cube visualization."""
-
-        self.grid_cube[0].visible = checked
-
-    def showCamerasROIs(self, checked):
-        """Show/Hide the camera's ROI visualization."""
-
-        for roi_mesh in self.cameras_ROIs.values():
-            roi_mesh.visible = checked
-
-    def draw_map(self):
-        """Clear the map view and draw elevation map."""
-
-        mayavi_scene = self.map_scene.mayavi_scene
-        self.cameras_ROIs = dict()
-        clf(figure=mayavi_scene)
-        X, Y, Z, Z_mask = self.map_coords
-        self.map_scene.mlab.surf(Y, X, MAP_ZSCALE * Z, figure=mayavi_scene, mask=Z_mask)
-
+        self.updateLIDARgrid()
+        
+        return self.GRID_NED
+        
+    ############################################################################
+    # GUI communication.
+    ############################################################################
     def start_camera_thread(self, local_mode):
         """Start a camera client on a separate thread."""
 
@@ -486,9 +530,6 @@ class ClientModel(Atom):
         self.thread.daemon = True
         self.thread.start()
 
-    ############################################################################
-    # GUI to MDP communication.
-    ############################################################################
     def send_message(self, server_model, cmd=None, args=(), kwds={}):
         """Send message to a specific server."""
 
@@ -814,7 +855,7 @@ class ClientModel(Atom):
         #
         # Draw the camera on the map.
         #
-        self.draw_camera(server_id, img_data)
+        self.map3d.draw_camera(server_id, img_data)
 
         #
         # Add new array.
@@ -843,6 +884,9 @@ class ClientModel(Atom):
         #
         # Calculate the bounding box of the cameras.
         #
+        s_pts = np.array((-self.grid_length/2, -self.grid_width/2, -self.TOG))
+        e_pts = np.array((self.grid_length/2, self.grid_width/2, 0))
+        
         if self.grid_mode == "Auto":
             s_pts = np.array((-1000, -1000, -self.TOG))
             e_pts = np.array((1000, 1000, 0))
@@ -865,15 +909,12 @@ class ClientModel(Atom):
                 #
                 s_pts = np.array((s_pts, cam_center)).min(axis=0)
                 e_pts = np.array((e_pts, cam_center)).max(axis=0)
-        else:
-            s_pts = np.array((-self.grid_length/2, -self.grid_width/2, -self.TOG))
-            e_pts = np.array((self.grid_length/2, self.grid_width/2, 0))
 
         #
         # Create the LIDAR grid.
         # Note GRID_NED is an open grid storing the requested
-        # grid resolution.
-        # GRID_ECEF is just for visualization.
+        # grid resolution. It is used for reconstruction and also
+        # for visualization in the 3D map.
         #
         self.GRID_NED = (
             np.arange(s_pts[0], e_pts[0]+self.delx, self.delx),
@@ -881,6 +922,10 @@ class ClientModel(Atom):
             np.arange(s_pts[2], e_pts[2]+self.delz, self.delz)
         )
 
+        #
+        # GRID_ECEF is just for visualization of the grid on the
+        # image arrays.
+        #        
         X, Y, Z = np.meshgrid(
             np.linspace(s_pts[0], e_pts[0], 10),
             np.linspace(s_pts[1], e_pts[1], 10),
@@ -1098,7 +1143,7 @@ class ServerModel(Atom):
         #
         # Draw the camera on the map.
         #
-        self.client_model.draw_camera(self.server_id, img_data)
+        self.client_model.map3d.draw_camera(self.server_id, img_data)
 
         #
         # Add new array.
@@ -1122,7 +1167,7 @@ class ServerModel(Atom):
         #
         # Draw the camera on the map.
         #
-        self.client_model.draw_camera(self.server_id, img_data)
+        self.client_model.map3d.draw_camera(self.server_id, img_data)
 
         #
         # Add new array.
@@ -1435,7 +1480,7 @@ class Controller(Atom):
         pts = data['pts']
         shape = data['shape']
 
-        self.model.updateROImesh(server_id, pts, shape)
+        self.model.map3d.updateROImesh(server_id, pts, shape)
 
     @observe('model.intensity_value')
     def updateIntensity(self, change):

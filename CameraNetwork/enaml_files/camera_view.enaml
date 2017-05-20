@@ -17,8 +17,6 @@ from .server_pages import (MainControlsPage, ImageControlPage, SeekControlPage,
     SunshaderControlPage, SprinklerControlPage, IntrinsicControlPage,
     ExtrinsicControlPage, RadiometricControlPage)
 
-from CameraNetwork.data_frame_table import DataFrameTable
-
 from CameraNetwork import global_settings as gs
 from CameraNetwork.mdp import MDP
 import numpy as np
@@ -160,6 +158,7 @@ enamldef ServerItem(DockItem):
 ################################################################################
 enamldef MyDockArea(DockArea):
     attr logger_model
+    attr map3d_model
     
     alias array_views: arrays_dockitem.array_views
 
@@ -171,6 +170,7 @@ enamldef MyDockArea(DockArea):
     )
 
     ArraysItem: arrays_dockitem:
+        map3d = map3d_model
         name = 'arrays'
         title = 'Arrays'
         closable = False
@@ -182,11 +182,13 @@ enamldef MyDockArea(DockArea):
         closable = False
 
     TimesItem: times_dockitem:
+        map3d = map3d_model
         name = 'times'
         title = 'Times'
         closable = False
 
     MapperItem: mapper_dockitem:
+        map3d = map3d_model
         name = 'map'
         title = 'Map'
         closable = False
@@ -316,7 +318,6 @@ enamldef Main(MainWindow): main:
                 checkable = True
                 text = 'Show ROI'
                 toggled ::
-                    client_model.showCamerasROIs(checked)
                     for array_view in array_views.objects:
                         array_view.image_widget.show_ROI = checked
             Action:
@@ -326,7 +327,6 @@ enamldef Main(MainWindow): main:
                 checkable = True
                 text = 'Show LIDAR grid'
                 toggled ::
-                    client_model.showGrid(checked)
                     for array_view in array_views.objects:
                         array_view.image_widget.show_LIDAR_grid = checked
 
@@ -345,6 +345,7 @@ enamldef Main(MainWindow): main:
     Container:
         MyDockArea: dock_area:
             logger_model = client_model.logger
+            map3d_model = client_model.map3d
 
     StatusBar:
         StatusItem:
