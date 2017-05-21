@@ -431,6 +431,11 @@ class TimesModel(Atom):
         self.images_df = self._default_images_df()
 
 
+class ArraysModel(Atom):
+    """Model of the arrays display."""
+    
+    array_items = Dict()
+    
 ################################################################################
 # Main model.
 ################################################################################
@@ -449,16 +454,22 @@ class ClientModel(Atom):
     logger = Typed(LoggerModel)
     map3d = Typed(Map3dModel)
     times = Typed(TimesModel)
+    arrays = Typed(ArraysModel)
     
     servers_dict = Dict()
     tunnels_dict = Dict()
+
+    #
+    # Popup thumbnail.
+    # Note:
+    # This was used mainly when the calibration was done in the camera.
+    # Now the calibration is done in the lab.
+    #
     thumb = Typed(EImage)
 
     new_array_signal = Signal()
     clear_arrays_signal = Signal()
     settings_signal = Signal()
-
-    array_items = Dict()
 
     sunshader_required_angle = Int()
 
