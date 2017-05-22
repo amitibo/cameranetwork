@@ -319,3 +319,27 @@ enamldef TimesItem(DockItem):
                     )
                 )
 
+
+
+################################################################################
+# Servers
+# Shows the complete list of connected servers.
+#
+enamldef ServerButton(PushButton):
+
+    attr main
+    attr server_id
+
+
+
+enamldef ServersItem(DockItem):
+
+    attr main
+
+    Container: servers_cont:
+        FlowArea: servers_area:
+             Include: servers_inc:
+                 objects << [
+                    ServerButton(main=main, server_id=si, width=100, text=server_id) for si in sorted(arrays.array_items.keys())
+                ]
+

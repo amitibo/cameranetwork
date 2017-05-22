@@ -1,4 +1,4 @@
-from .docks import ArraysItem, LoggerItem, MapperItem, TimesItem
+from .docks import ArraysItem, LoggerItem, MapperItem, ServersItem, TimesItem
 
 from enaml.layout.api import *
 from enaml.core.api import Include, Conditional, Looper
@@ -177,7 +177,7 @@ enamldef MyDockArea(DockArea):
     layout = HSplitLayout(
         VSplitLayout(
             TabLayout('arrays', 'times'),
-            TabLayout('logger', 'map')
+            TabLayout('servers', 'logger', 'map')
         ),
     )
 
@@ -207,6 +207,12 @@ enamldef MyDockArea(DockArea):
         map3d = map3d_model
         name = 'map'
         title = 'Map'
+        closable = False
+
+    ServersItem: servers_dockitem:
+        main = main_model
+        name = 'servers'
+        title = 'Servers'
         closable = False
 
 

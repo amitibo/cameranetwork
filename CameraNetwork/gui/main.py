@@ -450,8 +450,8 @@ class ArrayModel(Atom):
     def setEpipolar(self, x, y, N):
         """Create set of points in space.
 
-        This points creates line of sight (LOS) points set by the
-        x,y coords of the mouse click on some (this) view.
+        Create a Line Of Sight (LOS) points, set by the
+        x,y coords of the mouse click on this view.
 
         Args:
             x, y (ints): view coords of mouse click.
@@ -537,8 +537,6 @@ class ArrayModel(Atom):
         # Note that x and y here are according to the pyQtGraph convention
         # of right, up (East, North) respectively.
         #
-        #normXY = np.linalg.norm(neu_pts[:, :2], axis=1)
-        #normXYZ = np.linalg.norm(neu_pts, axis=1)
         PSI = np.arccos(neu_pts[:,2])
         PHI = np.arctan2(neu_pts[:,1], neu_pts[:,0])
         R = PSI / self.fov * self.resolution/2
@@ -570,7 +568,7 @@ class ArrayModel(Atom):
 
 
 class ArraysModel(Atom):
-    """Model of the arrays display."""
+    """Model of the arrays view."""
 
     array_items = Dict()
 
