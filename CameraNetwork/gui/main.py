@@ -154,14 +154,6 @@ def new_array(
     return array_view
 
 
-def clear_arrays(array_views):
-    """Clear the dockarea from all arrays
-    """
-
-    while array_views.objects:
-        array_views.objects.pop()
-
-
 def new_thumbnail(img):
     thumb_win = ThumbPopup(
         img=img,
@@ -431,11 +423,230 @@ class TimesModel(Atom):
         self.images_df = self._default_images_df()
 
 
+class ArrayModel(Atom):
+    """Representation of an image."""
+
+    resolution = Int()
+    img_data = Instance(DataObj)
+    fov = Float(math.pi/2)
+
+    #
+    # Epipolar line length.
+    #
+    line_length = Float(10000)
+
+    #
+    # Earth coords of the camera.
+    #
+    longitude = Float()
+    latitude = Float()
+    altitude = Float()
+
+    #
+    # The center of the camera in ECEF coords.
+    #
+    center = Tuple()
+
+    def setEpipolar(self, x, y, N):
+        """Create set of points in space.
+
+        This points creates line of sight (LOS) points set by the
+        x,y coords of the mouse click on some (this) view.
+
+        Args:
+            x, y (ints): view coords of mouse click.
+            N (int): Number of points (resolution) of LOS.
+
+        Returns:
+             Returns the LOS points in ECEF coords.
+        """
+
+        #
+        # Center the click coords around image center.
+        #
+        x = (x - self.resolution/2) / (self.resolution/2)
+        y = (y - self.resolution/2) / (self.resolution/2)
+
+        print x, y
+
+        #
+        # Calculate angle of click.
+        # Note:
+        # phi is the azimuth angle, 0 at the north and increasing
+        # east. The given x, y are East and North correspondingly.
+        # Therefore there is a need to transpose them as the atan
+        # is defined as atan2(y, x).
+        #
+        phi = math.atan2(x, y)
+        psi = self.fov * math.sqrt(x**2 + y**2)
+
+        #
+        # Calculate a LOS in this direction.
+        # The LOS is first calculated in local coords (NED) of the camera.
+        #
+        pts = np.linspace(0, self.line_length, N)
+        Z = -math.cos(psi) * pts
+        X = math.sin(psi) * math.cos(phi) * pts
+        Y = math.sin(psi) * math.sin(phi) * pts
+
+        #
+        # Calculate the LOS in ECEF coords.
+        #
+        LOS_pts = pymap3d.ned2ecef(
+            X, Y, Z, self.latitude, self.longitude, self.altitude)
+
+        return LOS_pts
+
+    def projectECEF(self, ECEF_pts, filter_fov=True):
+        """Project set of points in ECEF coords on the view.
+
+        Args:
+            ECEF_pts (tuple of arrays): points in ECEF coords.
+            fiter_fov (bool, optional): If True, points below the horizion
+               will not be returned. If false, the indices of these points
+               will be returned.
+
+        Returns:
+            points projected to the view of this server.
+        """
+
+        #
+        # Convert ECEF points to NED centered at camera.
+        #
+        X, Y, Z = pymap3d.ecef2ned(
+            ECEF_pts[0], ECEF_pts[1], ECEF_pts[2],
+            self.latitude, self.longitude, self.altitude)
+
+        #
+        # Convert the points to NEU.
+        #
+        neu_pts = np.array([X.flatten(), Y.flatten(), -Z.flatten()]).T
+
+        #
+        # Normalize the points
+        #
+        neu_pts = \
+            neu_pts/np.linalg.norm(neu_pts, axis=1).reshape(-1, 1)
+
+        #
+        # Zero points below the horizon.
+        #
+        cosPSI = neu_pts[:,2].copy()
+        cosPSI[cosPSI<0] = 0
+
+        #
+        # Calculate The x, y of the projected points.
+        # Note that x and y here are according to the pyQtGraph convention
+        # of right, up (East, North) respectively.
+        #
+        #normXY = np.linalg.norm(neu_pts[:, :2], axis=1)
+        #normXYZ = np.linalg.norm(neu_pts, axis=1)
+        PSI = np.arccos(neu_pts[:,2])
+        PHI = np.arctan2(neu_pts[:,1], neu_pts[:,0])
+        R = PSI / self.fov * self.resolution/2
+        xs = R * np.sin(PHI) + self.resolution/2
+        ys = R * np.cos(PHI) + self.resolution/2
+
+        if filter_fov:
+            return xs[cosPSI>0], ys[cosPSI>0]
+        else:
+            return xs, ys, cosPSI>0
+
+
 class ArraysModel(Atom):
     """Model of the arrays display."""
     
     array_items = Dict()
-    
+
+    #
+    # Intensity level for displayed images.
+    #
+    intensity_value = Int(40)
+
+    def clear_arrays(self):
+        """Clear the all arrays in panel."""
+
+        array_items = dict()
+
+    def save_rois(self, base_path=None):
+        """Save the current ROIS for later use."""
+
+        if base_path is None:
+            base_path = pkg_resources.resource_filename("CameraNetwork", "../data/ROIS")
+            if not os.path.exists(base_path):
+                os.makedirs(base_path)
+
+        dst_path = os.path.join(
+            base_path,
+            self.img_index[0].to_pydatetime().strftime("%Y_%m_%d_%H_%M_%S.pkl")
+        )
+
+        rois_dict = {}
+        masks_dict = {}
+        array_shapes = {}
+        for server_id, (_, array_view) in self.array_items.items():
+            rois_dict[server_id] = array_view.ROI.saveState()
+            masks_dict[server_id] = array_view.mask_ROI.saveState()
+            array_shapes[server_id] = array_view.img_array.shape[:2]
+
+        with open(dst_path, 'wb') as f:
+            cPickle.dump((rois_dict, masks_dict, array_shapes), f)
+
+    def load_rois(self, path='./ROIS.pkl'):
+        """Apply the saved rois on the current arrays."""
+
+        try:
+            with open(path, 'rb') as f:
+                rois_dict, masks_dict, array_shapes = cPickle.load(f)
+
+            for server_id, (_, array_view) in self.array_items.items():
+                if server_id not in rois_dict:
+                    continue
+
+                array_view.ROI.setState(rois_dict[server_id])
+                array_view.mask_ROI.setState(masks_dict[server_id])
+                array_view.image_widget.update_ROI_resolution(array_shapes[server_id])
+
+        except Exception as e:
+            logging.error(
+                "Failed setting rois to Arrays view:\n{}".format(
+                    traceback.format_exc()))
+
+    def updateEpipolar(self, data):
+        """Handle click events on image array."""
+
+        server_id = data['server_id']
+        pos_x, pos_y = data['pos']
+
+        clicked_model, clicked_view = self.array_items[server_id]
+
+        LOS_pts = clicked_model.setEpipolar(
+            pos_x, pos_y, clicked_view.epipolar_points
+        )
+
+        for k, (array_model, array_view) in self.array_items.items():
+            if k == server_id:
+                continue
+
+            xs, ys = array_model.projectECEF(LOS_pts)
+
+            array_view.image_widget.updateEpipolar(xs=xs, ys=ys)
+
+    def updateROI(self, data):
+        """Handle update of a server ROI."""
+
+        server_id = data['server_id']
+        pts = data['pts']
+        shape = data['shape']
+
+        self.model.map3d.updateROImesh(server_id, pts, shape)
+
+    @observe('intensity_value')
+    def updateIntensity(self, change):
+        for _, (_, array_view) in self.array_items.items():
+            array_view.image_widget.setIntensity(change['value'])
+
+
 ################################################################################
 # Main model.
 ################################################################################
@@ -468,7 +679,6 @@ class ClientModel(Atom):
     thumb = Typed(EImage)
 
     new_array_signal = Signal()
-    clear_arrays_signal = Signal()
     settings_signal = Signal()
 
     sunshader_required_angle = Int()
@@ -512,11 +722,6 @@ class ClientModel(Atom):
     capture_settings = Dict(default=gs.CAPTURE_SETTINGS)
 
     #
-    # Intensity level for displayed images.
-    #
-    intensity_value = Int(40)
-
-    #
     # Progress bar value for export status
     #
     export_progress = Int()
@@ -541,6 +746,11 @@ class ClientModel(Atom):
         
         return TimesModel()
 
+    def _default_arrays(self):
+        """Initialize the reconstruction grid."""
+
+        return Arrays()
+        
     def _default_GRID_NED(self):
         """Initialize the reconstruction grid."""
 
@@ -731,50 +941,6 @@ class ClientModel(Atom):
 
         self.export_progress = int(100*progress_ratio)
 
-    def save_rois(self, base_path=None):
-        """Save the current ROIS for later use."""
-
-        if base_path is None:
-            base_path = pkg_resources.resource_filename("CameraNetwork", "../data/ROIS")
-            if not os.path.exists(base_path):
-                os.makedirs(base_path)
-
-        dst_path = os.path.join(
-            base_path,
-            self.img_index[0].to_pydatetime().strftime("%Y_%m_%d_%H_%M_%S.pkl")
-        )
-
-        rois_dict = {}
-        masks_dict = {}
-        array_shapes = {}
-        for server_id, (_, array_view) in self.array_items.items():
-            rois_dict[server_id] = array_view.ROI.saveState()
-            masks_dict[server_id] = array_view.mask_ROI.saveState()
-            array_shapes[server_id] = array_view.img_array.shape[:2]
-
-        with open(dst_path, 'wb') as f:
-            cPickle.dump((rois_dict, masks_dict, array_shapes), f)
-
-    def load_rois(self, path='./ROIS.pkl'):
-        """Apply the saved rois on the current arrays."""
-
-        try:
-            with open(path, 'rb') as f:
-                rois_dict, masks_dict, array_shapes = cPickle.load(f)
-
-            for server_id, (_, array_view) in self.array_items.items():
-                if server_id not in rois_dict:
-                    continue
-
-                array_view.ROI.setState(rois_dict[server_id])
-                array_view.mask_ROI.setState(masks_dict[server_id])
-                array_view.image_widget.update_ROI_resolution(array_shapes[server_id])
-
-        except Exception as e:
-            logging.error(
-                "Failed setting rois to Arrays view:\n{}".format(
-                    traceback.format_exc()))
-
     ############################################################################
     # MDP Callbacks
     ############################################################################
@@ -899,14 +1065,6 @@ class ClientModel(Atom):
         # Add new array.
         #
         self.new_array_signal.emit(server_id, img_array, img_data)
-
-    ############################################################################
-    # General.
-    ############################################################################
-    def clear_arrays(self):
-        """Clear the arrays panel."""
-
-        self.clear_arrays_signal.emit()
 
     def updateLIDARgrid(self):
         """Update the LIDAR grid.
@@ -1228,136 +1386,6 @@ class ServerModel(Atom):
         self.client_model.thumb = EImage(data=array.tostring(), format='argb32', raw_size=(width, height))
 
 
-class ArrayModel(Atom):
-    """Representation of an image."""
-
-    resolution = Int()
-    img_data = Instance(DataObj)
-    fov = Float(math.pi/2)
-
-    #
-    # Epipolar line length.
-    #
-    line_length = Float(10000)
-
-    #
-    # Earth coords of the camera.
-    #
-    longitude = Float()
-    latitude = Float()
-    altitude = Float()
-
-    #
-    # The center of the camera in ECEF coords.
-    #
-    center = Tuple()
-
-    def setEpipolar(self, x, y, N):
-        """Create set of points in space.
-
-        This points creates line of sight (LOS) points set by the
-        x,y coords of the mouse click on some (this) view.
-
-        Args:
-            x, y (ints): view coords of mouse click.
-            N (int): Number of points (resolution) of LOS.
-
-        Returns:
-             Returns the LOS points in ECEF coords.
-        """
-
-        #
-        # Center the click coords around image center.
-        #
-        x = (x - self.resolution/2) / (self.resolution/2)
-        y = (y - self.resolution/2) / (self.resolution/2)
-
-        print x, y
-
-        #
-        # Calculate angle of click.
-        # Note:
-        # phi is the azimuth angle, 0 at the north and increasing
-        # east. The given x, y are East and North correspondingly.
-        # Therefore there is a need to transpose them as the atan
-        # is defined as atan2(y, x).
-        #
-        phi = math.atan2(x, y)
-        psi = self.fov * math.sqrt(x**2 + y**2)
-
-        #
-        # Calculate a LOS in this direction.
-        # The LOS is first calculated in local coords (NED) of the camera.
-        #
-        pts = np.linspace(0, self.line_length, N)
-        Z = -math.cos(psi) * pts
-        X = math.sin(psi) * math.cos(phi) * pts
-        Y = math.sin(psi) * math.sin(phi) * pts
-
-        #
-        # Calculate the LOS in ECEF coords.
-        #
-        LOS_pts = pymap3d.ned2ecef(
-            X, Y, Z, self.latitude, self.longitude, self.altitude)
-
-        return LOS_pts
-
-    def projectECEF(self, ECEF_pts, filter_fov=True):
-        """Project set of points in ECEF coords on the view.
-
-        Args:
-            ECEF_pts (tuple of arrays): points in ECEF coords.
-            fiter_fov (bool, optional): If True, points below the horizion
-               will not be returned. If false, the indices of these points
-               will be returned.
-
-        Returns:
-            points projected to the view of this server.
-        """
-
-        #
-        # Convert ECEF points to NED centered at camera.
-        #
-        X, Y, Z = pymap3d.ecef2ned(
-            ECEF_pts[0], ECEF_pts[1], ECEF_pts[2],
-            self.latitude, self.longitude, self.altitude)
-
-        #
-        # Convert the points to NEU.
-        #
-        neu_pts = np.array([X.flatten(), Y.flatten(), -Z.flatten()]).T
-
-        #
-        # Normalize the points
-        #
-        neu_pts = \
-            neu_pts/np.linalg.norm(neu_pts, axis=1).reshape(-1, 1)
-
-        #
-        # Zero points below the horizon.
-        #
-        cosPSI = neu_pts[:,2].copy()
-        cosPSI[cosPSI<0] = 0
-
-        #
-        # Calculate The x, y of the projected points.
-        # Note that x and y here are according to the pyQtGraph convention
-        # of right, up (East, North) respectively.
-        #
-        #normXY = np.linalg.norm(neu_pts[:, :2], axis=1)
-        #normXYZ = np.linalg.norm(neu_pts, axis=1)
-        PSI = np.arccos(neu_pts[:,2])
-        PHI = np.arctan2(neu_pts[:,1], neu_pts[:,0])
-        R = PSI / self.fov * self.resolution/2
-        xs = R * np.sin(PHI) + self.resolution/2
-        ys = R * np.cos(PHI) + self.resolution/2
-
-        if filter_fov:
-            return xs[cosPSI>0], ys[cosPSI>0]
-        else:
-            return xs, ys, cosPSI>0
-
-
 class Controller(Atom):
 
     model = Typed(ClientModel)
@@ -1477,48 +1505,9 @@ class Controller(Atom):
 
         open_settings(self.view, self.model, server_model)
 
-    @observe('model.clear_arrays_signal')
-    def clear_arrays_signal(self):
-        clear_arrays(self.view.array_views)
-        self.model.array_items = {}
-
     @observe('model.thumb')
     def new_thumb_popup(self, change):
         new_thumbnail(self.model.thumb)
-
-    def updateEpipolar(self, data):
-        """Handle click events on image array."""
-
-        server_id = data['server_id']
-        pos_x, pos_y = data['pos']
-
-        clicked_model, clicked_view = self.model.array_items[server_id]
-
-        LOS_pts = clicked_model.setEpipolar(
-            pos_x, pos_y, clicked_view.epipolar_points
-        )
-
-        for k, (array_model, array_view) in self.model.array_items.items():
-            if k == server_id:
-                continue
-
-            xs, ys = array_model.projectECEF(LOS_pts)
-
-            array_view.image_widget.updateEpipolar(xs=xs, ys=ys)
-
-    def updateROI(self, data):
-        """Handle update of a server ROI."""
-
-        server_id = data['server_id']
-        pts = data['pts']
-        shape = data['shape']
-
-        self.model.map3d.updateROImesh(server_id, pts, shape)
-
-    @observe('model.intensity_value')
-    def updateIntensity(self, change):
-        for _, (_, array_view) in self.model.array_items.items():
-            array_view.image_widget.setIntensity(change['value'])
 
     def updateExport(self, *args, **kwds):
         """This function is used only for bridging."""

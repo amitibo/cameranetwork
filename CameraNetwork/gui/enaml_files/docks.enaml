@@ -15,7 +15,9 @@ from traits_enaml.widgets.mayavi_canvas import MayaviCanvas
 #
 enamldef ArraysItem(DockItem):
 
+    attr arrays
     attr map3d
+    attr main
     
     alias arrays_area
     alias array_views
@@ -37,7 +39,7 @@ enamldef ArraysItem(DockItem):
                     resolution_fld,
                     spacer,
                 ),
-                arrays,
+                arrays_cont,
                 hbox(
                     intensity_lbl,
                     intensity_slider,
@@ -91,7 +93,7 @@ enamldef ArraysItem(DockItem):
             clicked ::
                 map3d.draw_map()
                 map3d.draw_grid()
-                root_object().client_model.broadcast_message(
+                main.broadcast_message(
                     gs.MSG_TYPE_ARRAY,
                     kwds=dict(
                         exposure_us=exposure_fld.value,
@@ -108,7 +110,8 @@ enamldef ArraysItem(DockItem):
         PushButton: clear_pb:
             text = 'Clear'
             clicked ::
-                root_object().client_model.clear_arrays()
+                array_views = []
+                arrays.clear_arrays()
 
         Label: intensity_lbl:
             text = 'Intensity Level'
@@ -118,7 +121,7 @@ enamldef ArraysItem(DockItem):
             tick_interval = 50
             maximum = 1000
             minimum = 1
-            value := root_object().client_model.intensity_value
+            value := arrays.intensity_value
 
         Field: intensity_txt:
             text << u'{}'.format(intensity_slider.value)
@@ -130,7 +133,7 @@ enamldef ArraysItem(DockItem):
                 for array_view in array_views.objects:
                     array_view.image_widget.applyGamma(checked)
 
-        Container: arrays:
+        Container: arrays_cont:
             FlowArea: arrays_area:
                  Include: array_views:
                      pass
@@ -141,13 +144,13 @@ enamldef ArraysItem(DockItem):
             clicked ::
                 path = FileDialogEx.get_open_file_name()
                 if path:
-                    root_object().client_model.load_rois(path)
+                    arrays.load_rois(path)
 
         PushButton: save_pb:
             text = 'Save ROI'
 
             clicked ::
-                root_object().client_model.save_rois()
+                arrays.save_rois()
 
 
 ################################################################################

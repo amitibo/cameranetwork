@@ -161,6 +161,7 @@ enamldef MyDockArea(DockArea):
     attr logger_model
     attr map3d_model
     attr times_model
+    attr arrays_model
     
     alias array_views: arrays_dockitem.array_views
 
@@ -173,6 +174,8 @@ enamldef MyDockArea(DockArea):
 
     ArraysItem: arrays_dockitem:
         map3d = map3d_model
+        arrays = arrays_model
+        main = main_model
         name = 'arrays'
         title = 'Arrays'
         closable = False
@@ -351,6 +354,7 @@ enamldef Main(MainWindow): main:
             logger_model = client_model.logger
             map3d_model = client_model.map3d
             times_model = client_model.times
+            arrays_model = client_model.arrays
             main_model = client_model
             
     StatusBar:
