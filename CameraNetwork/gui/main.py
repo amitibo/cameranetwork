@@ -467,8 +467,6 @@ class ArrayModel(Atom):
         x = (x - self.resolution/2) / (self.resolution/2)
         y = (y - self.resolution/2) / (self.resolution/2)
 
-        print x, y
-
         #
         # Calculate angle of click.
         # Note:
@@ -551,6 +549,24 @@ class ArrayModel(Atom):
             return xs[cosPSI>0], ys[cosPSI>0]
         else:
             return xs, ys, cosPSI>0
+
+    @observe("img_data")
+    def _update_img_data(self, change):
+
+        if change["value"] is None:
+            return
+
+        img_data = change["value"]
+        self.longitude = float(img_data.longitude)
+        self.latitude = float(img_data.latitude)
+        self.altitude = float(img_data.altitude)
+
+        self.center = pymap3d.ned2ecef(
+            0, 0, 0,
+            self.latitude,
+            self.longitude,
+            self.altitude
+        )
 
 
 class ArraysModel(Atom):
@@ -677,89 +693,46 @@ class ArraysModel(Atom):
             #
             array_model, array_view = self.array_items[server_id]
 
-            #
-            # Update the view.
-            #
-            old_array_shape = array_view.img_array.shape[:2]
-            array_view.img_array = img_array
-            array_view.img_data = img_data
-            array_view.image_widget.update_ROI_resolution(old_array_shape)
-
             array_view.Almucantar_coords = Almucantar_coords
             array_view.PrincipalPlane_coords = PrincipalPlane_coords
-
-            #
-            # Update the model.
-            #
-            array_model.resolution = int(img_array.shape[0])
-            array_model.longitude = float(img_data.longitude)
-            array_model.latitude = float(img_data.latitude)
-            array_model.altitude = float(img_data.altitude)
-            array_model.img_data = img_data
+            array_view.img_array = img_array
+            array_view.img_data = img_data
 
         else:
             #
             # The specific camera is not displayed. Create it.
             #
-            view_index = sorted(server_keys+[server_id]).index(server_id)
-
-            #
-            # Create the view.
-            #
-            if img_array.ndim == 4:
-                #
-                # Multiple images are reduced to single frame
-                # by averaging.
-                #
-                img_array = np.mean(img_array, axis=3).astype(np.uint8)
-
             array_view = ArrayView(
-                title=server_id,
                 server_id=server_id,
-                img_array=img_array,
-                img_data=img_data,
                 Almucantar_coords=Almucantar_coords,
-                PrincipalPlane_coords=PrincipalPlane_coords
+                PrincipalPlane_coords=PrincipalPlane_coords,
+                img_array=img_array,
+                img_data=img_data
             )
+            array_model = ArrayModel()
+
+            temp_dict = self.array_items.copy()
+            temp_dict[server_id] = array_model, array_view
+            self.array_items = temp_dict
 
             array_view.image_widget.observe('epipolar_signal', self.updateEpipolar)
             #array_view.image_widget.observe('export_flag', self.updateExport)
             array_view.image_widget.observe('ROI_signal', self.updateROI)
 
-            #
-            # Create the model.
-            #
-            array_model = ArrayModel(
-                resolution=int(img_array.shape[0]),
-                longitude=float(img_data.longitude),
-                latitude=float(img_data.latitude),
-                altitude=float(img_data.altitude),
-                img_data=img_data
-            )
-
-            self.array_items[server_id] = array_model, array_view
-
         #
-        # Calculate the center of the camera in ECEF coords.
+        # Update the model.
         #
-        array_model.center = pymap3d.ned2ecef(
-            0, 0, 0, array_model.latitude, array_model.longitude, array_model.altitude)
+        array_model.resolution = int(img_array.shape[0])
+        array_model.img_data = img_data
 
-        #
-        # Create the projection of the LIDAR grid on the view.
-        #
-        if self.model.GRID_ECEF == ():
-            self.model.updateLIDARgrid()
+        #xs, ys = array_model.projectECEF(self.model.GRID_ECEF)
+        #array_view.image_widget.updateGridPts(xs=xs, ys=ys)
 
-        xs, ys = array_model.projectECEF(self.model.GRID_ECEF)
-        array_view.image_widget.updateGridPts(xs=xs, ys=ys)
-
-        #
-        # Update the view of the ROI.
-        # This is necessary for displaying the ROI in the map view.
-        #
-        array_view.image_widget._ROI_updated()
-
+        ##
+        ## Update the view of the ROI.
+        ## This is necessary for displaying the ROI in the map view.
+        ##
+        #array_view.image_widget._ROI_updated()
 
     @observe('intensity_value')
     def updateIntensity(self, change):

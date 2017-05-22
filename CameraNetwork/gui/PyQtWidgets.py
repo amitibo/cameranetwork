@@ -316,9 +316,10 @@ class PyQtImageView(PyQtGraphLayoutWidget):
     def update_img_array(self, change):
         """Update the image array."""
 
-        if self.img_item is not None:
-            self.img_item.setImage(change['value'].astype(np.float))
+        if self.img_item is None or change["value"] is None:
+            return
 
+        self.img_item.setImage(change['value'].astype(np.float))
         self._calcMask()
 
     @observe('Almucantar_coords')
