@@ -18,7 +18,7 @@ enamldef ArraysItem(DockItem):
     attr arrays
     attr map3d
     attr main
-    
+
     alias arrays_area
     alias array_views
 
@@ -45,6 +45,9 @@ enamldef ArraysItem(DockItem):
                     intensity_slider,
                     intensity_txt,
                     gamma_cb,
+                    grid_cb,
+                    ROIs_cb,
+                    masks_cb,
                     spacer,
                     load_pb,
                     save_pb
@@ -110,17 +113,17 @@ enamldef ArraysItem(DockItem):
         PushButton: clear_pb:
             text = 'Clear'
             clicked ::
-                array_views = []
                 arrays.clear_arrays()
 
         Label: intensity_lbl:
             text = 'Intensity Level'
 
         Slider: intensity_slider:
+            tool_tip = "Control the intensity of the displayed image."
             tracking = False
             tick_interval = 50
-            maximum = 1000
             minimum = 1
+            maximum = 1000
             value := arrays.intensity_value
 
         Field: intensity_txt:
@@ -129,18 +132,17 @@ enamldef ArraysItem(DockItem):
 
         CheckBox: gamma_cb:
             text = 'Gamma'
-            toggled ::
-                for array_view in array_views.objects:
-                    array_view.image_widget.applyGamma(checked)
+            tool_tip = "Apply Gamma correction to the Image"
+            checked := arrays.gamma
 
         Container: arrays_cont:
             FlowArea: arrays_area:
                  Include: array_views:
-                     pass
+                     objects << [arrays.array_items[k][1] for k in sorted(arrays.array_items.keys())]
 
         PushButton: load_pb:
             text = 'Load ROI'
-
+            tool_tip = "Load the ROIs"
             clicked ::
                 path = FileDialogEx.get_open_file_name()
                 if path:
@@ -148,9 +150,24 @@ enamldef ArraysItem(DockItem):
 
         PushButton: save_pb:
             text = 'Save ROI'
-
+            tool_tip = "Save the ROIs"
             clicked ::
                 arrays.save_rois()
+
+        CheckBox: grid_cb:
+            text = "Show Grid"
+            tool_tip = "Show the reconstrction grid"
+            checked := arrays.show_grid
+
+        CheckBox: ROIs_cb:
+            text = "Show ROIs"
+            tool_tip = "Show the camera ROIs"
+            checked := arrays.show_ROIs
+
+        CheckBox: masks_cb:
+            text = "Show Masks"
+            tool_tip = "Show the camera Masks"
+            checked := arrays.show_masks
 
 
 ################################################################################
@@ -160,12 +177,12 @@ enamldef ArraysItem(DockItem):
 enamldef LoggerItem(DockItem):
 
     attr logger
-    
+
     Container:
         constraints = [
             hbox(log_field, clear)
         ]
-        
+
         MultilineField: log_field:
             name = 'line-collector'
             text << logger.text
@@ -183,9 +200,9 @@ enamldef LoggerItem(DockItem):
 # Shows a map of haifa with visualization of the cameras.
 #
 enamldef MapperItem(DockItem):
-    
+
     attr map3d
-    
+
     Container:
         constraints = [
             vbox(
@@ -211,7 +228,7 @@ enamldef MapperItem(DockItem):
             tool_tip = "Show the camera ROIs"
             checked := map3d.show_ROIs
             text = "Show ROIs"
-            
+
 
 ################################################################################
 # Times

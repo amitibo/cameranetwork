@@ -4,6 +4,7 @@ Based on the example by blink1073:
 https://gist.github.com/blink1073/7411284
 """
 from atom.api import Instance, Signal, Str, Int, observe, List, Bool
+from enaml.core.declarative import d_
 from enaml.qt import QtCore, QtGui
 from enaml.widgets.api import *
 import math
@@ -39,7 +40,7 @@ class PyQtImageView(PyQtGraphLayoutWidget):
         img_array (array): Displayed image.
         epipolar_scatter (pg.ScatterPlotItem): Projection of selected pixel on
             different images.
-        LIDAR_grid_scatter (pg.ScatterPlotItem): Projection of LIDAR grid on
+        grid_scatter (pg.ScatterPlotItem): Projection of reconstruction grid on
             different images.
         almucantar_scatter (pg.ScatterPlotItem): Projection of the Almucantar on
             the image.
@@ -51,7 +52,7 @@ class PyQtImageView(PyQtGraphLayoutWidget):
     """
 
     #
-    # The displayed image.
+    # The displayed image as numpy array.
     #
     img_array = Instance(np.ndarray)
 
@@ -62,10 +63,15 @@ class PyQtImageView(PyQtGraphLayoutWidget):
     mask_array = Instance(np.ndarray)
 
     #
-    # Different lines that can be displayed on the GUI
+    # The ID of the current server.
+    #
+    server_id = Str()
+
+    #
+    # Different controls that can be displayed on the GUI
     #
     epipolar_scatter = Instance(pg.ScatterPlotItem)
-    LIDAR_grid_scatter = Instance(pg.ScatterPlotItem)
+    grid_scatter = Instance(pg.ScatterPlotItem)
     almucantar_scatter = Instance(pg.ScatterPlotItem)
     principalplane_scatter = Instance(pg.ScatterPlotItem)
 
@@ -84,19 +90,37 @@ class PyQtImageView(PyQtGraphLayoutWidget):
     #
     mask_ROI = Instance(pg.PolyLineROI)
 
+    #
+    # The image itself, a PyQtGraph ImageItem.
+    #
     img_item = Instance(pg.ImageItem)
 
+    #
+    # Signals to notify the main model of modifications
+    # that need to be broadcast to the rest of the cameras.
+    #
     epipolar_signal = Signal()
     epipolar_points = Int(100)
-    LIDAR_grid_points = Int(1000)
-    server_id = Str()
 
+    #
+    # Flags that control the display
+    #
     show_almucantar = Bool()
     show_principalplane = Bool()
-    show_ROI = Bool()
-    show_mask = Bool()
-    show_LIDAR_grid = Bool()
+    show_ROI = d_(Bool())
+    show_mask = d_(Bool())
+    show_grid = d_(Bool())
+    gamma = d_(Bool())
+    intensity = d_(Int())
 
+    #
+    # Extra...
+    #
+    grid_points = Int(1000)
+
+    #
+    # Whether use this view in the exported (reconstruction) data.
+    #
     export_flag = Bool()
 
     def __init__(self, *params, **kwds):
@@ -107,10 +131,10 @@ class PyQtImageView(PyQtGraphLayoutWidget):
 
         self.epipolar_scatter.setData(xs, ys)
 
-    def updateLIDARgridPts(self, xs, ys):
-        """Update the LIDAR grid markers."""
+    def updateGridPts(self, xs, ys):
+        """Update the Grid markers."""
 
-        self.LIDAR_grid_scatter.setData(xs, ys)
+        self.grid_scatter.setData(xs, ys)
 
     def getArrayRegion(self, data=None):
         """Get the region selected by ROI.
@@ -172,19 +196,19 @@ class PyQtImageView(PyQtGraphLayoutWidget):
 
         plot_area.addItem(self.epipolar_scatter)
 
-    def drawLIDARgrid(self, plot_area):
-        """Initialize the LIDAR grid (scatter points) on the plot."""
+    def drawGrid(self, plot_area):
+        """Initialize the grid (scatter points) on the plot."""
 
-        self.LIDAR_grid_scatter = pg.ScatterPlotItem(
+        self.grid_scatter = pg.ScatterPlotItem(
             size=1, pen=pg.mkPen(None), brush=pg.mkBrush(255, 255, 255, 120)
         )
-        self.LIDAR_grid_scatter.addPoints(
-            pos=5*np.ones((self.LIDAR_grid_points, 2))
+        self.grid_scatter.addPoints(
+            pos=5*np.ones((self.grid_points, 2))
         )
-        self.LIDAR_grid_scatter.setZValue(100)
+        self.grid_scatter.setZValue(100)
 
-        plot_area.addItem(self.LIDAR_grid_scatter)
-        self.LIDAR_grid_scatter.setVisible(False)
+        plot_area.addItem(self.grid_scatter)
+        self.grid_scatter.setVisible(False)
 
     def drawAlmucantar(self, plot_area):
         """Initialize the Almucantar marker"""
@@ -336,11 +360,11 @@ class PyQtImageView(PyQtGraphLayoutWidget):
         if self.ROI is not None:
             self.ROI.setVisible(change['value'])
 
-    @observe('show_LIDAR_grid')
-    def showLIDARgrid(self, change):
-        """Control the visibility of the LIDAR grid widget."""
+    @observe('show_grid')
+    def showGrid(self, change):
+        """Control the visibility of the grid widget."""
 
-        self.LIDAR_grid_scatter.setVisible(change['value'])
+        self.grid_scatter.setVisible(change['value'])
 
     @observe('show_mask')
     def showMaskROI(self, change):
@@ -348,6 +372,12 @@ class PyQtImageView(PyQtGraphLayoutWidget):
 
         if self.mask_ROI is not None:
             self.mask_ROI.setVisible(change['value'])
+
+    @observe('intensity')
+    def setIntensity(self, change):
+        """Set the intensity of the image."""
+
+        self.img_item.setLevels((0, change['value']))
 
     def applyGamma(self, apply_flag):
         """Apply Gamma correction."""
@@ -359,11 +389,6 @@ class PyQtImageView(PyQtGraphLayoutWidget):
             lut = np.arange(0, 256).astype(np.uint8)
 
         self.img_item.setLookupTable(lut)
-
-    def setIntensity(self, intensity):
-        """Set the intensity of the image."""
-
-        self.img_item.setLevels((0, intensity))
 
 
     def create_widget(self, parent):
@@ -381,9 +406,9 @@ class PyQtImageView(PyQtGraphLayoutWidget):
         self.drawEpiploarPoints(plot_area)
 
         #
-        # Setup the LIDAR grid.
+        # Setup the grid.
         #
-        self.drawLIDARgrid(plot_area)
+        self.drawGrid(plot_area)
 
         #
         # Setup the Almucantar points

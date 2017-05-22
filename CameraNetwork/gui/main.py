@@ -14,15 +14,15 @@ from enaml.image import Image as EImage
 from enaml.layout.dock_layout import InsertDockBarItem
 from enaml.qt.qt_application import QtApplication
 
-from atom.api import Atom, Bool, Enum, Signal, Float, Int, Str, Unicode, \
-     Typed, observe, Dict, Value, List, Tuple, Instance
+from atom.api import Atom, Bool, Signal, Float, Int, Str, Unicode, \
+     Typed, observe, Dict, Value, List, Tuple, Instance, ForwardTyped
 
 #
 # Import the enaml view.
 #
 with enaml.imports():
     from CameraNetwork.gui.enaml_files.camera_view import (
-        ArrayView, Main, ServerItem)
+        ArrayView, Main, ServerView)
 
 import copy
 import cPickle
@@ -104,7 +104,7 @@ def update_dockarea_servers(dock_area, model):
         name = 'camera_%s' % server_id
         title = 'Camera %s' % server_id
 
-        item = ServerItem(
+        item = ServerView(
             dock_area,
             name=name,
             title=title,
@@ -186,40 +186,40 @@ def open_settings(main_view, client_model, server_model):
 ################################################################################
 class LoggerModel(Atom):
     """Model of the Exception logger."""
-    
+
     text = Str()
-    
+
     def log(self, server_id, msg):
         """Add a log message."""
-        
+
         self.text = self.text + "Server {} raised an error:\n" \
             "=========================\n{}".format(server_id, msg)
 
     def clear(self):
         """Clear all messages."""
-        
+
         self.text = ""
 
 
 class Map3dModel(Atom):
     """Model of the 3D map, showing the terrain, cameras and reconstruction."""
-    
+
     map_scene = Typed(MlabSceneModel)
     map_coords = Tuple()
-    
+
     cameras_ROIs = Dict()
     grid_cube = Typed(Surface)
-    
+
     #
     # Flags for controlling the map details.
     #
     show_ROIs = Bool(False)
     show_grid = Bool(False)
-    
+
     latitude = Float(32.775776)
     longitude = Float(35.024963)
     altitude = Int(229)
-    
+
     GRID_NED = Tuple()
 
     def _default_map_scene(self):
@@ -385,7 +385,7 @@ class Map3dModel(Atom):
 
 class TimesModel(Atom):
     """Model of the capture times tables."""
-    
+
     days_list = List()
     images_df = Typed(pd.DataFrame)
     img_index = Tuple()
@@ -419,7 +419,7 @@ class TimesModel(Atom):
 
     def clear(self):
         """Clear the times table."""
-        
+
         self.images_df = self._default_images_df()
 
 
@@ -555,13 +555,21 @@ class ArrayModel(Atom):
 
 class ArraysModel(Atom):
     """Model of the arrays display."""
-    
+
     array_items = Dict()
 
     #
     # Intensity level for displayed images.
     #
     intensity_value = Int(40)
+    gamma = Bool(False)
+
+    #
+    # Flags for controlling visualization.
+    #
+    show_ROIs = Bool(False)
+    show_grid = Bool(False)
+    show_masks = Bool(False)
 
     def clear_arrays(self):
         """Clear the all arrays in panel."""
@@ -641,6 +649,118 @@ class ArraysModel(Atom):
 
         self.model.map3d.updateROImesh(server_id, pts, shape)
 
+    def new_array(self, server_id, img_array, img_data):
+        """This callback is called when a new array is added to the display.
+
+        The callback creates all objects required to display the image.
+
+        Args:
+            server_id (str): ID of the server to which an array is added.
+            img_array (array): New image.
+            img_data (dict): Meta data of the image.
+        """
+
+        #
+        # Calculate the Almucantar and PrinciplePlanes
+        #
+        Almucantar_coords, PrincipalPlane_coords = \
+            calcSunphometerCoords(img_data, resolution=img_array.shape[0])
+
+        #
+        # Create the array model which handles the array view on the display.
+        #
+        server_keys = self.array_items.keys()
+        if server_id in server_keys:
+            #
+            # The specific Server/Camera is already displayed. Update the array
+            # model and view.
+            #
+            array_model, array_view = self.array_items[server_id]
+
+            #
+            # Update the view.
+            #
+            old_array_shape = array_view.img_array.shape[:2]
+            array_view.img_array = img_array
+            array_view.img_data = img_data
+            array_view.image_widget.update_ROI_resolution(old_array_shape)
+
+            array_view.Almucantar_coords = Almucantar_coords
+            array_view.PrincipalPlane_coords = PrincipalPlane_coords
+
+            #
+            # Update the model.
+            #
+            array_model.resolution = int(img_array.shape[0])
+            array_model.longitude = float(img_data.longitude)
+            array_model.latitude = float(img_data.latitude)
+            array_model.altitude = float(img_data.altitude)
+            array_model.img_data = img_data
+
+        else:
+            #
+            # The specific camera is not displayed. Create it.
+            #
+            view_index = sorted(server_keys+[server_id]).index(server_id)
+
+            #
+            # Create the view.
+            #
+            if img_array.ndim == 4:
+                #
+                # Multiple images are reduced to single frame
+                # by averaging.
+                #
+                img_array = np.mean(img_array, axis=3).astype(np.uint8)
+
+            array_view = ArrayView(
+                title=server_id,
+                server_id=server_id,
+                img_array=img_array,
+                img_data=img_data,
+                Almucantar_coords=Almucantar_coords,
+                PrincipalPlane_coords=PrincipalPlane_coords
+            )
+
+            array_view.image_widget.observe('epipolar_signal', self.updateEpipolar)
+            #array_view.image_widget.observe('export_flag', self.updateExport)
+            array_view.image_widget.observe('ROI_signal', self.updateROI)
+
+            #
+            # Create the model.
+            #
+            array_model = ArrayModel(
+                resolution=int(img_array.shape[0]),
+                longitude=float(img_data.longitude),
+                latitude=float(img_data.latitude),
+                altitude=float(img_data.altitude),
+                img_data=img_data
+            )
+
+            self.array_items[server_id] = array_model, array_view
+
+        #
+        # Calculate the center of the camera in ECEF coords.
+        #
+        array_model.center = pymap3d.ned2ecef(
+            0, 0, 0, array_model.latitude, array_model.longitude, array_model.altitude)
+
+        #
+        # Create the projection of the LIDAR grid on the view.
+        #
+        if self.model.GRID_ECEF == ():
+            self.model.updateLIDARgrid()
+
+        xs, ys = array_model.projectECEF(self.model.GRID_ECEF)
+        array_view.image_widget.updateGridPts(xs=xs, ys=ys)
+
+        #
+        # Update the view of the ROI.
+        # This is necessary for displaying the ROI in the map view.
+        #
+        array_view.image_widget._ROI_updated()
+
+
     @observe('intensity_value')
     def updateIntensity(self, change):
         for _, (_, array_view) in self.array_items.items():
@@ -652,7 +772,7 @@ class ArraysModel(Atom):
 ################################################################################
 class ClientModel(Atom):
     """The data model of the client."""
-    
+
     #
     # Communication objects with the camera network.
     #
@@ -666,7 +786,7 @@ class ClientModel(Atom):
     map3d = Typed(Map3dModel)
     times = Typed(TimesModel)
     arrays = Typed(ArraysModel)
-    
+
     servers_dict = Dict()
     tunnels_dict = Dict()
 
@@ -678,7 +798,6 @@ class ClientModel(Atom):
     #
     thumb = Typed(EImage)
 
-    new_array_signal = Signal()
     settings_signal = Signal()
 
     sunshader_required_angle = Int()
@@ -697,9 +816,11 @@ class ClientModel(Atom):
     altitude = Int(229)
 
     #
-    # LIDAR Grid parameters.
-    # The LIDAR grid size is the cube that includes
-    # all cameras, and from 0 to Top Of Grid (TOG).
+    # Reconstruction Grid parameters.
+    # Note:
+    # There are two grids used:
+    # - GRID_ECEF: Used for visualization on the camera array.
+    # - GRID_NED: The grid exported for reconstruction.
     #
     delx = Float(100)
     dely = Float(100)
@@ -743,21 +864,21 @@ class ClientModel(Atom):
 
     def _default_times(self):
         """Initialize the times model."""
-        
+
         return TimesModel()
 
     def _default_arrays(self):
         """Initialize the reconstruction grid."""
 
-        return Arrays()
-        
+        return ArraysModel()
+
     def _default_GRID_NED(self):
         """Initialize the reconstruction grid."""
 
         self.updateLIDARgrid()
-        
+
         return self.GRID_NED
-        
+
     ############################################################################
     # GUI communication.
     ############################################################################
@@ -1048,7 +1169,7 @@ class ClientModel(Atom):
         """Handle the broadcast reply of the query command."""
 
         logging.debug("Got reply query {}.".format(server_id))
-        
+
         self.times.updateTimes(server_id, images_df)
 
     def reply_broadcast_seek(self, server_id, matfile, img_data):
@@ -1064,7 +1185,7 @@ class ClientModel(Atom):
         #
         # Add new array.
         #
-        self.new_array_signal.emit(server_id, img_array, img_data)
+        self.arrays.new_array(server_id, img_array, img_data)
 
     def updateLIDARgrid(self):
         """Update the LIDAR grid.
@@ -1077,7 +1198,7 @@ class ClientModel(Atom):
         #
         s_pts = np.array((-self.grid_length/2, -self.grid_width/2, -self.TOG))
         e_pts = np.array((self.grid_length/2, self.grid_width/2, 0))
-        
+
         if self.grid_mode == "Auto":
             s_pts = np.array((-1000, -1000, -self.TOG))
             e_pts = np.array((1000, 1000, 0))
@@ -1116,7 +1237,7 @@ class ClientModel(Atom):
         #
         # GRID_ECEF is just for visualization of the grid on the
         # image arrays.
-        #        
+        #
         X, Y, Z = np.meshgrid(
             np.linspace(s_pts[0], e_pts[0], 10),
             np.linspace(s_pts[1], e_pts[1], 10),
@@ -1339,7 +1460,7 @@ class ServerModel(Atom):
         #
         # Add new array.
         #
-        self.client_model.new_array_signal.emit(self.server_id, img_array, img_data)
+        self.client_model.arrays.new_array(self.server_id, img_array, img_data)
 
     def reply_days(self, days_list):
         """Handle the reply for days command."""
@@ -1363,7 +1484,7 @@ class ServerModel(Atom):
         #
         # Add new array.
         #
-        self.client_model.new_array_signal.emit(self.server_id, img_array, img_data)
+        self.client_model.arrays.new_array(self.server_id, img_array, img_data)
 
     def reply_calibration(self, img_array, K, D, rms, rvecs, tvecs):
         #
@@ -1396,109 +1517,6 @@ class Controller(Atom):
         if change['type'] == 'update':
             update_dockarea_servers(self.view.dock_area, self.model)
 
-    @observe('model.new_array_signal')
-    def array_signal(self, server_id, img_array, img_data):
-        """This callback is called when a new array is added to the display.
-
-        The callback creates all objects required to display the image.
-
-        Args:
-            server_id (str): ID of the server to which an array is added.
-            img_array (array): New image.
-            img_data (dict): Meta data of the image.
-        """
-
-        #
-        # Calculate the Almucantar and PrinciplePlanes
-        #
-        Almucantar_coords, PrincipalPlane_coords = \
-            calcSunphometerCoords(img_data, resolution=img_array.shape[0])
-
-        #
-        # Create the array model which handles the array view on the display.
-        #
-        server_keys = self.model.array_items.keys()
-        if server_id in server_keys:
-            #
-            # The specific Server/Camera is already displayed. Update the array
-            # model and view.
-            #
-            array_model, array_view = self.model.array_items[server_id]
-
-            #
-            # Update the view.
-            #
-            old_array_shape = array_view.img_array.shape[:2]
-            array_view.img_array = img_array
-            array_view.img_data = img_data
-            array_view.image_widget.update_ROI_resolution(old_array_shape)
-
-            array_view.Almucantar_coords = Almucantar_coords
-            array_view.PrincipalPlane_coords = PrincipalPlane_coords
-
-            #
-            # Update the model.
-            #
-            array_model.resolution = int(img_array.shape[0])
-            array_model.longitude = float(img_data.longitude)
-            array_model.latitude = float(img_data.latitude)
-            array_model.altitude = float(img_data.altitude)
-            array_model.img_data = img_data
-
-        else:
-            #
-            # The specific camera is not displayed. Create it.
-            #
-            view_index = sorted(server_keys+[server_id]).index(server_id)
-
-            #
-            # Create the view.
-            #
-            array_view = new_array(
-                self.view.array_views,
-                server_id, img_array,
-                img_data, view_index,
-                Almucantar_coords,
-                PrincipalPlane_coords
-            )
-            array_view.image_widget.observe('epipolar_signal', self.updateEpipolar)
-            array_view.image_widget.observe('export_flag', self.updateExport)
-            array_view.image_widget.observe('ROI_signal', self.updateROI)
-
-            #
-            # Create the model.
-            #
-            array_model = ArrayModel(
-                resolution=int(img_array.shape[0]),
-                longitude=float(img_data.longitude),
-                latitude=float(img_data.latitude),
-                altitude=float(img_data.altitude),
-                img_data=img_data
-            )
-
-            self.model.array_items[server_id] = array_model, array_view
-
-        #
-        # Calculate the center of the camera in ECEF coords.
-        #
-        array_model.center = pymap3d.ned2ecef(
-            0, 0, 0, array_model.latitude, array_model.longitude, array_model.altitude)
-
-        #
-        # Create the projection of the LIDAR grid on the view.
-        #
-        if self.model.GRID_ECEF == ():
-            self.model.updateLIDARgrid()
-
-        xs, ys = array_model.projectECEF(self.model.GRID_ECEF)
-        array_view.image_widget.updateLIDARgridPts(xs=xs, ys=ys)
-
-        #
-        # Update the view of the ROI.
-        # This is necessary for displaying the ROI in the map view.
-        #
-        array_view.image_widget._ROI_updated()
-
     @observe('model.settings_signal')
     def settings_signal(self, server_model):
         """Open a settings popup window."""
@@ -1509,22 +1527,8 @@ class Controller(Atom):
     def new_thumb_popup(self, change):
         new_thumbnail(self.model.thumb)
 
-    def updateExport(self, *args, **kwds):
-        """This function is used only for bridging."""
 
-        #
-        # Update the LIDAR grid according to new cameras setup.
-        #
-        self.model.updateLIDARgrid()
-
-        #
-        # Update the view of the LIDAR grid on all images.
-        #
-        for _, (array_model, array_view) in self.model.array_items.items():
-            xs, ys = array_model.projectECEF(self.model.GRID_ECEF)
-            array_view.image_widget.updateLIDARgridPts(xs=xs, ys=ys)
-
-
+################################################################################
 ################################################################################
 #
 # Entry point to start the GUI.

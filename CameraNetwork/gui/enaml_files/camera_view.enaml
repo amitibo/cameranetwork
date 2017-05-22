@@ -25,6 +25,9 @@ import time
 from CameraNetwork.gui.PyQtWidgets import PyQtImageView
 
 
+################################################################################
+# The Array View
+################################################################################
 enamldef ArrayView(FlowItem):
     alias img_array: image_widget.img_array
     alias title : gb.title
@@ -35,12 +38,18 @@ enamldef ArrayView(FlowItem):
     alias PrincipalPlane_coords: image_widget.PrincipalPlane_coords
     alias ROI: image_widget.ROI
     alias mask_ROI: image_widget.mask_ROI
-    alias export_flag: export_flag
+    alias export_flag
+
+    attr arrays
     attr img_data
 
     GroupBox: gb:
         PyQtImageView: image_widget:
-            pass
+            show_ROI := arrays.show_ROI
+            show_mask := arrays.show_mask
+            show_grid := arrays.show_grid
+            intensity := arrays.intensity
+            gamma := arrays.gamma
 
         HGroup:
             CheckBox: almucantar:
@@ -67,7 +76,7 @@ enamldef ArrayView(FlowItem):
 ################################################################################
 # The Server view
 ################################################################################
-enamldef ServerItem(DockItem):
+enamldef ServerView(DockItem):
     attr server_model
 
     attr server_id
@@ -162,7 +171,7 @@ enamldef MyDockArea(DockArea):
     attr map3d_model
     attr times_model
     attr arrays_model
-    
+
     alias array_views: arrays_dockitem.array_views
 
     layout = HSplitLayout(
@@ -292,50 +301,15 @@ enamldef Main(MainWindow): main:
                         client_model
                     )
 
-        Menu:
-            title = "&View"
-            Action:
-                text = 'Cameras List'
-                triggered ::
-                    hresult = CameraListDialog(
-                        main,
-                        client_model=client_model,
-                    ).exec_()
-            Action:
-                checkable = True
-                text = 'Show Almucantar'
-                toggled ::
-                    for array_view in array_views.objects:
-                        array_view.image_widget.show_almucantar = checked
-            Action:
-                checkable = True
-                text = 'Show PP'
-                toggled ::
-                    for array_view in array_views.objects:
-                        array_view.image_widget.show_principalplane = checked
-            Action:
-                separator = True
-            Action:
-                checkable = True
-                text = 'Show Mask'
-                toggled ::
-                    for array_view in array_views.objects:
-                        array_view.image_widget.show_mask = checked
-            Action:
-                checkable = True
-                text = 'Show ROI'
-                toggled ::
-                    for array_view in array_views.objects:
-                        array_view.image_widget.show_ROI = checked
-            Action:
-                separator = True
-
-            Action:
-                checkable = True
-                text = 'Show LIDAR grid'
-                toggled ::
-                    for array_view in array_views.objects:
-                        array_view.image_widget.show_LIDAR_grid = checked
+        #Menu:
+            #title = "&View"
+            #Action:
+                #text = 'Cameras List'
+                #triggered ::
+                    #hresult = CameraListDialog(
+                        #main,
+                        #client_model=client_model,
+                    #).exec_()
 
         Menu:
             title = "&Reconstruct"
@@ -356,7 +330,7 @@ enamldef Main(MainWindow): main:
             times_model = client_model.times
             arrays_model = client_model.arrays
             main_model = client_model
-            
+
     StatusBar:
         StatusItem:
             Label:
