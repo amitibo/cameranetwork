@@ -983,12 +983,12 @@ class ClientModel(Atom):
         #
         # Ignore local/remote servers.
         #
-        if not self.view_local and server_id.endswith("L"):
-            logging.debug("Local server: {} ignored.".format(server_id))
-            return
-        elif self.view_local and not server_id.endswith("L"):
-            logging.debug("Remote server: {} ignored.".format(server_id))
-            return
+        #if not self.view_local and server_id.endswith("L"):
+            #logging.debug("Local server: {} ignored.".format(server_id))
+            #return
+        #elif self.view_local and not server_id.endswith("L"):
+            #logging.debug("Remote server: {} ignored.".format(server_id))
+            #return
 
         deferred_call(self.add_server, server_id)
 
