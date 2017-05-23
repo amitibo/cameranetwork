@@ -8,6 +8,99 @@ from CameraNetwork import global_settings as gs
 from CameraNetwork.gui.data_frame_table import DataFrameTable
 from traits_enaml.widgets.mayavi_canvas import MayaviCanvas
 
+from .extra import GradientButtonSheet
+from .server_pages import (MainControlsPage, ImageControlPage, SeekControlPage,
+    SunshaderControlPage, SprinklerControlPage, IntrinsicControlPage,
+    ExtrinsicControlPage, RadiometricControlPage)
+
+################################################################################
+# The Server view
+################################################################################
+enamldef ServerView(DockItem):
+    attr server_model
+
+    attr server_id
+
+    GradientButtonSheet:
+        pass
+
+    VGroup:
+        Notebook:
+            tab_style = 'preferences'
+
+            MainControlsPage:
+                title = 'Main'
+                closable = False
+                server_model_ = server_model
+
+            ImageControlPage: image_page:
+                title = 'Image'
+                closable = False
+                server_model_ = server_model
+
+            SeekControlPage:
+                title = 'Seek'
+                closable = False
+                server_model_ = server_model
+
+            SunshaderControlPage:
+                title = 'Sun Shader'
+                closable = False
+                server_model_ = server_model
+                sunshader_angle_value << server_model.sunshader_required_angle
+
+            SprinklerControlPage:
+                title = 'Sprinkle'
+                closable = False
+                server_model_ = server_model
+
+            IntrinsicControlPage:
+                title = 'Intrinsic'
+                closable = False
+                server_model_ = server_model
+                exposure_us << image_page.ff_exposure
+                gain_db << image_page.ff_gain
+                gain_boost<< image_page.ff_gain_boost
+
+            ExtrinsicControlPage:
+                title = 'Extrinsic'
+                closable = False
+                server_model_ = server_model
+
+            RadiometricControlPage:
+                title = 'Radiometric'
+                closable = False
+                sunphotometer_times = []
+                server_model_ = server_model
+
+        GroupBox:
+            title = 'Message'
+
+            constraints = [
+                grid(
+                    [lb_cmd,   fld_cmd,   pb_send],
+                    [lb_reply, fld_reply, pb_data],
+                    column_align='width',
+                    row_align='v_center',
+                ),
+            ]
+
+            Label: lb_cmd:
+                text = 'Cmd:'
+            Field: fld_cmd:
+                text := server_model.cmd
+            PushButton: pb_send:
+                text = 'Send'
+                clicked :: root_object().client_model.send_message(server_model)
+            PushButton: pb_data:
+                text = 'Data'
+                clicked ::
+                    popup = MsgDataPopup(msg_data=server_model.reply_data).show()
+            Label: lb_reply:
+                text = 'Reply:'
+            Field: fld_reply:
+                text << server_model.reply
+
 
 ################################################################################
 # ArraysItem
@@ -329,19 +422,31 @@ enamldef ServerButton(FlowItem):
 
     attr main
     attr server_id
+    attr server
 
     Container:
         PushButton:
             text = str(server_id)
-            checkable = True
-            toggled ::
-                current_items = {}
-                for item in root_object().dock_area.dock_items():
-                    if not item.name.startswith('camera'):
-                        continue
-                    item.enabled = False
-                    current_items[item.server_id] = item
+            clicked ::
 
+                name = 'camera_%s' % server_id
+                title = 'Camera %s' % server_id
+
+                if name not in [item.name for item in root_object().dock_area.dock_items()]:
+                    item = ServerView(
+                        root_object().dock_area,
+                        name=name,
+                        title=title,
+                        server_model=server,
+                        server_id=server_id,
+                        closable=True
+                    )
+
+                    root_object().dock_area.update_layout(
+                        FloatItem(
+                            item=name
+                        )
+                    )
 
 
 enamldef ServersItem(DockItem):
@@ -357,6 +462,10 @@ enamldef ServersItem(DockItem):
             FlowArea: servers_area:
                 Include: servers_inc:
                     objects << [
-                       ServerButton(main=main, server_id=si) for si in sorted(main.servers_dict.keys())
+                        ServerButton(
+                            main=main,
+                            server_id=si,
+                            server=main.servers_dict[si]
+                        ) for si in sorted(main.servers_dict.keys())
                    ]
 

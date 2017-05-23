@@ -22,7 +22,7 @@ from atom.api import Atom, Bool, Signal, Float, Int, Str, Unicode, \
 #
 with enaml.imports():
     from CameraNetwork.gui.enaml_files.camera_view import (
-        ArrayView, Main, ServerView)
+        ArrayView, Main)
 
 import copy
 import cPickle
@@ -80,80 +80,6 @@ MAP_ZSCALE = 3
 ################################################################################
 # Callback for the controller
 ################################################################################
-def update_dockarea_servers(dock_area, model):
-    """Update the dockarea for new servers
-    """
-
-    current_items = {}
-    for item in dock_area.dock_items():
-        if not item.name.startswith('camera'):
-            continue
-        item.enabled = False
-        current_items[item.server_id] = item
-
-    previous_item = ''
-    ids_list = sorted(model.servers_dict.keys())
-    for server_id in ids_list:
-        server = model.servers_dict[server_id]
-
-        if server_id in current_items.keys():
-            current_items[server_id].enabled = True
-            current_items[server_id].server_model = server
-            continue
-
-        name = 'camera_%s' % server_id
-        title = 'Camera %s' % server_id
-
-        item = ServerView(
-            dock_area,
-            name=name,
-            title=title,
-            server_model=server,
-            server_id=server_id,
-            closable=False
-        )
-        index = ids_list.index(server_id)
-        if previous_item == '':
-            dock_area.update_layout(
-                InsertDockBarItem(item=item.name, index=index))
-        else:
-            dock_area.update_layout(
-                InsertDockBarItem(item=item.name, target=previous_item, index=index))
-        previous_item = item.name
-
-
-def new_array(
-        array_views,
-        server_id,
-        img_array,
-        img_data,
-        view_index,
-        Almucantar_coords,
-        PrincipalPlane_coords):
-    """Update the dockarea with new array
-    """
-
-    if img_array.ndim == 4:
-        #
-        # Multiple images are reduced to single frame
-        # by averaging.
-        #
-        img_array = np.mean(img_array, axis=3).astype(np.uint8)
-
-    array_view = ArrayView(
-                    title=server_id,
-                    server_id=server_id,
-                    img_array=img_array,
-                    img_data=img_data,
-                    Almucantar_coords=Almucantar_coords,
-                    PrincipalPlane_coords=PrincipalPlane_coords
-                    )
-
-    array_views.objects.insert(view_index, array_view)
-
-    return array_view
-
-
 def new_thumbnail(img):
     thumb_win = ThumbPopup(
         img=img,
@@ -568,7 +494,7 @@ class ArrayModel(Atom):
 
 
 class ArraysModel(Atom):
-    """Model of the arrays view."""
+    """Model of the currently displayed arrays."""
 
     array_items = Dict()
 
@@ -586,9 +512,9 @@ class ArraysModel(Atom):
     show_masks = Bool(False)
 
     def clear_arrays(self):
-        """Clear the all arrays in panel."""
+        """Clear all arrays."""
 
-        array_items = dict()
+        self.array_items = dict()
 
     def save_rois(self, base_path=None):
         """Save the current ROIS for later use."""
@@ -673,6 +599,13 @@ class ArraysModel(Atom):
             img_array (array): New image.
             img_data (dict): Meta data of the image.
         """
+
+        if img_array.ndim == 4:
+            #
+            # Multiple images are reduced to single frame
+            # by averaging.
+            #
+            img_array = np.mean(img_array, axis=3).astype(np.uint8)
 
         #
         # Calculate the Almucantar and PrinciplePlanes
@@ -1482,11 +1415,6 @@ class Controller(Atom):
 
     model = Typed(ClientModel)
     view = Typed(Main)
-
-    @observe('model.servers_dict')
-    def update_servers(self, change):
-        if change['type'] == 'update':
-            update_dockarea_servers(self.view.dock_area, self.model)
 
     @observe('model.settings_signal')
     def settings_signal(self, server_model):

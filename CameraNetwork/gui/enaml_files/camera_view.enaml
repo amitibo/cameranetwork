@@ -10,12 +10,8 @@ from enaml.stdlib.task_dialog import (TaskDialogBody, TaskDialogCommandArea,
 from enaml.stdlib.message_box import (MessageBox, about, critical, information,
     question, warning)
 
-from .extra import GradientButtonSheet
 from .popups import (ImageDataPopup, MsgDataPopup, ThumbPopup)
 from .settings import (GlobalSettingsDialog, SettingsDialog, ReconstructDialog, CameraListDialog)
-from .server_pages import (MainControlsPage, ImageControlPage, SeekControlPage,
-    SunshaderControlPage, SprinklerControlPage, IntrinsicControlPage,
-    ExtrinsicControlPage, RadiometricControlPage)
 
 from CameraNetwork import global_settings as gs
 from CameraNetwork.mdp import MDP
@@ -74,95 +70,6 @@ enamldef ArrayView(FlowItem):
 
 
 ################################################################################
-# The Server view
-################################################################################
-enamldef ServerView(DockItem):
-    attr server_model
-
-    attr server_id
-
-    GradientButtonSheet:
-        pass
-
-    VGroup:
-        Notebook:
-            tab_style = 'preferences'
-
-            MainControlsPage:
-                title = 'Main'
-                closable = False
-                server_model_ = server_model
-
-            ImageControlPage: image_page:
-                title = 'Image'
-                closable = False
-                server_model_ = server_model
-
-            SeekControlPage:
-                title = 'Seek'
-                closable = False
-                server_model_ = server_model
-
-            SunshaderControlPage:
-                title = 'Sun Shader'
-                closable = False
-                server_model_ = server_model
-                sunshader_angle_value << server_model.sunshader_required_angle
-
-            SprinklerControlPage:
-                title = 'Sprinkle'
-                closable = False
-                server_model_ = server_model
-
-            IntrinsicControlPage:
-                title = 'Intrinsic'
-                closable = False
-                server_model_ = server_model
-                exposure_us << image_page.ff_exposure
-                gain_db << image_page.ff_gain
-                gain_boost<< image_page.ff_gain_boost
-
-            ExtrinsicControlPage:
-                title = 'Extrinsic'
-                closable = False
-                server_model_ = server_model
-
-            RadiometricControlPage:
-                title = 'Radiometric'
-                closable = False
-                sunphotometer_times = []
-                server_model_ = server_model
-
-        GroupBox:
-            title = 'Message'
-
-            constraints = [
-                grid(
-                    [lb_cmd,   fld_cmd,   pb_send],
-                    [lb_reply, fld_reply, pb_data],
-                    column_align='width',
-                    row_align='v_center',
-                ),
-            ]
-
-            Label: lb_cmd:
-                text = 'Cmd:'
-            Field: fld_cmd:
-                text := server_model.cmd
-            PushButton: pb_send:
-                text = 'Send'
-                clicked :: root_object().client_model.send_message(server_model)
-            PushButton: pb_data:
-                text = 'Data'
-                clicked ::
-                    popup = MsgDataPopup(msg_data=server_model.reply_data).show()
-            Label: lb_reply:
-                text = 'Reply:'
-            Field: fld_reply:
-                text << server_model.reply
-
-
-################################################################################
 # The main dockarea.
 ################################################################################
 enamldef MyDockArea(DockArea):
@@ -177,7 +84,9 @@ enamldef MyDockArea(DockArea):
     layout = HSplitLayout(
         VSplitLayout(
             TabLayout('arrays', 'times'),
-            TabLayout('servers', 'logger', 'map')
+            HSplitLayout(
+                'servers', TabLayout('logger', 'map')
+            )
         ),
     )
 
