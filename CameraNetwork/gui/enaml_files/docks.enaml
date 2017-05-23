@@ -325,10 +325,22 @@ enamldef TimesItem(DockItem):
 # Servers
 # Shows the complete list of connected servers.
 #
-enamldef ServerButton(PushButton):
+enamldef ServerButton(FlowItem):
 
     attr main
     attr server_id
+
+    Container:
+        PushButton:
+            text = str(server_id)
+            checkable = True
+            toggled ::
+                current_items = {}
+                for item in root_object().dock_area.dock_items():
+                    if not item.name.startswith('camera'):
+                        continue
+                    item.enabled = False
+                    current_items[item.server_id] = item
 
 
 
@@ -336,10 +348,15 @@ enamldef ServersItem(DockItem):
 
     attr main
 
-    Container: servers_cont:
-        FlowArea: servers_area:
-             Include: servers_inc:
-                 objects << [
-                    ServerButton(main=main, server_id=si, width=100, text=server_id) for si in sorted(arrays.array_items.keys())
-                ]
+    Container:
+        constraints = [
+            vbox(servers_cont)
+        ]
+
+        Container: servers_cont:
+            FlowArea: servers_area:
+                Include: servers_inc:
+                    objects << [
+                       ServerButton(main=main, server_id=si) for si in sorted(main.servers_dict.keys())
+                   ]
 
