@@ -473,3 +473,10 @@ class PyQtImageView(RawWidget):
         #return super(MyEventFilter,self).eventFilter(event)
 
 
+        ##
+        ## Calculate the Almucantar and PrinciplePlanes
+        ##
+        #Almucantar_coords, PrincipalPlane_coords = \
+            #calcSunphometerCoords(img_data, resolution=img_array.shape[0])
+
+

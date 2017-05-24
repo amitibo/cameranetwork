@@ -13,6 +13,7 @@ from .server_pages import (MainControlsPage, ImageControlPage, SeekControlPage,
     SunshaderControlPage, SprinklerControlPage, IntrinsicControlPage,
     ExtrinsicControlPage, RadiometricControlPage)
 
+
 ################################################################################
 # The Server view
 ################################################################################
@@ -100,6 +101,55 @@ enamldef ServerView(DockItem):
                 text = 'Reply:'
             Field: fld_reply:
                 text << server_model.reply
+
+
+################################################################################
+# The Array View
+################################################################################
+enamldef ArrayView(FlowItem):
+    alias img_array: image_widget.img_array
+    alias title : gb.title
+    alias server_id : image_widget.server_id
+    alias image_widget
+    alias epipolar_points: image_widget.epipolar_points
+    alias Almucantar_coords: image_widget.Almucantar_coords
+    alias PrincipalPlane_coords: image_widget.PrincipalPlane_coords
+    alias ROI: image_widget.ROI
+    alias mask_ROI: image_widget.mask_ROI
+    alias export_flag
+
+    attr arrays
+    attr img_data
+
+    GroupBox: gb:
+        PyQtImageView: image_widget:
+            show_ROI << arrays.show_ROIs
+            show_mask << arrays.show_masks
+            show_grid << arrays.show_grid
+            intensity << arrays.intensity
+            gamma << arrays.gamma
+
+        HGroup:
+            CheckBox: almucantar:
+                tool_tip = "Show the Almucantar"
+                checked := image_widget.show_almucantar
+                text = "Almucantar"
+
+            CheckBox: principal:
+                tool_tip = "Show the PrincipalPlane"
+                checked := image_widget.show_principalplane
+                text = "PrincipalPlane"
+
+            PushButton:
+                text = 'Image Data'
+                clicked ::
+                    ImageDataPopup(img_data_=img_data).show()
+                    print arrays.show_ROIs
+
+            CheckBox: export_flag:
+                tool_tip = "Export for reconstruction"
+                checked := image_widget.export_flag
+                text = "Export"
 
 
 ################################################################################
@@ -230,8 +280,18 @@ enamldef ArraysItem(DockItem):
 
         Container: arrays_cont:
             FlowArea: arrays_area:
-                 Include: array_views:
-                     objects << [arrays.array_items[k][1] for k in sorted(arrays.array_items.keys())]
+                Include: array_views:
+                    objects << [
+                        ArrayView(
+                            title=si,
+                            server_id=si,
+                            Almucantar_coords=arrays.array_items[si].Almucantar_coords,
+                            PrincipalPlane_coords=arrays.array_items[si].PrincipalPlane_coords,
+                            img_array=arrays.array_items[si].img_array,
+                            img_data=arrays.array_items[si].img_data,
+                            arrays=arrays
+                        ) for si in sorted(arrays.array_items.keys())
+                    ]
 
         PushButton: load_pb:
             text = 'Load ROI'
@@ -241,11 +301,51 @@ enamldef ArraysItem(DockItem):
                 if path:
                     arrays.load_rois(path)
 
+                    #def load_rois(self, path='./ROIS.pkl'):
+                        #"""Apply the saved rois on the current arrays."""
+                
+                        #try:
+                            #with open(path, 'rb') as f:
+                                #rois_dict, masks_dict, array_shapes = cPickle.load(f)
+                
+                            #for server_id, (_, array_view) in self.array_items.items():
+                                #if server_id not in rois_dict:
+                                    #continue
+                
+                                #array_view.ROI.setState(rois_dict[server_id])
+                                #array_view.mask_ROI.setState(masks_dict[server_id])
+                                #array_view.image_widget.update_ROI_resolution(array_shapes[server_id])
+                
+                        #except Exception as e:
+                            #logging.error(
+                                #"Failed setting rois to Arrays view:\n{}".format(
+                                    #traceback.format_exc()))
+
         PushButton: save_pb:
             text = 'Save ROI'
             tool_tip = "Save the ROIs"
             clicked ::
-                arrays.save_rois()
+                #if base_path is None:
+                    #base_path = pkg_resources.resource_filename("CameraNetwork", "../data/ROIS")
+                    #if not os.path.exists(base_path):
+                        #os.makedirs(base_path)
+        
+                #dst_path = os.path.join(
+                    #base_path,
+                    #self.img_index[0].to_pydatetime().strftime("%Y_%m_%d_%H_%M_%S.pkl")
+                #)
+        
+                #rois_dict = {}
+                #masks_dict = {}
+                #array_shapes = {}
+                #for server_id, (_, array_view) in self.array_items.items():
+                    #rois_dict[server_id] = array_view.ROI.saveState()
+                    #masks_dict[server_id] = array_view.mask_ROI.saveState()
+                    #array_shapes[server_id] = array_view.img_array.shape[:2]
+        
+                #with open(dst_path, 'wb') as f:
+                    #cPickle.dump((rois_dict, masks_dict, array_shapes), f)
+
 
         CheckBox: grid_cb:
             text = "Show Grid"

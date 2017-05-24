@@ -21,8 +21,7 @@ from atom.api import Atom, Bool, Signal, Float, Int, Str, Unicode, \
 # Import the enaml view.
 #
 with enaml.imports():
-    from CameraNetwork.gui.enaml_files.camera_view import (
-        ArrayView, Main)
+    from CameraNetwork.gui.enaml_files.camera_view import Main
 
 import copy
 import cPickle
@@ -350,7 +349,7 @@ class TimesModel(Atom):
 
 
 class ArrayModel(Atom):
-    """Representation of an image."""
+    """Representation of an image array."""
 
     resolution = Int()
     img_data = Instance(DataObj)
@@ -372,7 +371,7 @@ class ArrayModel(Atom):
     # The center of the camera in ECEF coords.
     #
     center = Tuple()
-
+    
     def setEpipolar(self, x, y, N):
         """Create set of points in space.
 
@@ -492,6 +491,12 @@ class ArrayModel(Atom):
             self.altitude
         )
 
+    @observer('LOS_pts')
+    def updateEpipolar(self, change):
+        """Project the LOS points (mouse click position) to camera."""
+
+        xs, ys = array_model.projectECEF(LOS_pts)
+
 
 class ArraysModel(Atom):
     """Model of the currently displayed arrays."""
@@ -511,74 +516,21 @@ class ArraysModel(Atom):
     show_grid = Bool(False)
     show_masks = Bool(False)
 
+    #
+    # The 'mouse click' Line Of Site points in ECEF coords.
+    #
+    LOS_pts = List()
+
+    #
+    # The reconstruction grid in ECEF coords.
+    #
+    GRID_ECEF = List()
+
+
     def clear_arrays(self):
         """Clear all arrays."""
 
         self.array_items = dict()
-
-    def save_rois(self, base_path=None):
-        """Save the current ROIS for later use."""
-
-        if base_path is None:
-            base_path = pkg_resources.resource_filename("CameraNetwork", "../data/ROIS")
-            if not os.path.exists(base_path):
-                os.makedirs(base_path)
-
-        dst_path = os.path.join(
-            base_path,
-            self.img_index[0].to_pydatetime().strftime("%Y_%m_%d_%H_%M_%S.pkl")
-        )
-
-        rois_dict = {}
-        masks_dict = {}
-        array_shapes = {}
-        for server_id, (_, array_view) in self.array_items.items():
-            rois_dict[server_id] = array_view.ROI.saveState()
-            masks_dict[server_id] = array_view.mask_ROI.saveState()
-            array_shapes[server_id] = array_view.img_array.shape[:2]
-
-        with open(dst_path, 'wb') as f:
-            cPickle.dump((rois_dict, masks_dict, array_shapes), f)
-
-    def load_rois(self, path='./ROIS.pkl'):
-        """Apply the saved rois on the current arrays."""
-
-        try:
-            with open(path, 'rb') as f:
-                rois_dict, masks_dict, array_shapes = cPickle.load(f)
-
-            for server_id, (_, array_view) in self.array_items.items():
-                if server_id not in rois_dict:
-                    continue
-
-                array_view.ROI.setState(rois_dict[server_id])
-                array_view.mask_ROI.setState(masks_dict[server_id])
-                array_view.image_widget.update_ROI_resolution(array_shapes[server_id])
-
-        except Exception as e:
-            logging.error(
-                "Failed setting rois to Arrays view:\n{}".format(
-                    traceback.format_exc()))
-
-    def updateEpipolar(self, data):
-        """Handle click events on image array."""
-
-        server_id = data['server_id']
-        pos_x, pos_y = data['pos']
-
-        clicked_model, clicked_view = self.array_items[server_id]
-
-        LOS_pts = clicked_model.setEpipolar(
-            pos_x, pos_y, clicked_view.epipolar_points
-        )
-
-        for k, (array_model, array_view) in self.array_items.items():
-            if k == server_id:
-                continue
-
-            xs, ys = array_model.projectECEF(LOS_pts)
-
-            array_view.image_widget.updateEpipolar(xs=xs, ys=ys)
 
     def updateROI(self, data):
         """Handle update of a server ROI."""
@@ -608,12 +560,6 @@ class ArraysModel(Atom):
             img_array = np.mean(img_array, axis=3).astype(np.uint8)
 
         #
-        # Calculate the Almucantar and PrinciplePlanes
-        #
-        Almucantar_coords, PrincipalPlane_coords = \
-            calcSunphometerCoords(img_data, resolution=img_array.shape[0])
-
-        #
         # Create the array model which handles the array view on the display.
         #
         server_keys = self.array_items.keys()
@@ -622,41 +568,31 @@ class ArraysModel(Atom):
             # The specific Server/Camera is already displayed. Update the array
             # model and view.
             #
-            array_model, array_view = self.array_items[server_id]
-
-            array_view.Almucantar_coords = Almucantar_coords
-            array_view.PrincipalPlane_coords = PrincipalPlane_coords
-            array_view.img_array = img_array
-            array_view.img_data = img_data
-
+            array_model = self.array_items[server_id]
+            
+            new_array_model = False
         else:
             #
             # The specific camera is not displayed. Create it.
             #
-            array_view = ArrayView(
-                title=server_id,
-                server_id=server_id,
-                Almucantar_coords=Almucantar_coords,
-                PrincipalPlane_coords=PrincipalPlane_coords,
-                img_array=img_array,
-                img_data=img_data,
-                arrays=self
-            )
             array_model = ArrayModel()
+            new_array_model = True
 
-            temp_dict = self.array_items.copy()
-            temp_dict[server_id] = array_model, array_view
-            self.array_items = temp_dict
-
-            array_view.image_widget.observe('epipolar_signal', self.updateEpipolar)
-            #array_view.image_widget.observe('export_flag', self.updateExport)
-            array_view.image_widget.observe('ROI_signal', self.updateROI)
+        #array_view.image_widget.observe('epipolar_signal', self.updateEpipolar)
+        ##array_view.image_widget.observe('export_flag', self.updateExport)
+        #array_view.image_widget.observe('ROI_signal', self.updateROI)
 
         #
         # Update the model.
         #
-        array_model.resolution = int(img_array.shape[0])
+        array_model.img_array = img_array
         array_model.img_data = img_data
+
+        if new_array_model:
+            temp_dict = self.array_items.copy()
+            temp_dict[server_id] = array_model
+            self.array_items = temp_dict
+
 
         #xs, ys = array_model.projectECEF(self.model.GRID_ECEF)
         #array_view.image_widget.updateGridPts(xs=xs, ys=ys)

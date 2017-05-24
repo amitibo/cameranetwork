@@ -22,55 +22,6 @@ from CameraNetwork.gui.PyQtWidgets import PyQtImageView
 
 
 ################################################################################
-# The Array View
-################################################################################
-enamldef ArrayView(FlowItem):
-    alias img_array: image_widget.img_array
-    alias title : gb.title
-    alias server_id : image_widget.server_id
-    alias image_widget
-    alias epipolar_points: image_widget.epipolar_points
-    alias Almucantar_coords: image_widget.Almucantar_coords
-    alias PrincipalPlane_coords: image_widget.PrincipalPlane_coords
-    alias ROI: image_widget.ROI
-    alias mask_ROI: image_widget.mask_ROI
-    alias export_flag
-
-    attr arrays
-    attr img_data
-
-    GroupBox: gb:
-        PyQtImageView: image_widget:
-            show_ROI << arrays.show_ROIs
-            show_mask << arrays.show_masks
-            show_grid << arrays.show_grid
-            intensity << arrays.intensity
-            gamma << arrays.gamma
-
-        HGroup:
-            CheckBox: almucantar:
-                tool_tip = "Show the Almucantar"
-                checked := image_widget.show_almucantar
-                text = "Almucantar"
-
-            CheckBox: principal:
-                tool_tip = "Show the PrincipalPlane"
-                checked := image_widget.show_principalplane
-                text = "PrincipalPlane"
-
-            PushButton:
-                text = 'Image Data'
-                clicked ::
-                    ImageDataPopup(img_data_=img_data).show()
-                    print arrays.show_ROIs
-
-            CheckBox: export_flag:
-                tool_tip = "Export for reconstruction"
-                checked := image_widget.export_flag
-                text = "Export"
-
-
-################################################################################
 # The main dockarea.
 ################################################################################
 enamldef MyDockArea(DockArea):
