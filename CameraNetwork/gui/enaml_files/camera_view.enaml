@@ -41,11 +41,11 @@ enamldef ArrayView(FlowItem):
 
     GroupBox: gb:
         PyQtImageView: image_widget:
-            show_ROI := arrays.show_ROI
-            show_mask := arrays.show_mask
-            show_grid := arrays.show_grid
-            intensity := arrays.intensity
-            gamma := arrays.gamma
+            show_ROI << arrays.show_ROIs
+            show_mask << arrays.show_masks
+            show_grid << arrays.show_grid
+            intensity << arrays.intensity
+            gamma << arrays.gamma
 
         HGroup:
             CheckBox: almucantar:
@@ -62,6 +62,7 @@ enamldef ArrayView(FlowItem):
                 text = 'Image Data'
                 clicked ::
                     ImageDataPopup(img_data_=img_data).show()
+                    print arrays.show_ROIs
 
             CheckBox: export_flag:
                 tool_tip = "Export for reconstruction"

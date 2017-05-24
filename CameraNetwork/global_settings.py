@@ -281,6 +281,11 @@ MSG_TUNNEL_PASS = 'pass'
 MSG_IMG_BYTES = 'img_bytes'
 
 #
+# Messages that can be broadcast to local servers
+#
+LOCAL_MESSAGES = (MSG_TYPE_DAYS, MSG_TYPE_SEEK, MSG_TYPE_QUERY, MSG_TYPE_THUMBNAILS)
+
+#
 # GUI constants.
 #
 GUI_STARTUP_DELAY = 0

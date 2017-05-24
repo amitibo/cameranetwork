@@ -507,7 +507,7 @@ class ArraysModel(Atom):
     #
     # Flags for controlling visualization.
     #
-    show_ROIs = Bool(False)
+    show_ROIs = Bool(True)
     show_grid = Bool(False)
     show_masks = Bool(False)
 
@@ -634,11 +634,13 @@ class ArraysModel(Atom):
             # The specific camera is not displayed. Create it.
             #
             array_view = ArrayView(
+                title=server_id,
                 server_id=server_id,
                 Almucantar_coords=Almucantar_coords,
                 PrincipalPlane_coords=PrincipalPlane_coords,
                 img_array=img_array,
-                img_data=img_data
+                img_data=img_data,
+                arrays=self
             )
             array_model = ArrayModel()
 
@@ -664,11 +666,6 @@ class ArraysModel(Atom):
         ## This is necessary for displaying the ROI in the map view.
         ##
         #array_view.image_widget._ROI_updated()
-
-    @observe('intensity_value')
-    def updateIntensity(self, change):
-        for _, (_, array_view) in self.array_items.items():
-            array_view.image_widget.setIntensity(change['value'])
 
 
 ################################################################################
@@ -705,11 +702,6 @@ class ClientModel(Atom):
     settings_signal = Signal()
 
     sunshader_required_angle = Int()
-
-    #
-    # Either view local/remote servers.
-    #
-    view_local = Bool()
 
     #
     # Reconstruction parameters
@@ -848,7 +840,13 @@ class ClientModel(Atom):
         logging.debug("Broadcasting message: {}".format(cmd))
         loop = ioloop.IOLoop.instance()
 
-        for server_model in self.servers_dict.values():
+        for server_id, server_model in self.servers_dict.items():
+            if cmd not in gs.LOCAL_MESSAGES and server_id.endswith("L"):
+                #
+                # some messages are not sent to local servers.
+                #
+                continue
+
             loop.add_callback(
                 self.client_instance.send,
                 server_address=server_model.server_id, cmd=cmd,
@@ -980,16 +978,6 @@ class ClientModel(Atom):
     def handle_new_server_cb(self, server_id):
         """Deffer the callback to the gui loop."""
 
-        #
-        # Ignore local/remote servers.
-        #
-        #if not self.view_local and server_id.endswith("L"):
-            #logging.debug("Local server: {} ignored.".format(server_id))
-            #return
-        #elif self.view_local and not server_id.endswith("L"):
-            #logging.debug("Remote server: {} ignored.".format(server_id))
-            #return
-
         deferred_call(self.add_server, server_id)
 
     def handle_server_failure_cb(self, server_id):
@@ -1079,17 +1067,7 @@ class ClientModel(Atom):
     def reply_broadcast_seek(self, server_id, matfile, img_data):
         """Handle the broadcast reply of the seek command."""
 
-        img_array = extractImgArray(matfile)
-
-        #
-        # Draw the camera on the map.
-        #
-        self.map3d.draw_camera(server_id, img_data)
-
-        #
-        # Add new array.
-        #
-        self.arrays.new_array(server_id, img_array, img_data)
+        self.new_array(server_id, matfile, img_data)
 
     def updateLIDARgrid(self):
         """Update the LIDAR grid.
@@ -1150,6 +1128,27 @@ class ClientModel(Atom):
 
         self.GRID_ECEF = pymap3d.ned2ecef(
             X, Y, Z, self.latitude, self.longitude, self.altitude)
+
+    def draw_map(self):
+        self.map3d.draw_map()
+
+    def draw_grid(self):
+        self.map3d.draw_grid()
+
+    def new_array(self, server_id, matfile, img_data):
+        """Handle a new array."""
+
+        img_array = extractImgArray(matfile)
+
+        #
+        # Draw the camera on the map.
+        #
+        self.map3d.draw_camera(server_id, img_data)
+
+        #
+        # Add new array.
+        #
+        self.arrays.new_array(server_id, img_array, img_data)
 
 
 class ServerModel(Atom):
@@ -1354,17 +1353,10 @@ class ServerModel(Atom):
 
     def reply_array(self, matfile, img_data):
 
-        img_array = extractImgArray(matfile)
-
-        #
-        # Draw the camera on the map.
-        #
-        self.client_model.map3d.draw_camera(self.server_id, img_data)
-
         #
         # Add new array.
         #
-        self.client_model.arrays.new_array(self.server_id, img_array, img_data)
+        self.client_model.new_array(self.server_id, matfile, img_data)
 
     def reply_days(self, days_list):
         """Handle the reply for days command."""
@@ -1378,17 +1370,10 @@ class ServerModel(Atom):
 
     def reply_seek(self, matfile, img_data):
 
-        img_array = extractImgArray(matfile)
-
-        #
-        # Draw the camera on the map.
-        #
-        self.client_model.map3d.draw_camera(self.server_id, img_data)
-
         #
         # Add new array.
         #
-        self.client_model.arrays.new_array(self.server_id, img_array, img_data)
+        self.client_model.new_array(self.server_id, matfile, img_data)
 
     def reply_calibration(self, img_array, K, D, rms, rvecs, tvecs):
         #
@@ -1432,13 +1417,13 @@ class Controller(Atom):
 #
 # Entry point to start the GUI.
 #
-def startGUI(local_mode, view_local):
+def startGUI(local_mode):
     """Start the GUI of the camera network."""
 
     #
     # Instansiate the data model
     #
-    client_model = ClientModel(view_local=view_local)
+    client_model = ClientModel()
     client_model.start_camera_thread(local_mode)
 
     #

@@ -17,21 +17,7 @@ pg.setConfigOptions(imageAxisOrder='row-major')
 MASK_INIT_RESOLUTION = 20
 
 
-class PyQtGraphLayoutWidget(RawWidget):
-    """A base for PyQtGraph Widgets for enaml."""
-
-    def __init__(self, *params, **kwds):
-        super(PyQtGraphLayoutWidget, self).__init__(*params, **kwds)
-
-    def create_widget(self, parent):
-        """ Create the PyQtGraph widget"""
-
-        win = pg.GraphicsLayoutWidget(parent)
-
-        return win
-
-
-class PyQtImageView(PyQtGraphLayoutWidget):
+class PyQtImageView(RawWidget):
     """A base for PyQtGraph Widgets for enaml.
 
     It implement different widgets that help in analyzing the images.
@@ -105,13 +91,13 @@ class PyQtImageView(PyQtGraphLayoutWidget):
     #
     # Flags that control the display
     #
-    show_almucantar = Bool()
-    show_principalplane = Bool()
-    show_ROI = d_(Bool())
-    show_mask = d_(Bool())
-    show_grid = d_(Bool())
-    gamma = d_(Bool())
-    intensity = d_(Int())
+    show_almucantar = Bool(False)
+    show_principalplane = Bool(False)
+    show_ROI = d_(Bool(False))
+    show_mask = d_(Bool(False))
+    show_grid = d_(Bool(False))
+    gamma = d_(Bool(False))
+    intensity = d_(Int(40))
 
     #
     # Extra...
@@ -122,9 +108,6 @@ class PyQtImageView(PyQtGraphLayoutWidget):
     # Whether use this view in the exported (reconstruction) data.
     #
     export_flag = Bool()
-
-    def __init__(self, *params, **kwds):
-        super(PyQtImageView, self).__init__(*params, **kwds)
 
     def updateEpipolar(self, xs, ys):
         """Update the epipolar markers."""
@@ -395,7 +378,7 @@ class PyQtImageView(PyQtGraphLayoutWidget):
     def create_widget(self, parent):
         """Create the PyQtGraph widget"""
 
-        win = super(PyQtImageView, self).create_widget(parent)
+        win = pg.GraphicsLayoutWidget(parent)
 
         plot_area = win.addPlot()
         plot_area.hideAxis('bottom')
