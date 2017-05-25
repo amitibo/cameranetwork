@@ -40,7 +40,7 @@ class PyQtImageView(RawWidget):
     #
     # The displayed image as numpy array.
     #
-    img_array = Instance(np.ndarray)
+    img_array = d_(Instance(np.ndarray))
 
     #
     # Mask array.
@@ -51,7 +51,7 @@ class PyQtImageView(RawWidget):
     #
     # The ID of the current server.
     #
-    server_id = Str()
+    server_id = d_(Str())
 
     #
     # Different controls that can be displayed on the GUI
@@ -61,14 +61,14 @@ class PyQtImageView(RawWidget):
     almucantar_scatter = Instance(pg.ScatterPlotItem)
     principalplane_scatter = Instance(pg.ScatterPlotItem)
 
-    Almucantar_coords = List()
-    PrincipalPlane_coords = List()
+    Almucantar_coords = d_(List())
+    PrincipalPlane_coords = d_(List())
 
     #
     # ROI - Rectangle ROI that can be set by the user.
     #
     ROI = Instance(pg.RectROI)
-    ROI_signal = Signal()
+    ROIs_signal = Signal()
 
     #
     # mask_ROI - Polygon ROI that can be use to mask buildings and other
@@ -85,7 +85,7 @@ class PyQtImageView(RawWidget):
     # Signals to notify the main model of modifications
     # that need to be broadcast to the rest of the cameras.
     #
-    epipolar_signal = Signal()
+    LOS_signal = Signal()
     epipolar_points = Int(100)
 
     #
@@ -128,6 +128,9 @@ class PyQtImageView(RawWidget):
         Args:
             data (array): The array to crop the ROI from. If None
                 the image will be croped.
+
+        TODO:
+            Fix the bug that create artifacts.
         """
 
         if data is None:
@@ -277,7 +280,7 @@ class PyQtImageView(RawWidget):
              ((0, 0), (size.x(), 0), (0, size.y()), (size.x(), size.y()))]
         )
 
-        self.ROI_signal.emit(
+        self.ROIs_signal.emit(
             {'server_id': self.server_id, 'pts': pts, 'shape': self.img_array.shape}
         )
 
@@ -433,7 +436,7 @@ class PyQtImageView(RawWidget):
                 #
                 # Update the epipolar line of all other views.
                 #
-                self.epipolar_signal.emit(
+                self.LOS_signal.emit(
                     {'server_id': self.server_id, 'pos': (x, y)}
                 )
 

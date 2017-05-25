@@ -6,6 +6,7 @@ from enaml.stdlib.dialog_buttons import DialogButtonBox, DialogButton
 
 from CameraNetwork import global_settings as gs
 from CameraNetwork.gui.data_frame_table import DataFrameTable
+from CameraNetwork.gui.PyQtWidgets import PyQtImageView
 from traits_enaml.widgets.mayavi_canvas import MayaviCanvas
 
 from .extra import GradientButtonSheet
@@ -118,16 +119,21 @@ enamldef ArrayView(FlowItem):
     alias mask_ROI: image_widget.mask_ROI
     alias export_flag
 
-    attr arrays
+    attr array_model
+    attr arrays_model
     attr img_data
 
     GroupBox: gb:
         PyQtImageView: image_widget:
-            show_ROI << arrays.show_ROIs
-            show_mask << arrays.show_masks
-            show_grid << arrays.show_grid
-            intensity << arrays.intensity
-            gamma << arrays.gamma
+            img_array << array_model.img_array
+            Almucantar_coords << array_model.Almucantar_coords
+            PrincipalPlane_coords << array_model.PrincipalPlane_coords
+            server_id << array_model.server_id
+            show_ROI << arrays_model.show_ROIs
+            show_mask << arrays_model.show_masks
+            show_grid << arrays_model.show_grid
+            intensity << arrays_model.intensity
+            gamma << arrays_model.gamma
 
         HGroup:
             CheckBox: almucantar:
@@ -144,7 +150,6 @@ enamldef ArrayView(FlowItem):
                 text = 'Image Data'
                 clicked ::
                     ImageDataPopup(img_data_=img_data).show()
-                    print arrays.show_ROIs
 
             CheckBox: export_flag:
                 tool_tip = "Export for reconstruction"
@@ -153,13 +158,12 @@ enamldef ArrayView(FlowItem):
 
 
 ################################################################################
-# ArraysItem
+# ArraysView
 # Displays captured images/arrays.
 #
-enamldef ArraysItem(DockItem):
+enamldef ArraysView(DockItem):
 
     attr arrays
-    attr map3d
     attr main
 
     alias arrays_area
@@ -237,8 +241,7 @@ enamldef ArraysItem(DockItem):
         PushButton: get_pb:
             text = 'Get'
             clicked ::
-                map3d.draw_map()
-                map3d.draw_grid()
+                main.clear_map()
                 main.broadcast_message(
                     gs.MSG_TYPE_ARRAY,
                     kwds=dict(
@@ -285,11 +288,8 @@ enamldef ArraysItem(DockItem):
                         ArrayView(
                             title=si,
                             server_id=si,
-                            Almucantar_coords=arrays.array_items[si].Almucantar_coords,
-                            PrincipalPlane_coords=arrays.array_items[si].PrincipalPlane_coords,
-                            img_array=arrays.array_items[si].img_array,
-                            img_data=arrays.array_items[si].img_data,
-                            arrays=arrays
+                            array_model=arrays.array_items[si],
+                            arrays_model=arrays
                         ) for si in sorted(arrays.array_items.keys())
                     ]
 
@@ -303,19 +303,19 @@ enamldef ArraysItem(DockItem):
 
                     #def load_rois(self, path='./ROIS.pkl'):
                         #"""Apply the saved rois on the current arrays."""
-                
+
                         #try:
                             #with open(path, 'rb') as f:
                                 #rois_dict, masks_dict, array_shapes = cPickle.load(f)
-                
+
                             #for server_id, (_, array_view) in self.array_items.items():
                                 #if server_id not in rois_dict:
                                     #continue
-                
+
                                 #array_view.ROI.setState(rois_dict[server_id])
                                 #array_view.mask_ROI.setState(masks_dict[server_id])
                                 #array_view.image_widget.update_ROI_resolution(array_shapes[server_id])
-                
+
                         #except Exception as e:
                             #logging.error(
                                 #"Failed setting rois to Arrays view:\n{}".format(
@@ -324,17 +324,17 @@ enamldef ArraysItem(DockItem):
         PushButton: save_pb:
             text = 'Save ROI'
             tool_tip = "Save the ROIs"
-            clicked ::
+            #clicked ::
                 #if base_path is None:
                     #base_path = pkg_resources.resource_filename("CameraNetwork", "../data/ROIS")
                     #if not os.path.exists(base_path):
                         #os.makedirs(base_path)
-        
+
                 #dst_path = os.path.join(
                     #base_path,
                     #self.img_index[0].to_pydatetime().strftime("%Y_%m_%d_%H_%M_%S.pkl")
                 #)
-        
+
                 #rois_dict = {}
                 #masks_dict = {}
                 #array_shapes = {}
@@ -342,10 +342,9 @@ enamldef ArraysItem(DockItem):
                     #rois_dict[server_id] = array_view.ROI.saveState()
                     #masks_dict[server_id] = array_view.mask_ROI.saveState()
                     #array_shapes[server_id] = array_view.img_array.shape[:2]
-        
+
                 #with open(dst_path, 'wb') as f:
                     #cPickle.dump((rois_dict, masks_dict, array_shapes), f)
-
 
         CheckBox: grid_cb:
             text = "Show Grid"
@@ -367,7 +366,7 @@ enamldef ArraysItem(DockItem):
 # Logger
 # Logs servers exceptions.
 #
-enamldef LoggerItem(DockItem):
+enamldef LoggerView(DockItem):
 
     attr logger
 
@@ -392,7 +391,7 @@ enamldef LoggerItem(DockItem):
 # Mapper
 # Shows a map of haifa with visualization of the cameras.
 #
-enamldef MapperItem(DockItem):
+enamldef MapperView(DockItem):
 
     attr map3d
 
@@ -427,11 +426,10 @@ enamldef MapperItem(DockItem):
 # Times
 # Allows querying, displaying and seeking time table of captured images.
 #
-enamldef TimesItem(DockItem):
+enamldef TimesView(DockItem):
 
-    attr map3d
-    attr times
     attr main
+    attr times
 
     Container:
         constraints = [
@@ -498,8 +496,7 @@ enamldef TimesItem(DockItem):
         PushButton: seek_pb:
             text = 'Seek'
             clicked ::
-                map3d.draw_map()
-                map3d.draw_grid()
+                main.clear_map()
                 index = times.img_index
                 main.broadcast_message(
                     gs.MSG_TYPE_SEEK,
@@ -549,7 +546,7 @@ enamldef ServerButton(FlowItem):
                     )
 
 
-enamldef ServersItem(DockItem):
+enamldef ServersView(DockItem):
 
     attr main
 

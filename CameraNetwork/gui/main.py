@@ -21,7 +21,7 @@ from atom.api import Atom, Bool, Signal, Float, Int, Str, Unicode, \
 # Import the enaml view.
 #
 with enaml.imports():
-    from CameraNetwork.gui.enaml_files.camera_view import Main
+    from CameraNetwork.gui.enaml_files.camera_view import MainView
 
 import copy
 import cPickle
@@ -73,6 +73,8 @@ from matplotlib.figure import Figure
 
 
 ROI_length = 6000
+EPIPOLAR_N = 200
+EPIPOLAR_length = 10000
 MAP_ZSCALE = 3
 
 
@@ -86,17 +88,17 @@ def new_thumbnail(img):
     thumb_win.show()
 
 
-def open_settings(main_view, client_model, server_model):
+def open_settings(main_view, main_model, server_model):
     """Open settings popup window."""
 
     hresult = SettingsDialog(
         main_view,
-        client_model=client_model,
+        main_model=main_model,
         server_model=server_model
     ).exec_()
 
     if hresult:
-        client_model.send_message(
+        main_model.send_message(
             server_model,
             gs.MSG_TYPE_SET_SETTINGS,
             kwds=dict(
@@ -129,6 +131,8 @@ class LoggerModel(Atom):
 class Map3dModel(Atom):
     """Model of the 3D map, showing the terrain, cameras and reconstruction."""
 
+    main_model = ForwardTyped(lambda: MainModel)
+
     map_scene = Typed(MlabSceneModel)
     map_coords = Tuple()
 
@@ -144,8 +148,6 @@ class Map3dModel(Atom):
     latitude = Float(32.775776)
     longitude = Float(35.024963)
     altitude = Int(229)
-
-    GRID_NED = Tuple()
 
     def _default_map_scene(self):
         """Draw the default map scene."""
@@ -215,10 +217,10 @@ class Map3dModel(Atom):
     def draw_grid(self):
         """Draw the reconstruction grid/cube on the map."""
 
-        if self.GRID_NED == ():
+        if self.main_model.GRID_NED == ():
             return
 
-        X, Y, Z = self.GRID_NED
+        X, Y, Z = self.main_model.GRID_NED
         x_min, x_max = X.min(), X.max()
         y_min, y_max = Y.min(), Y.max()
         z_min, z_max = Z.min(), Z.max()
@@ -351,28 +353,43 @@ class TimesModel(Atom):
 class ArrayModel(Atom):
     """Representation of an image array."""
 
-    resolution = Int()
-    img_data = Instance(DataObj)
-    fov = Float(math.pi/2)
+    main_model = ForwardTyped(lambda: MainModel)
 
-    #
-    # Epipolar line length.
-    #
-    line_length = Float(10000)
+    img_data = Typed(DataObj)
+    img_array = Typed(np.ndarray)
+
+    resolution = Int(301)
+    fov = Float(math.pi/2)
 
     #
     # Earth coords of the camera.
     #
-    longitude = Float()
-    latitude = Float()
-    altitude = Float()
+    longitude = Float(gs.DEFAULT_LONGITUDE)
+    latitude = Float(gs.DEFAULT_LATITUDE)
+    altitude = Float(gs.DEFAULT_ALTITUDE)
 
     #
     # The center of the camera in ECEF coords.
     #
     center = Tuple()
-    
-    def setEpipolar(self, x, y, N):
+
+    #
+    # The mouse click LOS projected to camera coords.
+    #
+    LOS_coords = List()
+
+    #
+    # The reconstruction grid projected to camera coords.
+    #
+    GRID_coords = List()
+
+    #
+    # Coords of the Almucantar and Principle Planes controls.
+    #
+    Almucantar_coords = List()
+    PrincipalPlane_coords = List()
+
+    def calcLOS(self, x, y, N=EPIPOLAR_N):
         """Create set of points in space.
 
         Create a Line Of Sight (LOS) points, set by the
@@ -407,7 +424,7 @@ class ArrayModel(Atom):
         # Calculate a LOS in this direction.
         # The LOS is first calculated in local coords (NED) of the camera.
         #
-        pts = np.linspace(0, self.line_length, N)
+        pts = np.linspace(0, EPIPOLAR_length, N)
         Z = -math.cos(psi) * pts
         X = math.sin(psi) * math.cos(phi) * pts
         Y = math.sin(psi) * math.sin(phi) * pts
@@ -415,10 +432,10 @@ class ArrayModel(Atom):
         #
         # Calculate the LOS in ECEF coords.
         #
-        LOS_pts = pymap3d.ned2ecef(
+        LOS_ECEF = pymap3d.ned2ecef(
             X, Y, Z, self.latitude, self.longitude, self.altitude)
 
-        return LOS_pts
+        return LOS_ECEF
 
     def projectECEF(self, ECEF_pts, filter_fov=True):
         """Project set of points in ECEF coords on the view.
@@ -473,16 +490,24 @@ class ArrayModel(Atom):
         else:
             return xs, ys, cosPSI>0
 
+    @observe("img_array")
+    def _update_img_data(self, change):
+
+        if change["value"] is None:
+            return
+
+        self.resolution = self.img_array.shape[0]
+
     @observe("img_data")
     def _update_img_data(self, change):
 
         if change["value"] is None:
             return
 
-        img_data = change["value"]
-        self.longitude = float(img_data.longitude)
-        self.latitude = float(img_data.latitude)
-        self.altitude = float(img_data.altitude)
+        print change["value"], self.img_data
+        self.longitude = float(self.img_data.longitude)
+        self.latitude = float(self.img_data.latitude)
+        self.altitude = float(self.img_data.altitude)
 
         self.center = pymap3d.ned2ecef(
             0, 0, 0,
@@ -491,15 +516,27 @@ class ArrayModel(Atom):
             self.altitude
         )
 
-    @observer('LOS_pts')
-    def updateEpipolar(self, change):
+        self.Almucantar_coords, self.PrincipalPlane_coords = \
+            calcSunphometerCoords(self.img_data, resolution=self.resolution)
+
+
+    @observe('main_model.LOS_ECEF')
+    def _updateEpipolar(self, change):
         """Project the LOS points (mouse click position) to camera."""
 
-        xs, ys = array_model.projectECEF(LOS_pts)
+        self.LOS_coords = array_model.projectECEF(self.main_model.LOS_ECEF)
+
+    @observe('main_model.GRID_ECEF')
+    def _updateGRID(self, change):
+        """Project the reconstruction GRID points to camera coords."""
+
+        self.GRID_coords = array_model.projectECEF(self.main_model.GRID_ECEF)
 
 
 class ArraysModel(Atom):
     """Model of the currently displayed arrays."""
+
+    main_model = ForwardTyped(lambda: MainModel)
 
     array_items = Dict()
 
@@ -517,29 +554,14 @@ class ArraysModel(Atom):
     show_masks = Bool(False)
 
     #
-    # The 'mouse click' Line Of Site points in ECEF coords.
+    # The mouse click LOS in ECEF coords.
     #
-    LOS_pts = List()
-
-    #
-    # The reconstruction grid in ECEF coords.
-    #
-    GRID_ECEF = List()
-
+    LOS_ECEF = List()
 
     def clear_arrays(self):
         """Clear all arrays."""
 
         self.array_items = dict()
-
-    def updateROI(self, data):
-        """Handle update of a server ROI."""
-
-        server_id = data['server_id']
-        pts = data['pts']
-        shape = data['shape']
-
-        self.model.map3d.updateROImesh(server_id, pts, shape)
 
     def new_array(self, server_id, img_array, img_data):
         """This callback is called when a new array is added to the display.
@@ -569,7 +591,7 @@ class ArraysModel(Atom):
             # model and view.
             #
             array_model = self.array_items[server_id]
-            
+
             new_array_model = False
         else:
             #
@@ -578,9 +600,11 @@ class ArraysModel(Atom):
             array_model = ArrayModel()
             new_array_model = True
 
-        #array_view.image_widget.observe('epipolar_signal', self.updateEpipolar)
         ##array_view.image_widget.observe('export_flag', self.updateExport)
-        #array_view.image_widget.observe('ROI_signal', self.updateROI)
+        #array_view.image_widget.observe(
+        #    'ROIs_signal', self.main_model.updateROIs)
+        #array_view.image_widget.observe(
+        #    'LOS_signal', self.updateLOS)
 
         #
         # Update the model.
@@ -593,21 +617,29 @@ class ArraysModel(Atom):
             temp_dict[server_id] = array_model
             self.array_items = temp_dict
 
-
-        #xs, ys = array_model.projectECEF(self.model.GRID_ECEF)
-        #array_view.image_widget.updateGridPts(xs=xs, ys=ys)
-
         ##
         ## Update the view of the ROI.
         ## This is necessary for displaying the ROI in the map view.
         ##
         #array_view.image_widget._ROI_updated()
 
+    def updateLOS(self, data):
+        """Handle click events on image array."""
+
+        server_id = data['server_id']
+        pos_x, pos_y = data['pos']
+
+        clicked_model = self.array_items[server_id]
+
+        self.LOS_ECEF = clicked_model.calcLOS(
+            pos_x, pos_y, clicked_view.epipolar_points
+        )
+
 
 ################################################################################
 # Main model.
 ################################################################################
-class ClientModel(Atom):
+class MainModel(Atom):
     """The data model of the client."""
 
     #
@@ -617,13 +649,16 @@ class ClientModel(Atom):
     client_instance = Typed(CameraNetwork.Client)
 
     #
-    # Sub models.
+    # Submodels.
     #
     logger = Typed(LoggerModel)
     map3d = Typed(Map3dModel)
     times = Typed(TimesModel)
     arrays = Typed(ArraysModel)
 
+    #
+    # Book keeping.
+    #
     servers_dict = Dict()
     tunnels_dict = Dict()
 
@@ -665,6 +700,11 @@ class ClientModel(Atom):
     grid_length = Float(6000)
 
     #
+    # The 'mouse click' Line Of Site points in ECEF coords.
+    #
+    LOS_ECEF = List()
+
+    #
     # Sunshader mask threshold used in grabcut algorithm.
     #
     grabcut_threshold = Float(3)
@@ -691,7 +731,7 @@ class ClientModel(Atom):
         """Initialize the map 3D."""
 
         return Map3dModel(
-            GRID_NED=self.GRID_NED
+            main_model=self
         )
 
     def _default_times(self):
@@ -702,12 +742,12 @@ class ClientModel(Atom):
     def _default_arrays(self):
         """Initialize the reconstruction grid."""
 
-        return ArraysModel()
+        return ArraysModel(main_model=self)
 
     def _default_GRID_NED(self):
         """Initialize the reconstruction grid."""
 
-        self.updateLIDARgrid()
+        self.updateGRID()
 
         return self.GRID_NED
 
@@ -936,7 +976,7 @@ class ClientModel(Atom):
         logging.info('Adding the new server: {}'.format(server_id))
 
         temp_dict = self.servers_dict.copy()
-        new_server = ServerModel(server_id=server_id, client_model=self)
+        new_server = ServerModel(server_id=server_id, main_model=self)
         new_server.init_server()
         temp_dict[server_id] = new_server
         self.servers_dict = temp_dict
@@ -1005,10 +1045,13 @@ class ClientModel(Atom):
 
         self.new_array(server_id, matfile, img_data)
 
-    def updateLIDARgrid(self):
-        """Update the LIDAR grid.
+    ############################################################################
+    # Misc.
+    ############################################################################
+    def updateGRID(self):
+        """Update the reconstruction grid.
 
-        The LIDAR grid is calculate in ECEF coords.
+        The grid is calculate in ECEF coords.
         """
 
         #
@@ -1017,31 +1060,8 @@ class ClientModel(Atom):
         s_pts = np.array((-self.grid_length/2, -self.grid_width/2, -self.TOG))
         e_pts = np.array((self.grid_length/2, self.grid_width/2, 0))
 
-        if self.grid_mode == "Auto":
-            s_pts = np.array((-1000, -1000, -self.TOG))
-            e_pts = np.array((1000, 1000, 0))
-            for server_id, (array_model, array_view) in self.array_items.items():
-                if not array_view.export_flag.checked:
-                    logging.info(
-                        "LIDAR Grid: Camera {} ignored.".format(server_id)
-                    )
-                    continue
-
-                #
-                # Convert the ECEF center of the camera to the grid center ccords.
-                #
-                cam_center = pymap3d.ecef2ned(
-                    array_model.center[0], array_model.center[1], array_model.center[2],
-                    self.latitude, self.longitude, 0)
-
-                #
-                # Accomulate tight bounding.
-                #
-                s_pts = np.array((s_pts, cam_center)).min(axis=0)
-                e_pts = np.array((e_pts, cam_center)).max(axis=0)
-
         #
-        # Create the LIDAR grid.
+        # Create the grid.
         # Note GRID_NED is an open grid storing the requested
         # grid resolution. It is used for reconstruction and also
         # for visualization in the 3D map.
@@ -1064,6 +1084,23 @@ class ClientModel(Atom):
 
         self.GRID_ECEF = pymap3d.ned2ecef(
             X, Y, Z, self.latitude, self.longitude, self.altitude)
+
+    def updateROIs(self, data):
+        """Handle update of a server ROI."""
+
+        server_id = data['server_id']
+        pts = data['pts']
+        shape = data['shape']
+
+        self.map3d.updateROImesh(server_id, pts, shape)
+
+    def clear_map(self):
+        #
+        # TODO:
+        # Just remove cameras and not the map/grid.
+        #
+        self.draw_map()
+        self.draw_grid()
 
     def draw_map(self):
         self.map3d.draw_map()
@@ -1104,7 +1141,7 @@ class ServerModel(Atom):
     capture_settings = Dict(default=gs.CAPTURE_SETTINGS)
     status_text = Str()
 
-    client_model = Typed(ClientModel)
+    main_model = Typed(MainModel)
 
     days_list = List()
 
@@ -1228,7 +1265,7 @@ class ServerModel(Atom):
         #
         # Open the settings popup.
         #
-        self.client_model.settings_signal.emit(self)
+        self.main_model.settings_signal.emit(self)
 
     def reply_thumbnail(self, thumbnail):
         #
@@ -1248,7 +1285,7 @@ class ServerModel(Atom):
             array = np.hstack((array, array, array))
 
         array = np.hstack((array[:, ::-1], np.ones((width*height, 1), dtype=np.uint8)*255))
-        self.client_model.thumb = EImage(data=array.tostring(), format='argb32', raw_size=(width, height))
+        self.main_model.thumb = EImage(data=array.tostring(), format='argb32', raw_size=(width, height))
 
     def reply_radiometric(self, angles, measurements, estimations, ratios):
         """Handle to reply for the radiometric calibration."""
@@ -1292,7 +1329,7 @@ class ServerModel(Atom):
         #
         # Add new array.
         #
-        self.client_model.new_array(self.server_id, matfile, img_data)
+        self.main_model.new_array(self.server_id, matfile, img_data)
 
     def reply_days(self, days_list):
         """Handle the reply for days command."""
@@ -1309,7 +1346,7 @@ class ServerModel(Atom):
         #
         # Add new array.
         #
-        self.client_model.new_array(self.server_id, matfile, img_data)
+        self.main_model.new_array(self.server_id, matfile, img_data)
 
     def reply_calibration(self, img_array, K, D, rms, rvecs, tvecs):
         #
@@ -1329,13 +1366,13 @@ class ServerModel(Atom):
             array = np.hstack((array, array, array))
 
         array = np.hstack((array[:, ::-1], np.ones((width*height, 1), dtype=np.uint8)*255))
-        self.client_model.thumb = EImage(data=array.tostring(), format='argb32', raw_size=(width, height))
+        self.main_model.thumb = EImage(data=array.tostring(), format='argb32', raw_size=(width, height))
 
 
 class Controller(Atom):
 
-    model = Typed(ClientModel)
-    view = Typed(Main)
+    model = Typed(MainModel)
+    view = Typed(MainView)
 
     @observe('model.settings_signal')
     def settings_signal(self, server_model):
@@ -1359,17 +1396,17 @@ def startGUI(local_mode):
     #
     # Instansiate the data model
     #
-    client_model = ClientModel()
-    client_model.start_camera_thread(local_mode)
+    main_model = MainModel()
+    main_model.start_camera_thread(local_mode)
 
     #
     # Start the Qt application
     #
     app = QtApplication()
 
-    view = Main(client_model=client_model)
+    view = MainView(main_model=main_model)
 
-    controller = Controller(model=client_model, view=view)
+    controller = Controller(model=main_model, view=view)
 
     view.show()
 

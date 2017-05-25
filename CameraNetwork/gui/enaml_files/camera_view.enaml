@@ -1,4 +1,4 @@
-from .docks import ArraysItem, LoggerItem, MapperItem, ServersItem, TimesItem
+from .docks import ArraysView, LoggerView, MapperView, ServersView, TimesView
 
 from enaml.layout.api import *
 from enaml.core.api import Include, Conditional, Looper
@@ -25,7 +25,7 @@ from CameraNetwork.gui.PyQtWidgets import PyQtImageView
 # The main dockarea.
 ################################################################################
 enamldef MyDockArea(DockArea):
-    attr main_model
+    attr _main_model
     attr logger_model
     attr map3d_model
     attr times_model
@@ -42,35 +42,33 @@ enamldef MyDockArea(DockArea):
         ),
     )
 
-    ArraysItem: arrays_dockitem:
-        map3d = map3d_model
-        arrays = arrays_model
+    ArraysView: arrays_dockitem:
         main = main_model
+        arrays = arrays_model
         name = 'arrays'
         title = 'Arrays'
         closable = False
 
-    LoggerItem: logger_dockitem:
+    LoggerView: logger_dockitem:
         logger = logger_model
         name = 'logger'
         title = 'Logger'
         closable = False
 
-    TimesItem: times_dockitem:
-        map3d = map3d_model
+    TimesView: times_dockitem:
         main = main_model
         times = times_model
         name = 'times'
         title = 'Times'
         closable = False
 
-    MapperItem: mapper_dockitem:
+    MapperView: mapper_dockitem:
         map3d = map3d_model
         name = 'map'
         title = 'Map'
         closable = False
 
-    ServersItem: servers_dockitem:
+    ServersView: servers_dockitem:
         main = main_model
         name = 'servers'
         title = 'Servers'
@@ -80,23 +78,23 @@ enamldef MyDockArea(DockArea):
 ################################################################################
 # The Main View
 ################################################################################
-def reboot_servers(button, client_model):
+def reboot_servers(button, main_model):
     if button is not None:
         if button.text == 'Reboot':
-            client_model.broadcast_message(gs.MSG_TYPE_REBOOT)
+            main_model.broadcast_message(gs.MSG_TYPE_REBOOT)
 
 
-def restart_servers(button, client_model):
+def restart_servers(button, main_model):
     if button is not None:
         if button.text == 'Restart':
-            client_model.broadcast_message(gs.MSG_TYPE_RESTART)
+            main_model.broadcast_message(gs.MSG_TYPE_RESTART)
 
 
-enamldef Main(MainWindow): main:
+enamldef MainView(MainWindow): main:
     initial_size = (200, 200)
     title = 'Camera Client'
 
-    attr client_model
+    attr main_model
 
     alias dock_area
     alias array_views : dock_area.array_views
@@ -106,45 +104,45 @@ enamldef Main(MainWindow): main:
             title = "&Global Actions"
             Action:
                 text = "Update Tunnels\tCtrl+N"
-                triggered :: client_model.send_mmi(MDP.MMI_TUNNELS)
+                triggered :: main_model.send_mmi(MDP.MMI_TUNNELS)
 
             Menu:
                 title = "Tunnels"
                 Looper: column_looper:
-                    iterable << sorted(client_model.tunnels_dict.items())
+                    iterable << sorted(main_model.tunnels_dict.items())
                     Action:
                         text = "Camera {}, port {}".format(loop_item[0], loop_item[1]['tunnel_port'])
-                        triggered :: client_model.open_tunnel(loop_item[0], loop_item[1])
+                        triggered :: main_model.open_tunnel(loop_item[0], loop_item[1])
             Action:
                 separator = True
             Action:
                 text = "Loop\tCtrl+L"
                 triggered ::
-                    client_model.broadcast_message(gs.MSG_TYPE_LOOP)
+                    main_model.broadcast_message(gs.MSG_TYPE_LOOP)
             Action:
                 text = "Unloop\tCtrl+U"
                 triggered ::
-                    client_model.broadcast_message(gs.MSG_TYPE_HALT)
+                    main_model.broadcast_message(gs.MSG_TYPE_HALT)
             Action:
                 separator = True
             Action:
                 text = "Status\tCtrl+M"
                 triggered ::
-                    client_model.broadcast_message(gs.MSG_TYPE_STATUS)
+                    main_model.broadcast_message(gs.MSG_TYPE_STATUS)
             Action:
                 text = "Settings\tCtrl+S"
                 triggered ::
                     hresult = GlobalSettingsDialog(
                         main,
-                        client_model=client_model,
+                        main_model=main_model,
                     ).exec_()
 
                     if hresult:
-                        client_model.broadcast_message(
+                        main_model.broadcast_message(
                             gs.MSG_TYPE_SET_SETTINGS,
                             kwds=dict(
                                 camera_settings=None,
-                                capture_settings=client_model.capture_settings
+                                capture_settings=main_model.capture_settings
                             )
                         )
             Action:
@@ -156,7 +154,7 @@ enamldef Main(MainWindow): main:
                             DialogButton('Cancel', 'reject')]
                     restart_servers(
                         warning(main, 'Restart Cameras', 'Are you sure you want to restart all cameras?', btns),
-                        client_model
+                        main_model
                     )
             Action:
                 text = "Reboot\tCtrl+R"
@@ -165,18 +163,8 @@ enamldef Main(MainWindow): main:
                             DialogButton('Cancel', 'reject')]
                     reboot_servers(
                         warning(main, 'Reboot Cameras', 'Are you sure you want to reboot all cameras?', btns),
-                        client_model
+                        main_model
                     )
-
-        #Menu:
-            #title = "&View"
-            #Action:
-                #text = 'Cameras List'
-                #triggered ::
-                    #hresult = CameraListDialog(
-                        #main,
-                        #client_model=client_model,
-                    #).exec_()
 
         Menu:
             title = "&Reconstruct"
@@ -184,23 +172,23 @@ enamldef Main(MainWindow): main:
                 text = "Export\tCtrl+E"
                 triggered ::
                     hresult = ReconstructDialog(
-                        client_model=client_model
+                        main_model=main_model
                     ).exec_()
 
                     if hresult:
-                        client_model.exportData()
+                        main_model.exportData()
 
     Container:
         MyDockArea: dock_area:
-            logger_model = client_model.logger
-            map3d_model = client_model.map3d
-            times_model = client_model.times
-            arrays_model = client_model.arrays
-            main_model = client_model
+            logger_model = main_model.logger
+            map3d_model = main_model.map3d
+            times_model = main_model.times
+            arrays_model = main_model.arrays
+            _main_model = main_model
 
     StatusBar:
         StatusItem:
             Label:
                 text = "Status"
             ProgressBar: progress:
-                value := client_model.export_progress
+                value := main_model.export_progress
