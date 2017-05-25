@@ -109,6 +109,10 @@ class PyQtImageView(RawWidget):
     #
     export_flag = Bool()
 
+    def _defaults_show_ROI(self):
+        print "Default Activated."
+        return False
+
     def updateEpipolar(self, xs, ys):
         """Update the epipolar markers."""
 
@@ -341,9 +345,10 @@ class PyQtImageView(RawWidget):
             self.principalplane_scatter.setVisible(change['value'])
 
     @observe('show_ROI')
-    def showROI(self, change):
+    def _showROI(self, change):
         """Control the visibility of the ROI widget."""
 
+        print "Works :-)"
         if self.ROI is not None:
             self.ROI.setVisible(change['value'])
 
@@ -412,6 +417,9 @@ class PyQtImageView(RawWidget):
         #
         def mouseClicked(evt):
 
+            print  self.proxy.is_active, self.proxy
+            #_ = self.show_ROI, self.show_mask, self.show_almucantar
+
             #
             # Get the click position.
             #
@@ -462,6 +470,22 @@ class PyQtImageView(RawWidget):
         win.resize(400, 400)
 
         return win
+
+    #--------------------------------------------------------------------------
+    # Observers
+    #--------------------------------------------------------------------------
+    @observe('img_array', 'server_id', 'Almucantar_coords', 'PrincipalPlane_coords',
+             'show_almucantar', 'show_principalplane', 'show_ROI', 'show_mask',
+             'show_grid', 'gamma', 'intensity')
+    def _update_proxy(self, change):
+        """ Update the proxy widget when the Widget data changes.
+
+        This method only updates the proxy when an attribute is updated;
+        not when it is created or deleted.
+
+        """
+        # The superclass implementation is sufficient.
+        super(PyQtImageView, self)._update_proxy(change)
 
 
     #myFilter = MyEventFilter()

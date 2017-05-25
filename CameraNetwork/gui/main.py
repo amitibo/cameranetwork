@@ -504,7 +504,6 @@ class ArrayModel(Atom):
         if change["value"] is None:
             return
 
-        print change["value"], self.img_data
         self.longitude = float(self.img_data.longitude)
         self.latitude = float(self.img_data.latitude)
         self.altitude = float(self.img_data.altitude)
@@ -634,6 +633,10 @@ class ArraysModel(Atom):
         self.LOS_ECEF = clicked_model.calcLOS(
             pos_x, pos_y, clicked_view.epipolar_points
         )
+
+    @observe("show_ROIs")
+    def _test(self, change):
+        print "Model:", self.show_ROIs
 
 
 ################################################################################

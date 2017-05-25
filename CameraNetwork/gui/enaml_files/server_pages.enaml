@@ -20,16 +20,16 @@ import glob
 import pkg_resources
 
 
-def restart_server(button, client_model, server_model):
+def restart_server(button, main_model, server_model):
     if button is not None:
         if button.text == 'Restart':
-            client_model.send_message(server_model, gs.MSG_TYPE_RESTART)
+            main_model.send_message(server_model, gs.MSG_TYPE_RESTART)
 
 
-def reboot_server(button, client_model, server_model):
+def reboot_server(button, main_model, server_model):
     if button is not None:
         if button.text == 'Reboot':
-            client_model.send_message(server_model, gs.MSG_TYPE_REBOOT)
+            main_model.send_message(server_model, gs.MSG_TYPE_REBOOT)
 
 
 enamldef UpdateTaskDialog(Dialog):
@@ -83,22 +83,22 @@ enamldef MainControlsPage(Page):
             PushButton: pb_loop:
                 text = 'Loop'
                 clicked ::
-                    root_object().client_model.send_message(server_model_, gs.MSG_TYPE_LOOP)
+                    root_object().main_model.send_message(server_model_, gs.MSG_TYPE_LOOP)
 
             PushButton: pb_calib:
                 text = 'Calib Imgs'
-                clicked :: root_object().client_model.send_message(server_model_, gs.MSG_TYPE_CALIB_IMGS)
+                clicked :: root_object().main_model.send_message(server_model_, gs.MSG_TYPE_CALIB_IMGS)
 
             PushButton: pb_halt:
                 text = 'Halt'
-                clicked :: root_object().client_model.send_message(server_model_, gs.MSG_TYPE_HALT)
+                clicked :: root_object().main_model.send_message(server_model_, gs.MSG_TYPE_HALT)
 
         GroupBox: ssh_gbx:
             title = 'SSH'
 
             PushButton: pb_tunnel_on:
                 text = 'Tunnel On'
-                clicked :: root_object().client_model.send_message(
+                clicked :: root_object().main_model.send_message(
                     server_model_,
                     gs.MSG_TYPE_TUNNEL,
                     kwds=dict(tunnel_state=True)
@@ -106,7 +106,7 @@ enamldef MainControlsPage(Page):
 
             PushButton: pb_tunnel_off:
                 text = 'Tunnel Off'
-                clicked :: root_object().client_model.send_message(
+                clicked :: root_object().main_model.send_message(
                     server_model_,
                     gs.MSG_TYPE_TUNNEL,
                     kwds=dict(tunnel_state=False)
@@ -114,11 +114,11 @@ enamldef MainControlsPage(Page):
 
             PushButton: pb_putty:
                 text = 'Putty'
-                clicked :: root_object().client_model.send_message(server_model_, gs.MSG_TYPE_TUNNEL_CHECK)
+                clicked :: root_object().main_model.send_message(server_model_, gs.MSG_TYPE_TUNNEL_CHECK)
 
             PushButton: pb_local:
                 text = 'Local'
-                clicked :: root_object().client_model.send_message(server_model_, gs.MSG_TYPE_LOCAL)
+                clicked :: root_object().main_model.send_message(server_model_, gs.MSG_TYPE_LOCAL)
 
         GroupBox: general_gbx:
             title = 'General'
@@ -126,12 +126,12 @@ enamldef MainControlsPage(Page):
             PushButton: pb_status:
                 text = "Status"
                 clicked ::
-                    root_object().client_model.send_message(server_model_, gs.MSG_TYPE_STATUS)
+                    root_object().main_model.send_message(server_model_, gs.MSG_TYPE_STATUS)
 
             PushButton: pb_settings:
                 text = "Settings"
                 clicked ::
-                    root_object().client_model.send_message(server_model_, gs.MSG_TYPE_GET_SETTINGS)
+                    root_object().main_model.send_message(server_model_, gs.MSG_TYPE_GET_SETTINGS)
 
             PushButton: pb_restart:
                 text = 'Software Restart'
@@ -141,7 +141,7 @@ enamldef MainControlsPage(Page):
                             DialogButton('Cancel', 'reject')]
                     restart_server(
                         warning(self, 'Restart Camera Software', 'Are you sure you want to restart the camera?', btns),
-                        root_object().client_model,
+                        root_object().main_model,
                         server_model_
                     )
 
@@ -153,7 +153,7 @@ enamldef MainControlsPage(Page):
                             DialogButton('Cancel', 'reject')]
                     reboot_server(
                         warning(self, 'Reboot Camera', 'Are you sure you want to reboot the camera?', btns),
-                        root_object().client_model,
+                        root_object().main_model,
                         server_model_
                     )
 
@@ -213,9 +213,9 @@ enamldef ImageControlPage(Page):
                 PushButton: pb_array:
                     text = 'Get Array'
                     clicked ::
-                        root_object().client_model.draw_map()
-                        root_object().client_model.draw_grid()
-                        root_object().client_model.send_message(
+                        root_object().main_model.draw_map()
+                        root_object().main_model.draw_grid()
+                        root_object().main_model.send_message(
                             server_model_,
                             gs.MSG_TYPE_ARRAY,
                             kwds=dict(
@@ -241,7 +241,7 @@ enamldef ImageControlPage(Page):
                 PushButton: pb_reset_camera:
                     text = 'Reset Camera'
                     clicked ::
-                        root_object().client_model.send_message(
+                        root_object().main_model.send_message(
                             server_model_,
                             gs.MSG_TYPE_RESET_CAMERA,
                         )
@@ -267,7 +267,7 @@ enamldef SeekControlPage(Page):
             PushButton: update_pb:
                 text = 'Update Days'
                 clicked ::
-                    root_object().client_model.send_message(
+                    root_object().main_model.send_message(
                         server_model_,
                         gs.MSG_TYPE_DAYS,
                     )
@@ -278,7 +278,7 @@ enamldef SeekControlPage(Page):
             PushButton: query_pb:
                 text = 'Query'
                 clicked ::
-                    root_object().client_model.send_message(
+                    root_object().main_model.send_message(
                         server_model_,
                         gs.MSG_TYPE_QUERY,
                         kwds=dict(query_date=query_day.selected),
@@ -320,7 +320,7 @@ enamldef SeekControlPage(Page):
                 text = 'Seek'
                 clicked ::
                     index = server_model_.img_index
-                    root_object().client_model.send_message(
+                    root_object().main_model.send_message(
                         server_model_,
                         gs.MSG_TYPE_SEEK,
                         kwds=dict(
@@ -345,7 +345,7 @@ enamldef SunshaderControlPage(Page):
             label.text = 'Angle'
 
             slider.value ::
-                root_object().client_model.send_message(
+                root_object().main_model.send_message(
                     server_model_,
                     gs.MSG_TYPE_SUNSHADER,
                     kwds=dict(
@@ -357,7 +357,7 @@ enamldef SunshaderControlPage(Page):
             PushButton: pb_scan:
                 text = 'Scan'
                 clicked ::
-                    root_object().client_model.send_message(
+                    root_object().main_model.send_message(
                         server_model_,
                         gs.MSG_TYPE_SUNSHADER_SCAN,
                     )
@@ -379,7 +379,7 @@ enamldef SprinklerControlPage(Page):
             PushButton: pb_sprinkle:
                 text = 'Sprinkle'
                 clicked ::
-                    root_object().client_model.send_message(
+                    root_object().main_model.send_message(
                         server_model_,
                         gs.MSG_TYPE_SPRINKLER,
                         kwds=dict(
@@ -441,7 +441,7 @@ enamldef IntrinsicControlPage(Page):
                     box.set_parent(root_object())
                     box.exec_()
                     if box.buttons[0].was_clicked:
-                        root_object().client_model.send_message(
+                        root_object().main_model.send_message(
                             server_model_,
                             gs.MSG_TYPE_CALIBRATION,
                             kwds=dict(
@@ -469,7 +469,7 @@ enamldef IntrinsicControlPage(Page):
                     box.set_parent(root_object())
                     box.exec_()
                     if box.buttons[0].was_clicked:
-                        root_object().client_model.send_message(
+                        root_object().main_model.send_message(
                             server_model_,
                             gs.MSG_TYPE_DARK_IMAGES
                         )
@@ -483,7 +483,7 @@ enamldef ExtrinsicControlPage(Page):
             PushButton: update_pb:
                 text = 'Update Days'
                 clicked ::
-                    root_object().client_model.send_message(
+                    root_object().main_model.send_message(
                         server_model_,
                         gs.MSG_TYPE_DAYS,
                     )
@@ -503,7 +503,7 @@ enamldef ExtrinsicControlPage(Page):
             PushButton: pb_extrinsic:
                 text = 'Extrinsic Calibrate'
                 clicked ::
-                    root_object().client_model.send_message(
+                    root_object().main_model.send_message(
                         server_model_,
                         gs.MSG_TYPE_EXTRINSIC,
                         kwds=dict(
@@ -530,7 +530,7 @@ enamldef RadiometricControlPage(Page):
             PushButton: update_pb:
                 text = 'Update Days'
                 clicked ::
-                    root_object().client_model.send_message(
+                    root_object().main_model.send_message(
                         server_model_,
                         gs.MSG_TYPE_DAYS,
                     )
@@ -573,7 +573,7 @@ enamldef RadiometricControlPage(Page):
             PushButton: pb_radiometric:
                 text = 'Radiometric Calibrate'
                 clicked ::
-                    root_object().client_model.send_message(
+                    root_object().main_model.send_message(
                         server_model_,
                         gs.MSG_TYPE_RADIOMETRIC,
                         kwds=dict(
