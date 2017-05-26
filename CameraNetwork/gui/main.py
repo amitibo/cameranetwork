@@ -394,10 +394,12 @@ class ArrayModel(Atom):
     PrincipalPlane_coords = List(default=[])
 
     def _default_Epipolar_coords(self):
-        self.Epipolar_coords = self.projectECEF(self.main_model.LOS_ECEF)
+        Epipolar_coords = self.projectECEF(self.main_model.LOS_ECEF)
+        return Epipolar_coords
 
     def _default_GRID_coords(self):
-        self.GRID_coords = self.projectECEF(self.main_model.GRID_ECEF)
+        GRID_coords = self.projectECEF(self.main_model.GRID_ECEF)
+        return GRID_coords
 
     def calcLOS(self, x, y, N=EPIPOLAR_N):
         """Create set of points in space.
@@ -527,7 +529,6 @@ class ArrayModel(Atom):
 
         alm_coords, pp_coords = \
             calcSunphometerCoords(self.img_data, resolution=self.resolution)
-        print alm_coords, pp_coords
         self.Almucantar_coords = alm_coords
         self.PrincipalPlane_coords = pp_coords
 
@@ -608,7 +609,7 @@ class ArraysModel(Atom):
             #
             # The specific camera is not displayed. Create it.
             #
-            array_model = ArrayModel()
+            array_model = ArrayModel(main_model=self.main_model)
             new_array_model = True
 
         ##array_view.image_widget.observe('export_flag', self.updateExport)
@@ -761,6 +762,50 @@ class MainModel(Atom):
         self.updateGRID()
 
         return self.GRID_NED
+
+    def _default_GRID_ECEF(self):
+        """Initialize the reconstruction grid."""
+
+        self.updateGRID()
+
+        return self.GRID_ECEF
+
+    def _default_LOS_ECEF(self):
+        """Initialize the default LOS in ECEF coords."""
+
+        #
+        # Calculate the bounding box of the grid.
+        #
+        s_pts = np.array((-self.grid_length/2, -self.grid_width/2, -self.TOG))
+        e_pts = np.array((self.grid_length/2, self.grid_width/2, 0))
+
+        #
+        # Create the grid.
+        # Note GRID_NED is an open grid storing the requested
+        # grid resolution. It is used for reconstruction and also
+        # for visualization in the 3D map.
+        #
+        self.GRID_NED = (
+            np.arange(s_pts[0], e_pts[0]+self.delx, self.delx),
+            np.arange(s_pts[1], e_pts[1]+self.dely, self.dely),
+            np.arange(s_pts[2], e_pts[2]+self.delz, self.delz)
+        )
+
+        #
+        # GRID_ECEF is just for visualization of the grid on the
+        # image arrays.
+        #
+        X, Y, Z = np.meshgrid(
+            np.zeros(gs.LOS_PTS_NUM),
+            np.zeros(gs.LOS_PTS_NUM),
+            np.linspace(-8000, 0, gs.LOS_PTS_NUM),
+        )
+
+        LOS_ECEF = pymap3d.ned2ecef(
+            X, Y, Z, self.latitude, self.longitude, self.altitude)
+
+
+        return LOS_ECEF
 
     ############################################################################
     # GUI communication.
@@ -1066,7 +1111,7 @@ class MainModel(Atom):
         """
 
         #
-        # Calculate the bounding box of the cameras.
+        # Calculate the bounding box of the grid.
         #
         s_pts = np.array((-self.grid_length/2, -self.grid_width/2, -self.TOG))
         e_pts = np.array((self.grid_length/2, self.grid_width/2, 0))
@@ -1256,7 +1301,6 @@ class ServerModel(Atom):
             "Memory Status:\n--------------\n{}\n\nGit HEAD:\n---------\n{}".format(
             memory_result[0], git_result[0]
         )
-        print(self.status_text)
 
     def reply_get_settings(self, camera_settings, capture_settings):
         """Handle reply of settings."""

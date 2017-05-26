@@ -122,6 +122,7 @@ enamldef ArrayView(FlowItem):
 
     GroupBox: gb:
         ImageAnalysis: image_widget:
+            #main_model << array_model.main_model
             img_array << array_model.img_array
             Almucantar_coords << array_model.Almucantar_coords
             PrincipalPlane_coords << array_model.PrincipalPlane_coords

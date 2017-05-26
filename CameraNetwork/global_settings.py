@@ -388,5 +388,4 @@ PROXY_SERVER_KEY_FILE = os.path.expanduser(r'~/keys/cameranetwork.pem')
 ################################################################################
 # Visualization stuff
 ################################################################################
-LOS_PTS_NUM = 200
-GRID_PTS_NUM = 1000
+LOS_PTS_NUM = 300

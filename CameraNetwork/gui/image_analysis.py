@@ -88,6 +88,10 @@ class ImageAnalysis(Control):
     proxy = Typed(ProxyImageAnalysis)
 
     #
+    # M
+    #
+
+    #
     # The ID of the current server.
     #
     server_id = d_(Str())
@@ -102,8 +106,8 @@ class ImageAnalysis(Control):
     #
     Almucantar_coords = d_(List(default=[]))
     PrincipalPlane_coords = d_(List(default=[]))
-    Epipolar_coords = d_(List(default=[]))
-    GRID_coords = d_(List(default=[]))
+    Epipolar_coords = d_(Tuple(default=()))
+    GRID_coords = d_(Tuple(default=()))
 
     #
     # Flags that control the display
@@ -349,11 +353,9 @@ class QtImageAnalysis(QtControl, ProxyImageAnalysis):
         """Update the Almucantar coords."""
 
         if self.almucantar_scatter is None:
-            print("None")
             self.initAlmucantar(Almucantar_coords)
             return
 
-        print("Found here:", Almucantar_coords)
         self.almucantar_scatter.setData(
             pos=np.array(Almucantar_coords)
         )
