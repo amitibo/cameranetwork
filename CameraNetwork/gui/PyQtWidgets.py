@@ -6,52 +6,22 @@ https://gist.github.com/blink1073/7411284
 from atom.api import Instance, Signal, Str, Int, observe, List, Bool
 from enaml.core.declarative import d_
 from enaml.qt import QtCore, QtGui
-from enaml.widgets.api import *
+from enaml.qt.qt_control import QtControl
+from enaml.widgets.control import Control, ProxyControl
 import math
 import numpy as np
-from pyqtgraph import opengl as gl
 import pyqtgraph as pg
+from pyqtgraph import opengl as gl
+
 pg.setConfigOptions(imageAxisOrder='row-major')
 
 
 MASK_INIT_RESOLUTION = 20
 
 
-class PyQtImageView(RawWidget):
-    """A base for PyQtGraph Widgets for enaml.
-
-    It implement different widgets that help in analyzing the images.
-
-    Attributes:
-        img_array (array): Displayed image.
-        epipolar_scatter (pg.ScatterPlotItem): Projection of selected pixel on
-            different images.
-        grid_scatter (pg.ScatterPlotItem): Projection of reconstruction grid on
-            different images.
-        almucantar_scatter (pg.ScatterPlotItem): Projection of the Almucantar on
-            the image.
-        principalplane_scatter (pg.ScatterPlotItem): Projection of the Principal
-            Plane on the image.
-        ROI (pg.RectROI): Rectangle ROI that is extracted for reconstruction.
-        mask_ROI (pg.PolyLineROI): Polygonal ROI that is used for masking out
-            obstructing objects.
-    """
-
-    #
-    # The displayed image as numpy array.
-    #
-    img_array = d_(Instance(np.ndarray))
-
-    #
-    # Mask array.
-    # This is used for removing the sunshader pixels.
-    #
-    mask_array = Instance(np.ndarray)
-
-    #
-    # The ID of the current server.
-    #
-    server_id = d_(Str())
+class QtImageAnalysis(QtControl, ProxyImageView):
+    #: A reference to the widget created by the proxy.
+    widget = Typed(pg.GraphicsLayoutWidget)
 
     #
     # Different controls that can be displayed on the GUI
@@ -60,9 +30,6 @@ class PyQtImageView(RawWidget):
     grid_scatter = Instance(pg.ScatterPlotItem)
     almucantar_scatter = Instance(pg.ScatterPlotItem)
     principalplane_scatter = Instance(pg.ScatterPlotItem)
-
-    Almucantar_coords = d_(List())
-    PrincipalPlane_coords = d_(List())
 
     #
     # ROI - Rectangle ROI that can be set by the user.
@@ -80,98 +47,6 @@ class PyQtImageView(RawWidget):
     # The image itself, a PyQtGraph ImageItem.
     #
     img_item = Instance(pg.ImageItem)
-
-    #
-    # Signals to notify the main model of modifications
-    # that need to be broadcast to the rest of the cameras.
-    #
-    LOS_signal = Signal()
-    epipolar_points = Int(100)
-
-    #
-    # Flags that control the display
-    #
-    show_almucantar = Bool(False)
-    show_principalplane = Bool(False)
-    show_ROI = d_(Bool(False))
-    show_mask = d_(Bool(False))
-    show_grid = d_(Bool(False))
-    gamma = d_(Bool(False))
-    intensity = d_(Int(40))
-
-    #
-    # Extra...
-    #
-    grid_points = Int(1000)
-
-    #
-    # Whether use this view in the exported (reconstruction) data.
-    #
-    export_flag = Bool()
-
-    def _defaults_show_ROI(self):
-        print "Default Activated."
-        return False
-
-    def updateEpipolar(self, xs, ys):
-        """Update the epipolar markers."""
-
-        self.epipolar_scatter.setData(xs, ys)
-
-    def updateGridPts(self, xs, ys):
-        """Update the Grid markers."""
-
-        self.grid_scatter.setData(xs, ys)
-
-    def getArrayRegion(self, data=None):
-        """Get the region selected by ROI.
-
-        The function accepts an array in the size of the image.
-        It crops a region marked by the ROI.
-
-        Args:
-            data (array): The array to crop the ROI from. If None
-                the image will be croped.
-
-        TODO:
-            Fix the bug that create artifacts.
-        """
-
-        if data is None:
-            data = self.img_array[..., 0].astype(np.float)
-
-        #
-        # Get ROI region.
-        #
-        roi = self.ROI.getArrayRegion(data, self.img_item)
-
-        return roi
-
-    def getMask(self):
-        """Get the mask as set by mask_ROI.
-        """
-
-        data = np.ones(self.img_array.shape[:2], np.uint8)
-
-        #
-        # Get ROI region.
-        #
-        sl, _ = self.mask_ROI.getArraySlice(data, self.img_item, axes=(0, 1))
-        sl_mask = self.mask_ROI.getArrayRegion(data, self.img_item)
-
-        #
-        # The new version of pyqtgraph has some rounding problems.
-        # Fix it the slices accordingly.
-        #
-        fixed_slices = (
-            slice(sl[0].start, sl[0].start+sl_mask.shape[0]),
-            slice(sl[1].start, sl[1].start+sl_mask.shape[1])
-        )
-
-        mask = np.zeros(self.img_array.shape[:2], np.uint8)
-        mask[fixed_slices] = sl_mask
-
-        return mask
 
     def drawEpiploarPoints(self, plot_area):
         """Initialize the epipolar points on the plot."""
@@ -257,138 +132,12 @@ class PyQtImageView(RawWidget):
 
         plot_area.vb.addItem(self.ROI)
 
-    def _calcMask(self):
-        """Calculate the sunshader mask.
-
-        .. note::
-            Currently not implemented.
-        """
-
-        pass
-
-    def _ROI_updated(self):
-        """Callback of ROI udpate."""
-
-        _, tr = self.ROI.getArraySlice(
-            self.img_array,
-            self.img_item
-        )
-
-        size = self.ROI.state['size']
-
-        #
-        # Calculate the bounds.
-        #
-        pts = np.array(
-            [tr.map(x, y) for x, y in \
-             ((0, 0), (size.x(), 0), (0, size.y()), (size.x(), size.y()))]
-        )
-
-        self.ROIs_signal.emit(
-            {'server_id': self.server_id, 'pts': pts, 'shape': self.img_array.shape}
-        )
-
-    def update_ROI_resolution(self, old_shape):
-        """Update the ROI_resolution.
-
-        Used to fix the save ROI resolution to new array resolution.
-        """
-
-        s = float(self.img_array.shape[0]) / float(old_shape[0])
-        c = np.array(old_shape)/2
-        t = np.array(self.img_array.shape[:2])/2 -c
-        self.ROI.scale(s, center=c)
-        self.ROI.translate((t[0], t[1]))
-        self.mask_ROI.scale(s, center=c)
-        self.mask_ROI.translate((t[0], t[1]))
-
-    @observe('img_array')
-    def update_img_array(self, change):
-        """Update the image array."""
-
-        if self.img_item is None or change["value"] is None:
-            return
-
-        self.img_item.setImage(change['value'].astype(np.float))
-        self._calcMask()
-
-    @observe('Almucantar_coords')
-    def update_Almucantar_coords(self, change):
-        """Update the Almucantar coords."""
-
-        if self.almucantar_scatter is not None:
-            self.almucantar_scatter.setData(
-                pos=np.array(change['value'])
-            )
-
-    @observe('show_almucantar')
-    def showAlmucantar(self, change):
-        """Control the visibility of the Almucantar widget."""
-
-        if self.almucantar_scatter is not None:
-            self.almucantar_scatter.setVisible(change['value'])
-
-    @observe('PrincipalPlane_coords')
-    def update_PrincipalPlane_coords(self, change):
-        """Update the PrincipalPlane coords."""
-
-        if self.principalplane_scatter is not None:
-            self.principalplane_scatter.setData(
-                pos=np.array(change['value'])
-            )
-
-    @observe('show_principalplane')
-    def showPrincipalplane(self, change):
-        """Control the visibility of the principalplane widget."""
-
-        if self.principalplane_scatter is not None:
-            self.principalplane_scatter.setVisible(change['value'])
-
-    @observe('show_ROI')
-    def _showROI(self, change):
-        """Control the visibility of the ROI widget."""
-
-        print "Works :-)"
-        if self.ROI is not None:
-            self.ROI.setVisible(change['value'])
-
-    @observe('show_grid')
-    def showGrid(self, change):
-        """Control the visibility of the grid widget."""
-
-        self.grid_scatter.setVisible(change['value'])
-
-    @observe('show_mask')
-    def showMaskROI(self, change):
-        """Control the visibility of the mask ROI widget."""
-
-        if self.mask_ROI is not None:
-            self.mask_ROI.setVisible(change['value'])
-
-    @observe('intensity')
-    def setIntensity(self, change):
-        """Set the intensity of the image."""
-
-        self.img_item.setLevels((0, change['value']))
-
-    def applyGamma(self, apply_flag):
-        """Apply Gamma correction."""
-
-        if apply_flag:
-            lut = np.array([((i / 255.0) ** 0.4) * 255
-                            for i in np.arange(0, 256)]).astype(np.uint8)
-        else:
-            lut = np.arange(0, 256).astype(np.uint8)
-
-        self.img_item.setLookupTable(lut)
-
-
     def create_widget(self, parent):
         """Create the PyQtGraph widget"""
 
-        win = pg.GraphicsLayoutWidget(parent)
+        self.widget = pg.GraphicsLayoutWidget(parent)
 
-        plot_area = win.addPlot()
+        plot_area = self.widget.addPlot()
         plot_area.hideAxis('bottom')
         plot_area.hideAxis('left')
 
@@ -416,9 +165,6 @@ class PyQtImageView(RawWidget):
         # Callback of mouse click (used for updating the epipolar lines).
         #
         def mouseClicked(evt):
-
-            print  self.proxy.is_active, self.proxy
-            #_ = self.show_ROI, self.show_mask, self.show_almucantar
 
             #
             # Get the click position.
@@ -467,9 +213,247 @@ class PyQtImageView(RawWidget):
         #
         self.drawROIs(plot_area, self.img_array.shape)
 
-        win.resize(400, 400)
+        self.widget.resize(400, 400)
 
-        return win
+        return self.widget
+
+    def set_img_array(self, img_array):
+        """Update the image array."""
+
+        self.img_item.setImage(img_array.astype(np.float))
+
+    def set_Almucantar_coords(self, Almucantar_coords):
+        """Update the Almucantar coords."""
+
+        self.almucantar_scatter.setData(
+            pos=np.array(Almucantar_coords)
+        )
+
+    @observe('show_almucantar')
+    def _show_almucantar(self, change):
+        """Control the visibility of the Almucantar widget."""
+
+        if self.almucantar_scatter is not None:
+            self.almucantar_scatter.setVisible(change['value'])
+
+    @observe('PrincipalPlane_coords')
+    def _update_PrincipalPlane_coords(self, change):
+        """Update the PrincipalPlane coords."""
+
+        if self.principalplane_scatter is not None:
+            self.principalplane_scatter.setData(
+                pos=np.array(change['value'])
+            )
+
+    @observe('show_principalplane')
+    def _show_principalplane(self, change):
+        """Control the visibility of the principalplane widget."""
+
+        if self.principalplane_scatter is not None:
+            self.principalplane_scatter.setVisible(change['value'])
+
+    @observe('show_ROI')
+    def _show_ROI(self, change):
+        """Control the visibility of the ROI widget."""
+
+        print "Works :-)"
+        if self.ROI is not None:
+            self.ROI.setVisible(change['value'])
+
+    @observe('show_grid')
+    def show_grid(self, change):
+        """Control the visibility of the grid widget."""
+
+        self.grid_scatter.setVisible(change['value'])
+
+    @observe('show_mask')
+    def showMaskROI(self, change):
+        """Control the visibility of the mask ROI widget."""
+
+        if self.mask_ROI is not None:
+            self.mask_ROI.setVisible(change['value'])
+
+    @observe('intensity')
+    def setIntensity(self, change):
+        """Set the intensity of the image."""
+
+        self.img_item.setLevels((0, change['value']))
+
+
+class ProxyImageAnalysis(ProxyControl):
+    #: A reference to the ImageView declaration.
+    declaration = ForwardTyped(lambda: ImageView)
+
+
+
+class ImageAnalysis(Control):
+    """A base for PyQtGraph Widgets for enaml.
+
+    It implement different widgets that help in analyzing the images.
+
+    Attributes:
+        img_array (array): Displayed image.
+        epipolar_scatter (pg.ScatterPlotItem): Projection of selected pixel on
+            different images.
+        grid_scatter (pg.ScatterPlotItem): Projection of reconstruction grid on
+            different images.
+        almucantar_scatter (pg.ScatterPlotItem): Projection of the Almucantar on
+            the image.
+        principalplane_scatter (pg.ScatterPlotItem): Projection of the Principal
+            Plane on the image.
+        ROI (pg.RectROI): Rectangle ROI that is extracted for reconstruction.
+        mask_ROI (pg.PolyLineROI): Polygonal ROI that is used for masking out
+            obstructing objects.
+    """
+
+    #
+    # The ID of the current server.
+    #
+    server_id = d_(Str())
+
+    #
+    # The displayed image as numpy array.
+    #
+    img_array = d_(Instance(np.ndarray))
+
+    Almucantar_coords = d_(List())
+    PrincipalPlane_coords = d_(List())
+
+    #
+    # Signals to notify the main model of modifications
+    # that need to be broadcast to the rest of the cameras.
+    #
+    LOS_signal = Signal()
+    epipolar_points = Int(100)
+
+    #
+    # Flags that control the display
+    #
+    show_almucantar = Bool(False)
+    show_principalplane = Bool(False)
+    show_ROI = d_(Bool(False))
+    show_mask = d_(Bool(False))
+    show_grid = d_(Bool(False))
+    gamma = d_(Bool(False))
+    intensity = d_(Int(40))
+
+    #
+    # Extra...
+    #
+    grid_points = Int(1000)
+
+    #
+    # Whether use this view in the exported (reconstruction) data.
+    #
+    export_flag = Bool()
+
+    def updateEpipolar(self, xs, ys):
+        """Update the epipolar markers."""
+
+        self.epipolar_scatter.setData(xs, ys)
+
+    def updateGridPts(self, xs, ys):
+        """Update the Grid markers."""
+
+        self.grid_scatter.setData(xs, ys)
+
+    def getArrayRegion(self, data=None):
+        """Get the region selected by ROI.
+
+        The function accepts an array in the size of the image.
+        It crops a region marked by the ROI.
+
+        Args:
+            data (array): The array to crop the ROI from. If None
+                the image will be croped.
+
+        TODO:
+            Fix the bug that create artifacts.
+        """
+
+        if data is None:
+            data = self.img_array[..., 0].astype(np.float)
+
+        #
+        # Get ROI region.
+        #
+        roi = self.ROI.getArrayRegion(data, self.img_item)
+
+        return roi
+
+    def getMask(self):
+        """Get the mask as set by mask_ROI.
+        """
+
+        data = np.ones(self.img_array.shape[:2], np.uint8)
+
+        #
+        # Get ROI region.
+        #
+        sl, _ = self.mask_ROI.getArraySlice(data, self.img_item, axes=(0, 1))
+        sl_mask = self.mask_ROI.getArrayRegion(data, self.img_item)
+
+        #
+        # The new version of pyqtgraph has some rounding problems.
+        # Fix it the slices accordingly.
+        #
+        fixed_slices = (
+            slice(sl[0].start, sl[0].start+sl_mask.shape[0]),
+            slice(sl[1].start, sl[1].start+sl_mask.shape[1])
+        )
+
+        mask = np.zeros(self.img_array.shape[:2], np.uint8)
+        mask[fixed_slices] = sl_mask
+
+        return mask
+
+    def _ROI_updated(self):
+        """Callback of ROI udpate."""
+
+        _, tr = self.ROI.getArraySlice(
+            self.img_array,
+            self.img_item
+        )
+
+        size = self.ROI.state['size']
+
+        #
+        # Calculate the bounds.
+        #
+        pts = np.array(
+            [tr.map(x, y) for x, y in \
+             ((0, 0), (size.x(), 0), (0, size.y()), (size.x(), size.y()))]
+        )
+
+        self.ROIs_signal.emit(
+            {'server_id': self.server_id, 'pts': pts, 'shape': self.img_array.shape}
+        )
+
+    def update_ROI_resolution(self, old_shape):
+        """Update the ROI_resolution.
+
+        Used to fix the save ROI resolution to new array resolution.
+        """
+
+        s = float(self.img_array.shape[0]) / float(old_shape[0])
+        c = np.array(old_shape)/2
+        t = np.array(self.img_array.shape[:2])/2 -c
+        self.ROI.scale(s, center=c)
+        self.ROI.translate((t[0], t[1]))
+        self.mask_ROI.scale(s, center=c)
+        self.mask_ROI.translate((t[0], t[1]))
+
+    def applyGamma(self, apply_flag):
+        """Apply Gamma correction."""
+
+        if apply_flag:
+            lut = np.array([((i / 255.0) ** 0.4) * 255
+                            for i in np.arange(0, 256)]).astype(np.uint8)
+        else:
+            lut = np.arange(0, 256).astype(np.uint8)
+
+        self.img_item.setLookupTable(lut)
+
 
     #--------------------------------------------------------------------------
     # Observers
@@ -488,22 +472,6 @@ class PyQtImageView(RawWidget):
         super(PyQtImageView, self)._update_proxy(change)
 
 
-    #myFilter = MyEventFilter()
-    #win.installEventFilter(myFilter)
-
-#class MyEventFilter(QtCore.QObject):
-    #def eventFilter(self, event):
-        #if event.type() == QtCore.QEvent.Wheel:
-            ## do some stuff ...
-            #return False # means stop event propagation
-
-        #return super(MyEventFilter,self).eventFilter(event)
-
-
-        ##
-        ## Calculate the Almucantar and PrinciplePlanes
-        ##
-        #Almucantar_coords, PrincipalPlane_coords = \
-            #calcSunphometerCoords(img_data, resolution=img_array.shape[0])
-
+def image_analysis_factory():
+    return ImageAnalysis
 
