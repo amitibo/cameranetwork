@@ -109,7 +109,7 @@ class ImageAnalysis(Control):
     # Flags that control the display
     #
     gamma = d_(Bool(False))
-    intensity = d_(Int(40))
+    intensity = d_(Int(100))
     show_grid = d_(Bool(False))
     show_mask = d_(Bool(False))
     show_ROI = d_(Bool(False))
@@ -323,6 +323,7 @@ class QtImageAnalysis(QtControl, ProxyImageAnalysis):
         super(QtImageAnalysis, self).init_widget()
         d = self.declaration
         self.set_server_id(d.server_id)
+        self.set_img_array(d.img_array)
         self.set_show_almucantar(d.show_almucantar)
         self.set_show_principalplane(d.show_principalplane)
         self.set_show_grid(d.show_grid)

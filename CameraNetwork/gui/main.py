@@ -359,7 +359,7 @@ class ArrayModel(Atom):
 
     main_model = ForwardTyped(lambda: MainModel)
 
-    img_data = Typed(DataObj)
+    img_data = Typed(DataObj, kwargs={})
     img_array = Typed(np.ndarray)
 
     resolution = Int(301)
@@ -380,18 +380,24 @@ class ArrayModel(Atom):
     #
     # The mouse click LOS projected to camera coords.
     #
-    LOS_coords = List()
+    LOS_coords = Tuple()
 
     #
     # The reconstruction grid projected to camera coords.
     #
-    GRID_coords = List()
+    GRID_coords = Tuple()
 
     #
     # Coords of the Almucantar and Principle Planes controls.
     #
     Almucantar_coords = List()
     PrincipalPlane_coords = List()
+
+    def _default_LOS_coords(self):
+        self.LOS_coords = self.projectECEF(self.main_model.LOS_ECEF)
+
+    def _default_GRID_coords(self):
+        self.GRID_coords = self.projectECEF(self.main_model.GRID_ECEF)
 
     def calcLOS(self, x, y, N=EPIPOLAR_N):
         """Create set of points in space.
@@ -519,21 +525,22 @@ class ArrayModel(Atom):
             self.altitude
         )
 
-        self.Almucantar_coords, self.PrincipalPlane_coords = \
+        alm_coords, pp_coords = \
             calcSunphometerCoords(self.img_data, resolution=self.resolution)
-
+        self.Almucantar_coords = alm_coords
+        self.PrincipalPlane_coords = pp_coords
 
     @observe('main_model.LOS_ECEF')
     def _updateEpipolar(self, change):
         """Project the LOS points (mouse click position) to camera."""
 
-        self.LOS_coords = array_model.projectECEF(self.main_model.LOS_ECEF)
+        self.LOS_coords = self.projectECEF(self.main_model.LOS_ECEF)
 
     @observe('main_model.GRID_ECEF')
     def _updateGRID(self, change):
         """Project the reconstruction GRID points to camera coords."""
 
-        self.GRID_coords = array_model.projectECEF(self.main_model.GRID_ECEF)
+        self.GRID_coords = self.projectECEF(self.main_model.GRID_ECEF)
 
 
 class ArraysModel(Atom):
@@ -546,7 +553,7 @@ class ArraysModel(Atom):
     #
     # Intensity level for displayed images.
     #
-    intensity = Int(40)
+    intensity = Int(100)
     gamma = Bool(False)
 
     #
@@ -705,7 +712,7 @@ class MainModel(Atom):
     #
     # The 'mouse click' Line Of Site points in ECEF coords.
     #
-    LOS_ECEF = List()
+    LOS_ECEF = Tuple()
 
     #
     # Sunshader mask threshold used in grabcut algorithm.
