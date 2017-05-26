@@ -13,6 +13,7 @@ from enaml.application import deferred_call, is_main_thread
 from enaml.image import Image as EImage
 from enaml.layout.dock_layout import InsertDockBarItem
 from enaml.qt.qt_application import QtApplication
+from enaml.qt.qt_factories import QT_FACTORIES
 
 from atom.api import Atom, Bool, Signal, Float, Int, Str, Unicode, \
      Typed, observe, Dict, Value, List, Tuple, Instance, ForwardTyped
@@ -21,7 +22,7 @@ from atom.api import Atom, Bool, Signal, Float, Int, Str, Unicode, \
 # Import the enaml view.
 #
 with enaml.imports():
-    from CameraNetwork.gui.enaml_files.camera_view import MainView
+    from CameraNetwork.gui.enaml_files.main_view import MainView
 
 import copy
 import cPickle
@@ -56,6 +57,9 @@ from CameraNetwork.utils import DataObj
 from CameraNetwork.utils import extractImgArray
 from CameraNetwork.utils import sun_direction
 from CameraNetwork.visualization import (convertMapData, loadMapData)
+
+from .image_analysis import image_analysis_factory
+QT_FACTORIES.update({"ImageAnalysis": image_analysis_factory})
 
 import ephem
 import numpy as np
@@ -542,7 +546,7 @@ class ArraysModel(Atom):
     #
     # Intensity level for displayed images.
     #
-    intensity_value = Int(40)
+    intensity = Int(40)
     gamma = Bool(False)
 
     #
@@ -633,10 +637,6 @@ class ArraysModel(Atom):
         self.LOS_ECEF = clicked_model.calcLOS(
             pos_x, pos_y, clicked_view.epipolar_points
         )
-
-    @observe("show_ROIs")
-    def _test(self, change):
-        print "Model:", self.show_ROIs
 
 
 ################################################################################

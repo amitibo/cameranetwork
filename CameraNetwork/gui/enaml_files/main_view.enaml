@@ -18,8 +18,6 @@ from CameraNetwork.mdp import MDP
 import numpy as np
 import time
 
-from CameraNetwork.gui.PyQtWidgets import PyQtImageView
-
 
 ################################################################################
 # The main dockarea.

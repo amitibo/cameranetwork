@@ -6,10 +6,11 @@ from enaml.stdlib.dialog_buttons import DialogButtonBox, DialogButton
 
 from CameraNetwork import global_settings as gs
 from CameraNetwork.gui.data_frame_table import DataFrameTable
-from CameraNetwork.gui.PyQtWidgets import PyQtImageView
+from CameraNetwork.gui.image_analysis import ImageAnalysis
 from traits_enaml.widgets.mayavi_canvas import MayaviCanvas
 
 from .extra import GradientButtonSheet
+from .popups import ImageDataPopup
 from .server_pages import (MainControlsPage, ImageControlPage, SeekControlPage,
     SunshaderControlPage, SprinklerControlPage, IntrinsicControlPage,
     ExtrinsicControlPage, RadiometricControlPage)
@@ -112,28 +113,25 @@ enamldef ArrayView(FlowItem):
     alias title : gb.title
     alias server_id : image_widget.server_id
     alias image_widget
-    alias epipolar_points: image_widget.epipolar_points
     alias Almucantar_coords: image_widget.Almucantar_coords
     alias PrincipalPlane_coords: image_widget.PrincipalPlane_coords
-    alias ROI: image_widget.ROI
-    alias mask_ROI: image_widget.mask_ROI
-    alias export_flag
 
     attr array_model
     attr arrays_model
     attr img_data
 
     GroupBox: gb:
-        PyQtImageView: image_widget:
+        ImageAnalysis: image_widget:
             img_array << array_model.img_array
             Almucantar_coords << array_model.Almucantar_coords
             PrincipalPlane_coords << array_model.PrincipalPlane_coords
+            GRID_coords << array_model.GRID_coords
             server_id << array_model.server_id
-            show_ROI << arrays_model.show_ROIs
-            show_mask << arrays_model.show_masks
-            show_grid << arrays_model.show_grid
-            intensity << arrays_model.intensity
             gamma << arrays_model.gamma
+            intensity << arrays_model.intensity
+            show_grid << arrays_model.show_grid
+            show_mask << arrays_model.show_masks
+            show_ROI << arrays_model.show_ROIs
 
         HGroup:
             CheckBox: almucantar:
@@ -153,7 +151,6 @@ enamldef ArrayView(FlowItem):
 
             CheckBox: export_flag:
                 tool_tip = "Export for reconstruction"
-                checked := image_widget.export_flag
                 text = "Export"
 
 
@@ -270,7 +267,7 @@ enamldef ArraysView(DockItem):
             tick_interval = 50
             minimum = 1
             maximum = 1000
-            value := arrays.intensity_value
+            value := arrays.intensity
 
         Field: intensity_txt:
             text << u'{}'.format(intensity_slider.value)
@@ -372,7 +369,10 @@ enamldef LoggerView(DockItem):
 
     Container:
         constraints = [
-            hbox(log_field, clear)
+            vbox(
+                log_field,
+                hbox(spacer, clear)
+            )
         ]
 
         MultilineField: log_field:
