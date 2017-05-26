@@ -380,21 +380,21 @@ class ArrayModel(Atom):
     #
     # The mouse click LOS projected to camera coords.
     #
-    LOS_coords = Tuple()
+    Epipolar_coords = Tuple(default=())
 
     #
     # The reconstruction grid projected to camera coords.
     #
-    GRID_coords = Tuple()
+    GRID_coords = Tuple(default=())
 
     #
     # Coords of the Almucantar and Principle Planes controls.
     #
-    Almucantar_coords = List()
-    PrincipalPlane_coords = List()
+    Almucantar_coords = List(default=[])
+    PrincipalPlane_coords = List(default=[])
 
-    def _default_LOS_coords(self):
-        self.LOS_coords = self.projectECEF(self.main_model.LOS_ECEF)
+    def _default_Epipolar_coords(self):
+        self.Epipolar_coords = self.projectECEF(self.main_model.LOS_ECEF)
 
     def _default_GRID_coords(self):
         self.GRID_coords = self.projectECEF(self.main_model.GRID_ECEF)
@@ -527,6 +527,7 @@ class ArrayModel(Atom):
 
         alm_coords, pp_coords = \
             calcSunphometerCoords(self.img_data, resolution=self.resolution)
+        print alm_coords, pp_coords
         self.Almucantar_coords = alm_coords
         self.PrincipalPlane_coords = pp_coords
 
@@ -534,7 +535,7 @@ class ArrayModel(Atom):
     def _updateEpipolar(self, change):
         """Project the LOS points (mouse click position) to camera."""
 
-        self.LOS_coords = self.projectECEF(self.main_model.LOS_ECEF)
+        self.Epipolar_coords = self.projectECEF(self.main_model.LOS_ECEF)
 
     @observe('main_model.GRID_ECEF')
     def _updateGRID(self, change):

@@ -100,10 +100,10 @@ class ImageAnalysis(Control):
     #
     # Coordinates of the Almucantar and PrinciplePlane and Epipolar visualizations.
     #
-    Almucantar_coords = d_(List())
-    PrincipalPlane_coords = d_(List())
-    Epipolar_coords = d_(List())
-    GRID_coords = d_(List())
+    Almucantar_coords = d_(List(default=[]))
+    PrincipalPlane_coords = d_(List(default=[]))
+    Epipolar_coords = d_(List(default=[]))
+    GRID_coords = d_(List(default=[]))
 
     #
     # Flags that control the display
@@ -324,6 +324,10 @@ class QtImageAnalysis(QtControl, ProxyImageAnalysis):
         d = self.declaration
         self.set_server_id(d.server_id)
         self.set_img_array(d.img_array)
+        self.set_Almucantar_coords(d.Almucantar_coords)
+        self.set_PrincipalPlane_coords(d.PrincipalPlane_coords)
+        self.set_Epipolar_coords(d.Epipolar_coords)
+        self.set_GRID_coords(d.GRID_coords)
         self.set_show_almucantar(d.show_almucantar)
         self.set_show_principalplane(d.show_principalplane)
         self.set_show_grid(d.show_grid)
@@ -345,9 +349,11 @@ class QtImageAnalysis(QtControl, ProxyImageAnalysis):
         """Update the Almucantar coords."""
 
         if self.almucantar_scatter is None:
+            print("None")
             self.initAlmucantar(Almucantar_coords)
             return
 
+        print("Found here:", Almucantar_coords)
         self.almucantar_scatter.setData(
             pos=np.array(Almucantar_coords)
         )

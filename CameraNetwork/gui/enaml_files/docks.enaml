@@ -126,6 +126,7 @@ enamldef ArrayView(FlowItem):
             Almucantar_coords << array_model.Almucantar_coords
             PrincipalPlane_coords << array_model.PrincipalPlane_coords
             GRID_coords << array_model.GRID_coords
+            Epipolar_coords << array_model.GRID_coords
             server_id << array_model.server_id
             gamma << arrays_model.gamma
             intensity << arrays_model.intensity
