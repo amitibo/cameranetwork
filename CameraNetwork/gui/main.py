@@ -492,7 +492,7 @@ class ArrayModel(Atom):
         # Calculate The x, y of the projected points.
         # Note that x and y here are according to the pyQtGraph convention
         # of right, up (East, North) respectively.
-        #        
+        #
         PSI = np.arccos(neu_pts[:,2])
         PHI = np.arctan2(neu_pts[:,1], neu_pts[:,0])
         R = PSI / self.fov * self.resolution/2
@@ -538,7 +538,6 @@ class ArrayModel(Atom):
     def _updateEpipolar(self, change):
         """Project the LOS points (mouse click position) to camera."""
 
-        logging.info("Update epipolar coords")
         self.Epipolar_coords = self.projectECEF(self.arrays_model.LOS_ECEF)
 
     @observe('main_model.GRID_ECEF')
@@ -629,12 +628,6 @@ class ArraysModel(Atom):
             array_model = ArrayModel(main_model=self.main_model, arrays_model=self)
             new_array_model = True
 
-        ##array_view.image_widget.observe('export_flag', self.updateExport)
-        #array_view.image_widget.observe(
-        #    'ROIs_signal', self.main_model.updateROIs)
-        #array_view.image_widget.observe(
-        #    'LOS_signal', self.updateLOS)
-
         #
         # Update the model.
         #
@@ -659,7 +652,6 @@ class ArraysModel(Atom):
         pos_x, pos_y = data['pos']
 
         clicked_model = self.array_items[server_id]
-
         self.LOS_ECEF = clicked_model.calcLOS(pos_x, pos_y)
 
 
@@ -777,7 +769,6 @@ class MainModel(Atom):
         """Initialize the reconstruction grid."""
 
         self.updateGRID()
-
         return self.GRID_ECEF
 
     ############################################################################

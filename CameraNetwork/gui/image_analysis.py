@@ -11,6 +11,7 @@ from enaml.widgets.control import Control, ProxyControl
 import logging
 import math
 import numpy as np
+import pickle
 import pyqtgraph as pg
 
 pg.setConfigOptions(imageAxisOrder='row-major')
@@ -96,7 +97,7 @@ class ImageAnalysis(Control):
     #
     server_id = d_(Str())
     arrays_model = d_(Instance(Atom))
-    
+
     #
     # The displayed image as numpy array.
     #
@@ -126,7 +127,7 @@ class ImageAnalysis(Control):
     #--------------------------------------------------------------------------
     @observe('img_array', 'server_id', 'Almucantar_coords', 'PrincipalPlane_coords',
              'show_almucantar', 'show_principalplane', 'show_ROI', 'show_mask',
-             'show_grid', 'gamma', 'intensity', 'Epipolar_coords')
+             'show_grid', 'gamma', 'intensity', 'Epipolar_coords', "GRID_coords")
     def _update_proxy(self, change):
         """ Update the proxy widget when the Widget data changes.
 
@@ -144,7 +145,7 @@ class QtImageAnalysis(QtControl, ProxyImageAnalysis):
 
     server_id = Str()
     arrays_model = Instance(Atom)
-    
+
     #
     # Different controls that can be displayed on the GUI
     #
@@ -184,9 +185,9 @@ class QtImageAnalysis(QtControl, ProxyImageAnalysis):
             size=5, pen=pg.mkPen(None), brush=pg.mkBrush(255, 255, 0, 120)
         )
         self.epipolar_scatter.addPoints(
-            pos=np.array(epipolar_coords)
+            pos=np.array(epipolar_coords).T
         )
-        
+
         self.epipolar_scatter.setZValue(100)
 
 
@@ -195,11 +196,14 @@ class QtImageAnalysis(QtControl, ProxyImageAnalysis):
     def initGrid(self, grid_coords):
         """Initialize the grid (scatter points) on the plot."""
 
+        with open("grid.pkl", "wb") as f:
+            pickle.dump(grid_coords, f)
+
         self.grid_scatter = pg.ScatterPlotItem(
             size=1, pen=pg.mkPen(None), brush=pg.mkBrush(255, 255, 255, 120)
         )
         self.grid_scatter.addPoints(
-            pos=np.array(grid_coords)
+            pos=np.array(grid_coords).T
         )
         self.grid_scatter.setZValue(100)
 
@@ -336,16 +340,16 @@ class QtImageAnalysis(QtControl, ProxyImageAnalysis):
         self.set_show_ROI(d.show_ROI)
         self.set_gamma(d.gamma)
         self.set_intensity(d.intensity)
-        self.observe('LOS_signal', self.arrays_model.updateLOS)        
+        self.observe('LOS_signal', self.arrays_model.updateLOS)
 
     def set_server_id(self, server_id):
 
         self.server_id = server_id
 
     def set_arrays_model(self, arrays_model):
-        
+
         self.arrays_model = arrays_model
-        
+
     def set_img_array(self, img_array):
         """Update the image array."""
 
@@ -381,7 +385,7 @@ class QtImageAnalysis(QtControl, ProxyImageAnalysis):
             return
 
         self.epipolar_scatter.setData(
-            pos=np.array(Epipolar_coords)
+            pos=np.array(Epipolar_coords).T
         )
 
     def set_GRID_coords(self, GRID_coords):
@@ -392,7 +396,7 @@ class QtImageAnalysis(QtControl, ProxyImageAnalysis):
             return
 
         self.grid_scatter.setData(
-            pos=np.array(GRID_coords)
+            pos=np.array(GRID_coords).T
         )
 
     def set_show_almucantar(self, show):
