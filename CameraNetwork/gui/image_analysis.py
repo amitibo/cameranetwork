@@ -3,11 +3,12 @@
 Based on the example by blink1073:
 https://gist.github.com/blink1073/7411284
 """
-from atom.api import Instance, Signal, Str, Int, observe, List, Bool, ForwardTyped, Typed, Tuple
+from atom.api import Instance, Signal, Str, Int, observe, List, Bool, ForwardTyped, Typed, Tuple, Instance, Atom
 from enaml.core.declarative import d_
 from enaml.qt import QtCore, QtGui
 from enaml.qt.qt_control import QtControl
 from enaml.widgets.control import Control, ProxyControl
+import logging
 import math
 import numpy as np
 import pyqtgraph as pg
@@ -25,6 +26,9 @@ class ProxyImageAnalysis(ProxyControl):
     declaration = ForwardTyped(lambda: ImageAnalysis)
 
     def set_server_id(self, server_id):
+        raise NotImplementedError
+
+    def set_arrays_model(self, arrays_model):
         raise NotImplementedError
 
     def set_img_array(self, img_array):
@@ -88,14 +92,11 @@ class ImageAnalysis(Control):
     proxy = Typed(ProxyImageAnalysis)
 
     #
-    # M
-    #
-
-    #
     # The ID of the current server.
     #
     server_id = d_(Str())
-
+    arrays_model = d_(Instance(Atom))
+    
     #
     # The displayed image as numpy array.
     #
@@ -120,18 +121,12 @@ class ImageAnalysis(Control):
     show_almucantar = Bool(False)
     show_principalplane = Bool(False)
 
-    #
-    # Signals to notify the main model of modifications
-    # that need to be broadcast to the rest of the cameras.
-    #
-    LOS_signal = Signal()
-
     #--------------------------------------------------------------------------
     # Observers
     #--------------------------------------------------------------------------
     @observe('img_array', 'server_id', 'Almucantar_coords', 'PrincipalPlane_coords',
              'show_almucantar', 'show_principalplane', 'show_ROI', 'show_mask',
-             'show_grid', 'gamma', 'intensity')
+             'show_grid', 'gamma', 'intensity', 'Epipolar_coords')
     def _update_proxy(self, change):
         """ Update the proxy widget when the Widget data changes.
 
@@ -148,7 +143,8 @@ class QtImageAnalysis(QtControl, ProxyImageAnalysis):
     widget = Typed(pg.GraphicsLayoutWidget)
 
     server_id = Str()
-
+    arrays_model = Instance(Atom)
+    
     #
     # Different controls that can be displayed on the GUI
     #
@@ -171,6 +167,12 @@ class QtImageAnalysis(QtControl, ProxyImageAnalysis):
     mask_ROI = Instance(pg.PolyLineROI)
 
     #
+    # Signals to notify the main model of modifications
+    # that need to be broadcast to the rest of the cameras.
+    #
+    LOS_signal = Signal()
+
+    #
     # The image itself, a PyQtGraph ImageItem.
     #
     img_item = Instance(pg.ImageItem)
@@ -184,7 +186,9 @@ class QtImageAnalysis(QtControl, ProxyImageAnalysis):
         self.epipolar_scatter.addPoints(
             pos=np.array(epipolar_coords)
         )
+        
         self.epipolar_scatter.setZValue(100)
+
 
         self.plot_area.addItem(self.epipolar_scatter)
 
@@ -275,15 +279,7 @@ class QtImageAnalysis(QtControl, ProxyImageAnalysis):
             x, y = np.clip((mp.x(), mp.y()), 0, h-1).astype(np.int)
 
             #
-            # Update the epiploar line of this view.
-            #
-            self.updateEpipolar(
-                self.epipolar_points*[x],
-                self.epipolar_points*[y]
-            )
-
-            #
-            # Update the epipolar line of all other views.
+            # Update the LOS points.
             #
             self.LOS_signal.emit(
                 {'server_id': self.server_id, 'pos': (x, y)}
@@ -327,6 +323,7 @@ class QtImageAnalysis(QtControl, ProxyImageAnalysis):
         super(QtImageAnalysis, self).init_widget()
         d = self.declaration
         self.set_server_id(d.server_id)
+        self.set_arrays_model(d.arrays_model)
         self.set_img_array(d.img_array)
         self.set_Almucantar_coords(d.Almucantar_coords)
         self.set_PrincipalPlane_coords(d.PrincipalPlane_coords)
@@ -339,11 +336,16 @@ class QtImageAnalysis(QtControl, ProxyImageAnalysis):
         self.set_show_ROI(d.show_ROI)
         self.set_gamma(d.gamma)
         self.set_intensity(d.intensity)
+        self.observe('LOS_signal', self.arrays_model.updateLOS)        
 
     def set_server_id(self, server_id):
 
         self.server_id = server_id
 
+    def set_arrays_model(self, arrays_model):
+        
+        self.arrays_model = arrays_model
+        
     def set_img_array(self, img_array):
         """Update the image array."""
 

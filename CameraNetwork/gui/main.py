@@ -358,6 +358,7 @@ class ArrayModel(Atom):
     """Representation of an image array."""
 
     main_model = ForwardTyped(lambda: MainModel)
+    arrays_model = ForwardTyped(lambda: ArraysModel)
 
     img_data = Typed(DataObj, kwargs={})
     img_array = Typed(np.ndarray)
@@ -380,12 +381,12 @@ class ArrayModel(Atom):
     #
     # The mouse click LOS projected to camera coords.
     #
-    Epipolar_coords = Tuple(default=())
+    Epipolar_coords = Tuple()
 
     #
     # The reconstruction grid projected to camera coords.
     #
-    GRID_coords = Tuple(default=())
+    GRID_coords = Tuple()
 
     #
     # Coords of the Almucantar and Principle Planes controls.
@@ -394,14 +395,14 @@ class ArrayModel(Atom):
     PrincipalPlane_coords = List(default=[])
 
     def _default_Epipolar_coords(self):
-        Epipolar_coords = self.projectECEF(self.main_model.LOS_ECEF)
+        Epipolar_coords = self.projectECEF(self.arrays_model.LOS_ECEF)
         return Epipolar_coords
 
     def _default_GRID_coords(self):
         GRID_coords = self.projectECEF(self.main_model.GRID_ECEF)
         return GRID_coords
 
-    def calcLOS(self, x, y, N=EPIPOLAR_N):
+    def calcLOS(self, x, y):
         """Create set of points in space.
 
         Create a Line Of Sight (LOS) points, set by the
@@ -436,7 +437,7 @@ class ArrayModel(Atom):
         # Calculate a LOS in this direction.
         # The LOS is first calculated in local coords (NED) of the camera.
         #
-        pts = np.linspace(0, EPIPOLAR_length, N)
+        pts = np.linspace(100, gs.LOS_LENGTH, gs.LOS_PTS_NUM)
         Z = -math.cos(psi) * pts
         X = math.sin(psi) * math.cos(phi) * pts
         Y = math.sin(psi) * math.sin(phi) * pts
@@ -477,8 +478,9 @@ class ArrayModel(Atom):
         #
         # Normalize the points
         #
-        neu_pts = \
-            neu_pts/np.linalg.norm(neu_pts, axis=1).reshape(-1, 1)
+        with np.errstate(all='raise'):
+            neu_pts = \
+                neu_pts/np.linalg.norm(neu_pts, axis=1).reshape(-1, 1)
 
         #
         # Zero points below the horizon.
@@ -490,7 +492,7 @@ class ArrayModel(Atom):
         # Calculate The x, y of the projected points.
         # Note that x and y here are according to the pyQtGraph convention
         # of right, up (East, North) respectively.
-        #
+        #        
         PSI = np.arccos(neu_pts[:,2])
         PHI = np.arctan2(neu_pts[:,1], neu_pts[:,0])
         R = PSI / self.fov * self.resolution/2
@@ -532,11 +534,12 @@ class ArrayModel(Atom):
         self.Almucantar_coords = alm_coords
         self.PrincipalPlane_coords = pp_coords
 
-    @observe('main_model.LOS_ECEF')
+    @observe('arrays_model.LOS_ECEF')
     def _updateEpipolar(self, change):
         """Project the LOS points (mouse click position) to camera."""
 
-        self.Epipolar_coords = self.projectECEF(self.main_model.LOS_ECEF)
+        logging.info("Update epipolar coords")
+        self.Epipolar_coords = self.projectECEF(self.arrays_model.LOS_ECEF)
 
     @observe('main_model.GRID_ECEF')
     def _updateGRID(self, change):
@@ -566,9 +569,23 @@ class ArraysModel(Atom):
     show_masks = Bool(False)
 
     #
-    # The mouse click LOS in ECEF coords.
+    # The 'mouse click' Line Of Site points in ECEF coords.
     #
-    LOS_ECEF = List()
+    LOS_ECEF = Tuple()
+
+    def _default_LOS_ECEF(self):
+        """Initialize the default LOS in ECEF coords."""
+
+        X, Y, Z = np.meshgrid(
+            np.zeros(1),
+            np.zeros(1),
+            np.linspace(-gs.LOS_LENGTH, -100, gs.LOS_PTS_NUM),
+        )
+
+        LOS_ECEF = pymap3d.ned2ecef(
+            X, Y, Z, self.main_model.latitude, self.main_model.longitude, self.main_model.altitude)
+
+        return LOS_ECEF
 
     def clear_arrays(self):
         """Clear all arrays."""
@@ -609,7 +626,7 @@ class ArraysModel(Atom):
             #
             # The specific camera is not displayed. Create it.
             #
-            array_model = ArrayModel(main_model=self.main_model)
+            array_model = ArrayModel(main_model=self.main_model, arrays_model=self)
             new_array_model = True
 
         ##array_view.image_widget.observe('export_flag', self.updateExport)
@@ -643,9 +660,7 @@ class ArraysModel(Atom):
 
         clicked_model = self.array_items[server_id]
 
-        self.LOS_ECEF = clicked_model.calcLOS(
-            pos_x, pos_y, clicked_view.epipolar_points
-        )
+        self.LOS_ECEF = clicked_model.calcLOS(pos_x, pos_y)
 
 
 ################################################################################
@@ -712,11 +727,6 @@ class MainModel(Atom):
     grid_length = Float(6000)
 
     #
-    # The 'mouse click' Line Of Site points in ECEF coords.
-    #
-    LOS_ECEF = Tuple()
-
-    #
     # Sunshader mask threshold used in grabcut algorithm.
     #
     grabcut_threshold = Float(3)
@@ -769,43 +779,6 @@ class MainModel(Atom):
         self.updateGRID()
 
         return self.GRID_ECEF
-
-    def _default_LOS_ECEF(self):
-        """Initialize the default LOS in ECEF coords."""
-
-        #
-        # Calculate the bounding box of the grid.
-        #
-        s_pts = np.array((-self.grid_length/2, -self.grid_width/2, -self.TOG))
-        e_pts = np.array((self.grid_length/2, self.grid_width/2, 0))
-
-        #
-        # Create the grid.
-        # Note GRID_NED is an open grid storing the requested
-        # grid resolution. It is used for reconstruction and also
-        # for visualization in the 3D map.
-        #
-        self.GRID_NED = (
-            np.arange(s_pts[0], e_pts[0]+self.delx, self.delx),
-            np.arange(s_pts[1], e_pts[1]+self.dely, self.dely),
-            np.arange(s_pts[2], e_pts[2]+self.delz, self.delz)
-        )
-
-        #
-        # GRID_ECEF is just for visualization of the grid on the
-        # image arrays.
-        #
-        X, Y, Z = np.meshgrid(
-            np.zeros(gs.LOS_PTS_NUM),
-            np.zeros(gs.LOS_PTS_NUM),
-            np.linspace(-8000, 0, gs.LOS_PTS_NUM),
-        )
-
-        LOS_ECEF = pymap3d.ned2ecef(
-            X, Y, Z, self.latitude, self.longitude, self.altitude)
-
-
-        return LOS_ECEF
 
     ############################################################################
     # GUI communication.
