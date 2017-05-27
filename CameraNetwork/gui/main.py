@@ -22,7 +22,7 @@ from atom.api import Atom, Bool, Signal, Float, Int, Str, Unicode, \
 # Import the enaml view.
 #
 with enaml.imports():
-    from CameraNetwork.gui.enaml_files.main_view import MainView
+    from CameraNetwork.gui.enaml_files.main_view import MainView, ArrayView
 
 import copy
 import cPickle
@@ -359,6 +359,7 @@ class ArrayModel(Atom):
 
     main_model = ForwardTyped(lambda: MainModel)
     arrays_model = ForwardTyped(lambda: ArraysModel)
+    image_widget = Instance(Atom)
 
     img_data = Typed(DataObj, kwargs={})
     img_array = Typed(np.ndarray)
@@ -625,8 +626,16 @@ class ArraysModel(Atom):
             #
             # The specific camera is not displayed. Create it.
             #
-            array_model = ArrayModel(main_model=self.main_model, arrays_model=self)
             new_array_model = True
+            array_model = ArrayModel(main_model=self.main_model, arrays_model=self)
+            view_index = sorted(server_keys+[server_id]).index(server_id)
+            #image_widget = new_array_view(
+                #server_id=server_id,
+                #arrays_model=self,
+                #array_model=array_model,
+                #view_index=view_index
+            #)
+            #array_model.image_widget = image_widget
 
         #
         # Update the model.
@@ -895,13 +904,13 @@ class MainModel(Atom):
     def exportData(self):
         """Export data for reconstruction."""
 
-        if len(self.array_items.items()) == 0:
+        if len(self.arrays.array_items.keys()) == 0:
             return
 
         #
         # Unique base path
         #
-        array_model = self.array_items.values()[0][0]
+        array_model = self.arrays.array_items.values()[0][0]
         base_path = os.path.join(
             'reconstruction',
             array_model.img_data.name_time.strftime("%Y_%m_%d_%H_%M_%S")
@@ -1391,6 +1400,8 @@ class ServerModel(Atom):
 class Controller(Atom):
 
     model = Typed(MainModel)
+    arrays = Typed(ArraysModel)
+
     view = Typed(MainView)
 
     @observe('model.settings_signal')
@@ -1402,6 +1413,26 @@ class Controller(Atom):
     @observe('model.thumb')
     def new_thumb_popup(self, change):
         new_thumbnail(self.model.thumb)
+
+    @observe('arrays.array_items')
+    def update_arrays(self, change):
+        if change["type"]  != 'update' or change["value"] == {}:
+            return
+
+        server_keys = change["value"].keys()
+        new_server_id = list(
+            set(server_keys) - set(change["oldvalue"].keys()))[0]
+
+        view_index = sorted(server_keys).index(new_server_id)
+
+        array_view = ArrayView(
+            title=new_server_id,
+            server_id=new_server_id,
+            array_model=change["value"][new_server_id],
+            arrays_model=self.arrays
+        )
+
+        self.view.array_views.objects.insert(view_index, array_view)
 
 
 ################################################################################
@@ -1425,7 +1456,7 @@ def startGUI(local_mode):
 
     view = MainView(main_model=main_model)
 
-    controller = Controller(model=main_model, view=view)
+    controller = Controller(model=main_model, arrays=main_model.arrays, view=view)
 
     view.show()
 

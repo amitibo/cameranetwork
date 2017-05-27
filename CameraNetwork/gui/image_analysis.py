@@ -459,7 +459,7 @@ class QtImageAnalysis(QtControl, ProxyImageAnalysis):
             data (array): The array to crop the ROI from.
 
         TODO:
-            Fix the bug that create artifacts.
+            Fix the bug that creates artifacts.
         """
 
         #

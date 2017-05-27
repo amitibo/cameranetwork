@@ -259,6 +259,7 @@ enamldef ArraysView(DockItem):
             text = 'Clear'
             clicked ::
                 arrays.clear_arrays()
+                array_views.objects = []
 
         Label: intensity_lbl:
             text = 'Intensity Level'
@@ -283,14 +284,7 @@ enamldef ArraysView(DockItem):
         Container: arrays_cont:
             FlowArea: arrays_area:
                 Include: array_views:
-                    objects << [
-                        ArrayView(
-                            title=si,
-                            server_id=si,
-                            array_model=arrays.array_items[si],
-                            arrays_model=arrays
-                        ) for si in sorted(arrays.array_items.keys())
-                    ]
+                    pass
 
         PushButton: load_pb:
             text = 'Load ROI'

@@ -10,6 +10,7 @@ from enaml.stdlib.task_dialog import (TaskDialogBody, TaskDialogCommandArea,
 from enaml.stdlib.message_box import (MessageBox, about, critical, information,
     question, warning)
 
+from .docks import ArrayView
 from .popups import (ImageDataPopup, MsgDataPopup, ThumbPopup)
 from .settings import (GlobalSettingsDialog, SettingsDialog, ReconstructDialog, CameraListDialog)
 
