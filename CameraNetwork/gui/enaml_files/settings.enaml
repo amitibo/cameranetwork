@@ -12,7 +12,7 @@ from CameraNetwork import global_settings as gs
 #
 enamldef SettingsDialog(Dialog): ServerSettingsPopup:
     title = 'Server Settings {}'.format(server_model.server_id)
-    attr client_model
+    attr main_model
     attr server_model
 
     VGroup:
@@ -141,7 +141,7 @@ enamldef SettingsDialog(Dialog): ServerSettingsPopup:
 #
 enamldef GlobalSettingsDialog(Dialog): ClientSettingsPopup:
     title = 'Global Capture Settings'
-    attr client_model
+    attr main_model
 
     VGroup:
         Form:
@@ -150,11 +150,11 @@ enamldef GlobalSettingsDialog(Dialog): ClientSettingsPopup:
             Label:
                 text = 'Upload Jpeg'
             CheckBox: upload_jpg:
-                checked := client_model.capture_settings[gs.UPLOAD_JPG_FILE]
+                checked := main_model.capture_settings[gs.UPLOAD_JPG_FILE]
             Label:
                 text = 'Upload Mat'
             CheckBox: upload_mat:
-                checked := client_model.capture_settings[gs.UPLOAD_MAT_FILE]
+                checked := main_model.capture_settings[gs.UPLOAD_MAT_FILE]
             Label:
                 text = 'Period'
             ComboBox: daynight:
@@ -165,41 +165,41 @@ enamldef GlobalSettingsDialog(Dialog): ClientSettingsPopup:
             SpinBox: loop_delay:
                 minimum = 2
                 maximum = 3600
-                value := client_model.capture_settings[daynight.selected_item][gs.LOOP_DELAY]
+                value := main_model.capture_settings[daynight.selected_item][gs.LOOP_DELAY]
             Label:
                 text = 'Shutter [uS]'
             IntField: shutter:
-                value := client_model.capture_settings[daynight.selected_item][gs.IMAGE_EXPOSURE]
+                value := main_model.capture_settings[daynight.selected_item][gs.IMAGE_EXPOSURE]
             Label:
                 text = 'GAIN'
             IntField: gain:
                 minimum = 0
                 maximum = 100
-                value << int(client_model.capture_settings[daynight.selected_item][gs.IMAGE_GAIN])
-                value >> client_model.capture_settings[daynight.selected_item][gs.IMAGE_GAIN]
+                value << int(main_model.capture_settings[daynight.selected_item][gs.IMAGE_GAIN])
+                value >> main_model.capture_settings[daynight.selected_item][gs.IMAGE_GAIN]
             Label:
                 text = 'Gain Boost'
             CheckBox: gain_boost:
-                checked := client_model.capture_settings[daynight.selected_item][gs.GAIN_BOOST]
+                checked := main_model.capture_settings[daynight.selected_item][gs.GAIN_BOOST]
             Label:
                 text = 'Frames #'
             SpinBox: frames_num_1:
                 minimum = 1
                 maximum = 30
-                value := client_model.capture_settings[daynight.selected_item][gs.FRAMES_NUM]
+                value := main_model.capture_settings[daynight.selected_item][gs.FRAMES_NUM]
             Label:
                 text = 'HDR frames'
                 tool_tip = 'Number of HDR exposures (1 for no HDR)'
             SpinBox: hdr_mode:
                 minimum = 1
                 maximum = 8
-                value := client_model.capture_settings[daynight.selected_item][gs.HDR_MODE]
+                value := main_model.capture_settings[daynight.selected_item][gs.HDR_MODE]
             Label:
                 text = 'Mode'
             ComboBox: cmode:
-                index << cmode.items.index(client_model.capture_settings[daynight.selected_item][gs.COLOR_MODE])
+                index << cmode.items.index(main_model.capture_settings[daynight.selected_item][gs.COLOR_MODE])
                 index ::
-                    client_model.capture_settings[daynight.selected_item][gs.COLOR_MODE] = cmode.items[cmode.index]
+                    main_model.capture_settings[daynight.selected_item][gs.COLOR_MODE] = cmode.items[cmode.index]
                 items = [gs.COLOR_RAW, gs.COLOR_RGB]
 
         DialogButtonBox: bbox:
@@ -216,7 +216,7 @@ enamldef GlobalSettingsDialog(Dialog): ClientSettingsPopup:
 #
 enamldef ReconstructDialog(Dialog): popup:
     title = 'Export Reconstruction'
-    attr client_model
+    attr main_model
 
     Container:
         GroupBox:
@@ -226,17 +226,17 @@ enamldef ReconstructDialog(Dialog): popup:
                 Label:
                     text = 'Latitude:'
                 FloatField: latitude:
-                    value := client_model.latitude
+                    value := main_model.latitude
 
                 Label:
                     text = 'Longitude:'
                 FloatField: longitude:
-                    value := client_model.longitude
+                    value := main_model.longitude
 
                 Label:
                     text = 'Altitude:'
                 IntField: altitude:
-                    value := client_model.altitude
+                    value := main_model.altitude
 
         GroupBox:
             title = 'LIDAR Grid'
@@ -246,26 +246,26 @@ enamldef ReconstructDialog(Dialog): popup:
                     text = 'delx:'
                 FloatField: delx:
                     tool_tip = "Delta X of Lidar Grid [m]"
-                    value := client_model.delx
+                    value := main_model.delx
 
                 Label:
                     text = 'dely:'
                 FloatField: dely:
                     tool_tip = "Delta Y of Lidar Grid [m]"
-                    value := client_model.dely
+                    value := main_model.dely
 
                 Label:
                     text = 'delz:'
                 FloatField: delz:
                     tool_tip = "Delta X of Lidar Grid [m]"
-                    value := client_model.delz
+                    value := main_model.delz
 
                 Label:
                     text = 'mode:'
                 ObjectCombo: grid_mode:
                     tool_tip = "Set to auto to bound grid by cameras."
                     items = ["Manual", "Auto"]
-                    selected := client_model.grid_mode
+                    selected := main_model.grid_mode
 
                 Label:
                     text = 'Grid Length:'
@@ -273,7 +273,7 @@ enamldef ReconstructDialog(Dialog): popup:
                 FloatField: grid_length:
                     tool_tip = "Length of Grid (X - East)"
                     visible << grid_mode.selected == "Manual"
-                    value := client_model.grid_length
+                    value := main_model.grid_length
 
                 Label:
                     text = 'Grid Width:'
@@ -281,19 +281,19 @@ enamldef ReconstructDialog(Dialog): popup:
                 FloatField: grid_width:
                     tool_tip = "Width of Grid (Y - North)"
                     visible << grid_mode.selected == "Manual"
-                    value := client_model.grid_width
+                    value := main_model.grid_width
 
                 Label:
                     text = 'TOG:'
                 FloatField: TOG:
                     tool_tip = "Top of Lidar Grid [m]"
-                    value := client_model.TOG
+                    value := main_model.TOG
 
                 Label:
                     text = 'Grabcut Threshold:'
                 FloatField: grabcut_threshold:
                     tool_tip = "Threshold for the sunshader segmentation."
-                    value := client_model.grabcut_threshold
+                    value := main_model.grabcut_threshold
 
         DialogButtonBox: bbox:
             buttons = [
@@ -307,7 +307,7 @@ enamldef ReconstructDialog(Dialog): popup:
 #
 enamldef CameraListDialog(Dialog): popup:
     title = 'Camera View Selection'
-    attr client_model
+    attr main_model
 
     Container:
         constraints = [
@@ -321,7 +321,7 @@ enamldef CameraListDialog(Dialog): popup:
         ScrollArea: scroller:
             Container:
                 Looper: looper:
-                    iterable << client_model.servers_dict.values()
+                    iterable << main_model.servers_dict.values()
                     CheckBox:
                         text = 'pb %s' % loop_index
 
