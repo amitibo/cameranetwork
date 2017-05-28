@@ -23,6 +23,8 @@ from atom.api import Atom, Bool, Signal, Float, Int, Str, Unicode, \
 #
 with enaml.imports():
     from CameraNetwork.gui.enaml_files.main_view import MainView, ArrayView
+    from CameraNetwork.gui.enaml_files.popups import ThumbPopup
+    from CameraNetwork.gui.enaml_files.settings import SettingsDialog
 
 import copy
 import cPickle
