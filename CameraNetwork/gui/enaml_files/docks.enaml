@@ -133,7 +133,9 @@ enamldef ArrayView(FlowItem):
             intensity << arrays_model.intensity
             show_grid << arrays_model.show_grid
             show_mask << arrays_model.show_masks
+            mask_ROI_state := array_model.mask_ROI_state
             show_ROI << arrays_model.show_ROIs
+            ROI_state := array_model.ROI_state
 
         HGroup:
             CheckBox: almucantar:

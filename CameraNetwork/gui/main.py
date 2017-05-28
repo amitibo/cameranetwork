@@ -397,6 +397,12 @@ class ArrayModel(Atom):
     Almucantar_coords = List(default=[])
     PrincipalPlane_coords = List(default=[])
 
+    #
+    # ROIs state.
+    #
+    ROI_state = Dict()
+    mask_ROI_state = Dict()
+    
     def _default_Epipolar_coords(self):
         Epipolar_coords = self.projectECEF(self.arrays_model.LOS_ECEF)
         return Epipolar_coords
@@ -661,18 +667,19 @@ class ArraysModel(Atom):
             if not os.path.exists(base_path):
                 os.makedirs(base_path)
 
+        array_model = self.array_items.values()[0]
         dst_path = os.path.join(
             base_path,
-            self.main_model.img_index[0].to_pydatetime().strftime("%Y_%m_%d_%H_%M_%S.pkl")
+            array_model.img_data.name_time.strftime("%Y_%m_%d_%H_%M_%S.pkl")
         )
 
         rois_dict = {}
         masks_dict = {}
         array_shapes = {}
         for server_id in self.array_items.keys():
-            rois_dict[server_id] = self.array_views[server_id].ROI.saveState()
-            masks_dict[server_id] = self.array_views[server_id].mask_ROI.saveState()
-            array_shapes[server_id] = self.array_views[server_id].img_array.shape[:2]
+            rois_dict[server_id] = self.array_items[server_id].ROI_state
+            masks_dict[server_id] = self.array_items[server_id].mask_ROI_state
+            array_shapes[server_id] = self.array_items[server_id].img_array.shape[:2]
 
         with open(dst_path, 'wb') as f:
             cPickle.dump((rois_dict, masks_dict, array_shapes), f)
@@ -688,9 +695,9 @@ class ArraysModel(Atom):
                 if server_id not in rois_dict:
                     continue
 
-                self.array_views[server_id].ROI.setState(rois_dict[server_id])
-                self.array_views[server_id].mask_ROI.setState(masks_dict[server_id])
-                self.array_views[server_id].image_widget.update_ROI_resolution(array_shapes[server_id])
+                self.array_items[server_id].ROI_state = rois_dict[server_id]
+                self.array_items[server_id].mask_ROI_state = masks_dict[server_id]
+                #self.array_views[server_id].image_widget.update_ROI_resolution(array_shapes[server_id])
 
         except Exception as e:
             logging.error(

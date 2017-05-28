@@ -68,6 +68,12 @@ class ProxyImageAnalysis(ProxyControl):
     def set_intensity(self, intensity):
         raise NotImplementedError
 
+    def set_ROI_state(self, state):
+        raise NotImplementedError
+
+    def set_mask_ROI_state(self, state):
+        raise NotImplementedError
+
 
 class ImageAnalysis(Control):
     """A base for PyQtGraph Widgets for enaml.
@@ -122,12 +128,19 @@ class ImageAnalysis(Control):
     show_almucantar = Bool(False)
     show_principalplane = Bool(False)
 
+    #
+    # State of the ROIs
+    #
+    ROI_state = d_(Dict())
+    mask_ROI_state = d_(Dict())
+
     #--------------------------------------------------------------------------
     # Observers
     #--------------------------------------------------------------------------
     @observe('img_array', 'server_id', 'Almucantar_coords', 'PrincipalPlane_coords',
              'show_almucantar', 'show_principalplane', 'show_ROI', 'show_mask',
-             'show_grid', 'gamma', 'intensity', 'Epipolar_coords', "GRID_coords")
+             'show_grid', 'gamma', 'intensity', 'Epipolar_coords', "GRID_coords",
+             'ROI_state', 'mask_ROI_state')
     def _update_proxy(self, change):
         """ Update the proxy widget when the Widget data changes.
 
@@ -159,7 +172,7 @@ class QtImageAnalysis(QtControl, ProxyImageAnalysis):
     # ROI - Rectangle ROI that can be set by the user.
     #
     ROI = Instance(pg.RectROI)
-    ROIs_signal = Signal()
+    ROI_signal = Signal()
 
     #
     # mask_ROI - Polygon ROI that can be use to mask buildings and other
@@ -264,6 +277,7 @@ class QtImageAnalysis(QtControl, ProxyImageAnalysis):
         # Callback when the user stopsmoving a ROI.
         #
         self.ROI.sigRegionChangeFinished.connect(self._ROI_updated)
+        self.mask_ROI.sigRegionChangeFinished.connect(self._mask_updated)
 
         self.plot_area.vb.addItem(self.ROI)
 
@@ -340,6 +354,8 @@ class QtImageAnalysis(QtControl, ProxyImageAnalysis):
         self.set_show_ROI(d.show_ROI)
         self.set_gamma(d.gamma)
         self.set_intensity(d.intensity)
+        self.set_ROI_state(d.ROI_state)
+        self.set_mask_ROI_state(d.mask_ROI_state)
         self.observe('LOS_signal', self.arrays_model.updateLOS)
 
     def set_server_id(self, server_id):
@@ -449,6 +465,22 @@ class QtImageAnalysis(QtControl, ProxyImageAnalysis):
 
         self.img_item.setLevels((0, intensity))
 
+    def set_ROI_state(self, state):
+        """Set the ROI."""
+
+        if state == {}:
+            return
+
+        self.ROI.setState(state)
+
+    def set_mask_ROI_state(self, state):
+        """Set the mask ROI."""
+
+        if state == {}:
+            return
+
+        self.mask_ROI.setState(state)
+
     def getArrayRegion(self, data):
         """Get the region selected by ROI.
 
@@ -472,6 +504,11 @@ class QtImageAnalysis(QtControl, ProxyImageAnalysis):
     def _ROI_updated(self):
         """Callback of ROI udpate."""
 
+        #
+        # Propagate the state of the ROI
+        #
+        self.declaration.ROI_state = self.ROI.saveState()
+        
         _, tr = self.ROI.getArraySlice(
             self.img_item.image,
             self.img_item
@@ -487,10 +524,15 @@ class QtImageAnalysis(QtControl, ProxyImageAnalysis):
              ((0, 0), (size.x(), 0), (0, size.y()), (size.x(), size.y()))]
         )
 
-        self.ROIs_signal.emit(
+        self.ROI_signal.emit(
             {'server_id': self.server_id, 'pts': pts, 'shape': self.img_item.image.shape}
         )
 
+    def _mask_updated(self):
+        """Callback of mask udpate."""
+
+        self.declaration.mask_ROI_state = self.mask_ROI.saveState()
+        
     def update_ROI_resolution(self, old_shape):
         """Update the ROI_resolution.
 
