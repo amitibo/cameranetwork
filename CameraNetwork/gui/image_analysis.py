@@ -3,7 +3,7 @@
 Based on the example by blink1073:
 https://gist.github.com/blink1073/7411284
 """
-from atom.api import Instance, Signal, Str, Int, observe, List, Bool, ForwardTyped, Typed, Tuple, Instance, Atom
+from atom.api import Dict, Instance, Signal, Str, Int, observe, List, Bool, ForwardTyped, Typed, Tuple, Instance, Atom
 from enaml.core.declarative import d_
 from enaml.qt import QtCore, QtGui
 from enaml.qt.qt_control import QtControl
@@ -481,26 +481,6 @@ class QtImageAnalysis(QtControl, ProxyImageAnalysis):
 
         self.mask_ROI.setState(state)
 
-    def getArrayRegion(self, data):
-        """Get the region selected by ROI.
-
-        The function accepts an array in the size of the image.
-        It crops a region marked by the ROI.
-
-        Args:
-            data (array): The array to crop the ROI from.
-
-        TODO:
-            Fix the bug that creates artifacts.
-        """
-
-        #
-        # Get ROI region.
-        #
-        roi = self.ROI.getArrayRegion(data, self.img_item)
-
-        return roi
-
     def _ROI_updated(self):
         """Callback of ROI udpate."""
 
@@ -508,7 +488,7 @@ class QtImageAnalysis(QtControl, ProxyImageAnalysis):
         # Propagate the state of the ROI
         #
         self.declaration.ROI_state = self.ROI.saveState()
-        
+
         _, tr = self.ROI.getArraySlice(
             self.img_item.image,
             self.img_item
@@ -532,7 +512,7 @@ class QtImageAnalysis(QtControl, ProxyImageAnalysis):
         """Callback of mask udpate."""
 
         self.declaration.mask_ROI_state = self.mask_ROI.saveState()
-        
+
     def update_ROI_resolution(self, old_shape):
         """Update the ROI_resolution.
 
@@ -546,6 +526,26 @@ class QtImageAnalysis(QtControl, ProxyImageAnalysis):
         self.ROI.translate((t[0], t[1]))
         self.mask_ROI.scale(s, center=c)
         self.mask_ROI.translate((t[0], t[1]))
+
+    def getArrayRegion(self, data):
+        """Get the region selected by ROI.
+
+        The function accepts an array in the size of the image.
+        It crops a region marked by the ROI.
+
+        Args:
+            data (array): The array to crop the ROI from.
+
+        TODO:
+            Fix the bug that creates artifacts.
+        """
+
+        #
+        # Get ROI region.
+        #
+        roi = self.ROI.getArrayRegion(data, self.img_item)
+
+        return roi
 
 
 def image_analysis_factory():

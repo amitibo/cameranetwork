@@ -402,7 +402,7 @@ class ArrayModel(Atom):
     #
     ROI_state = Dict()
     mask_ROI_state = Dict()
-    
+
     def _default_Epipolar_coords(self):
         Epipolar_coords = self.projectECEF(self.arrays_model.LOS_ECEF)
         return Epipolar_coords
@@ -662,6 +662,9 @@ class ArraysModel(Atom):
     def save_rois(self, base_path=None):
         """Save the current ROIS for later use."""
 
+        #
+        # Prepare a (semi-)unique path.
+        #
         if base_path is None:
             base_path = pkg_resources.resource_filename("CameraNetwork", "../data/ROIS")
             if not os.path.exists(base_path):
@@ -673,6 +676,9 @@ class ArraysModel(Atom):
             array_model.img_data.name_time.strftime("%Y_%m_%d_%H_%M_%S.pkl")
         )
 
+        #
+        # Get the states of the ROIs.
+        #
         rois_dict = {}
         masks_dict = {}
         array_shapes = {}
@@ -681,6 +687,9 @@ class ArraysModel(Atom):
             masks_dict[server_id] = self.array_items[server_id].mask_ROI_state
             array_shapes[server_id] = self.array_items[server_id].img_array.shape[:2]
 
+        #
+        # Save a pickle.
+        #
         with open(dst_path, 'wb') as f:
             cPickle.dump((rois_dict, masks_dict, array_shapes), f)
 
@@ -688,9 +697,15 @@ class ArraysModel(Atom):
         """Apply the saved rois on the current arrays."""
 
         try:
+            #
+            # Load the saved states.
+            #
             with open(path, 'rb') as f:
                 rois_dict, masks_dict, array_shapes = cPickle.load(f)
 
+            #
+            # Update the ROIs states.
+            #
             for server_id in self.array_items.keys():
                 if server_id not in rois_dict:
                     continue
