@@ -294,50 +294,11 @@ enamldef ArraysView(DockItem):
                 if path:
                     arrays.load_rois(path)
 
-                    #def load_rois(self, path='./ROIS.pkl'):
-                        #"""Apply the saved rois on the current arrays."""
-
-                        #try:
-                            #with open(path, 'rb') as f:
-                                #rois_dict, masks_dict, array_shapes = cPickle.load(f)
-
-                            #for server_id, (_, array_view) in self.array_items.items():
-                                #if server_id not in rois_dict:
-                                    #continue
-
-                                #array_view.ROI.setState(rois_dict[server_id])
-                                #array_view.mask_ROI.setState(masks_dict[server_id])
-                                #array_view.image_widget.update_ROI_resolution(array_shapes[server_id])
-
-                        #except Exception as e:
-                            #logging.error(
-                                #"Failed setting rois to Arrays view:\n{}".format(
-                                    #traceback.format_exc()))
-
         PushButton: save_pb:
             text = 'Save ROI'
             tool_tip = "Save the ROIs"
-            #clicked ::
-                #if base_path is None:
-                    #base_path = pkg_resources.resource_filename("CameraNetwork", "../data/ROIS")
-                    #if not os.path.exists(base_path):
-                        #os.makedirs(base_path)
-
-                #dst_path = os.path.join(
-                    #base_path,
-                    #self.img_index[0].to_pydatetime().strftime("%Y_%m_%d_%H_%M_%S.pkl")
-                #)
-
-                #rois_dict = {}
-                #masks_dict = {}
-                #array_shapes = {}
-                #for server_id, (_, array_view) in self.array_items.items():
-                    #rois_dict[server_id] = array_view.ROI.saveState()
-                    #masks_dict[server_id] = array_view.mask_ROI.saveState()
-                    #array_shapes[server_id] = array_view.img_array.shape[:2]
-
-                #with open(dst_path, 'wb') as f:
-                    #cPickle.dump((rois_dict, masks_dict, array_shapes), f)
+            clicked ::
+                arrays.save_rois()
 
         CheckBox: grid_cb:
             text = "Show Grid"

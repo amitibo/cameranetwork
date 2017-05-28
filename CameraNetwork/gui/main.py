@@ -554,6 +554,7 @@ class ArraysModel(Atom):
     main_model = ForwardTyped(lambda: MainModel)
 
     array_items = Dict()
+    array_views = Dict()
 
     #
     # Intensity level for displayed images.
@@ -591,6 +592,7 @@ class ArraysModel(Atom):
         """Clear all arrays."""
 
         self.array_items = dict()
+        self.array_views = dict()
 
     def new_array(self, server_id, img_array, img_data):
         """This callback is called when a new array is added to the display.
@@ -628,14 +630,6 @@ class ArraysModel(Atom):
             #
             new_array_model = True
             array_model = ArrayModel(main_model=self.main_model, arrays_model=self)
-            view_index = sorted(server_keys+[server_id]).index(server_id)
-            #image_widget = new_array_view(
-                #server_id=server_id,
-                #arrays_model=self,
-                #array_model=array_model,
-                #view_index=view_index
-            #)
-            #array_model.image_widget = image_widget
 
         #
         # Update the model.
@@ -648,12 +642,6 @@ class ArraysModel(Atom):
             temp_dict[server_id] = array_model
             self.array_items = temp_dict
 
-        ##
-        ## Update the view of the ROI.
-        ## This is necessary for displaying the ROI in the map view.
-        ##
-        #array_view.image_widget._ROI_updated()
-
     def updateLOS(self, data):
         """Handle click events on image array."""
 
@@ -662,6 +650,50 @@ class ArraysModel(Atom):
 
         clicked_model = self.array_items[server_id]
         self.LOS_ECEF = clicked_model.calcLOS(pos_x, pos_y)
+
+    def save_rois(self, base_path=None):
+        """Save the current ROIS for later use."""
+
+        if base_path is None:
+            base_path = pkg_resources.resource_filename("CameraNetwork", "../data/ROIS")
+            if not os.path.exists(base_path):
+                os.makedirs(base_path)
+
+        dst_path = os.path.join(
+            base_path,
+            self.main_model.img_index[0].to_pydatetime().strftime("%Y_%m_%d_%H_%M_%S.pkl")
+        )
+
+        rois_dict = {}
+        masks_dict = {}
+        array_shapes = {}
+        for server_id in self.array_items.keys():
+            rois_dict[server_id] = self.array_views[server_id].ROI.saveState()
+            masks_dict[server_id] = self.array_views[server_id].mask_ROI.saveState()
+            array_shapes[server_id] = self.array_views[server_id].img_array.shape[:2]
+
+        with open(dst_path, 'wb') as f:
+            cPickle.dump((rois_dict, masks_dict, array_shapes), f)
+
+    def load_rois(self, path='./ROIS.pkl'):
+        """Apply the saved rois on the current arrays."""
+
+        try:
+            with open(path, 'rb') as f:
+                rois_dict, masks_dict, array_shapes = cPickle.load(f)
+
+            for server_id in self.array_items.keys():
+                if server_id not in rois_dict:
+                    continue
+
+                self.array_views[server_id].ROI.setState(rois_dict[server_id])
+                self.array_views[server_id].mask_ROI.setState(masks_dict[server_id])
+                self.array_views[server_id].image_widget.update_ROI_resolution(array_shapes[server_id])
+
+        except Exception as e:
+            logging.error(
+                "Failed setting rois to Arrays view:\n{}".format(
+                    traceback.format_exc()))
 
 
 ################################################################################
@@ -901,64 +933,6 @@ class MainModel(Atom):
 
         return revisions
 
-    def exportData(self):
-        """Export data for reconstruction."""
-
-        if len(self.arrays.array_items.keys()) == 0:
-            return
-
-        #
-        # Unique base path
-        #
-        array_model = self.arrays.array_items.values()[0][0]
-        base_path = os.path.join(
-            'reconstruction',
-            array_model.img_data.name_time.strftime("%Y_%m_%d_%H_%M_%S")
-        )
-        if not os.path.exists(base_path):
-            os.makedirs(base_path)
-
-        #
-        # Get the radiosonde
-        #
-        date = array_model.img_data.name_time
-        rs_df = load_radiosonde(date)
-        rs_df[['HGHT', 'TEMP']].to_csv(
-            os.path.join(base_path, 'radiosonde.csv'))
-
-        #
-        # Save the ROIs
-        #
-        self.save_rois(base_path=base_path)
-
-        #
-        # Save the GRIDs
-        #
-        sio.savemat(
-            os.path.join(base_path, 'grid.mat'),
-            dict(X=self.GRID_NED[0], Y=self.GRID_NED[1], Z=self.GRID_NED[2]),
-            do_compression=True
-        )
-
-        #
-        # Start export on separate thread.
-        #
-        thread = Thread(
-            target=exportToShdom,
-            kwargs=dict(
-                base_path=base_path,
-                array_items=self.array_items.items(),
-                grid=self.GRID_NED,
-                lat=self.latitude,
-                lon=self.longitude,
-                alt=self.altitude,
-                grabcut_threshold=self.grabcut_threshold,
-                progress_callback=self.updateExportProgress
-            )
-        )
-        thread.daemon = True
-        thread.start()
-
     def updateExportProgress(self, progress_ratio):
         """Update the status of the progress bar.
 
@@ -1151,6 +1125,76 @@ class MainModel(Atom):
         # Add new array.
         #
         self.arrays.new_array(server_id, img_array, img_data)
+
+    def exportData(self):
+        """Export data for reconstruction."""
+
+        if len(self.arrays.array_items.keys()) == 0:
+            return
+
+        #
+        # Unique base path
+        #
+        array_model = self.arrays.array_items.values()[0]
+        base_path = os.path.join(
+            'reconstruction',
+            array_model.img_data.name_time.strftime("%Y_%m_%d_%H_%M_%S")
+        )
+        if not os.path.exists(base_path):
+            os.makedirs(base_path)
+
+        #
+        # Get the radiosonde
+        #
+        date = array_model.img_data.name_time
+        rs_df = load_radiosonde(date)
+        rs_df[['HGHT', 'TEMP']].to_csv(
+            os.path.join(base_path, 'radiosonde.csv'))
+
+        #
+        # Save the ROIs
+        #
+        self.arrays.save_rois(base_path=base_path)
+
+        #
+        # Save the GRIDs
+        #
+        sio.savemat(
+            os.path.join(base_path, 'grid.mat'),
+            dict(
+                X=self.GRID_NED[0],
+                Y=self.GRID_NED[1],
+                Z=self.GRID_NED[2]
+                ),
+            do_compression=True
+        )
+
+        #
+        # Match array_models and array_views.
+        #
+        array_items = {}
+        for array_view in self.arrays.array_views:
+            server_id = array_view.server_id
+            array_items[server_id] = (self.arrays.array_items[server_id], array_view)
+
+        #
+        # Start export on separate thread.
+        #
+        thread = Thread(
+            target=exportToShdom,
+            kwargs=dict(
+                base_path=base_path,
+                array_items=array_items,
+                grid=self.GRID_NED,
+                lat=self.latitude,
+                lon=self.longitude,
+                alt=self.altitude,
+                grabcut_threshold=self.grabcut_threshold,
+                progress_callback=self.updateExportProgress
+            )
+        )
+        thread.daemon = True
+        thread.start()
 
 
 class ServerModel(Atom):
@@ -1433,6 +1477,7 @@ class Controller(Atom):
         )
 
         self.view.array_views.objects.insert(view_index, array_view)
+        self.arrays.array_views[new_server_id] = array_view
 
 
 ################################################################################
