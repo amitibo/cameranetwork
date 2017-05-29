@@ -74,6 +74,12 @@ class ProxyImageAnalysis(ProxyControl):
     def set_mask_ROI_state(self, state):
         raise NotImplementedError
 
+    def set_mask(self, mask):
+        raise NotImplementedError
+
+    def getArrayRegion(self, data):
+        raise NotImplementedError
+
 
 class ImageAnalysis(Control):
     """A base for PyQtGraph Widgets for enaml.
@@ -134,6 +140,20 @@ class ImageAnalysis(Control):
     ROI_state = d_(Dict())
     mask_ROI_state = d_(Dict())
 
+    #
+    # Manual mask.
+    #
+    mask = d_(Typed(np.ndarray))
+
+    def getArrayRegion(self, data):
+        if not self.proxy_is_active:
+            return
+
+        return self.proxy.getArrayRegion(data)
+
+    def _default_mask(self):
+        return np.ones((301, 301), dtype=np.uint8)
+
     #--------------------------------------------------------------------------
     # Observers
     #--------------------------------------------------------------------------
@@ -190,6 +210,17 @@ class QtImageAnalysis(QtControl, ProxyImageAnalysis):
     # The image itself, a PyQtGraph ImageItem.
     #
     img_item = Instance(pg.ImageItem)
+
+    #
+    # For internal use.
+    # Note:
+    # These are used for avoiding double updates of the ROI and mask_ROI
+    # states. The updates are caused when declaration.xxx is set (to update
+    # view) which calls the 'set_' callback. These double update cause an
+    # exception in the pyqtgraph (don't know why).
+    #
+    _internal_ROI_update = Bool(False)
+    _internal_mask_ROI_update = Bool(False)
 
     def initEpiploarPoints(self, epipolar_coords):
         """Initialize the epipolar points on the plot."""
@@ -277,7 +308,7 @@ class QtImageAnalysis(QtControl, ProxyImageAnalysis):
         # Callback when the user stopsmoving a ROI.
         #
         self.ROI.sigRegionChangeFinished.connect(self._ROI_updated)
-        self.mask_ROI.sigRegionChangeFinished.connect(self._mask_updated)
+        self.mask_ROI.sigRegionChangeFinished.connect(self._mask_ROI_updated)
 
         self.plot_area.vb.addItem(self.ROI)
 
@@ -356,6 +387,7 @@ class QtImageAnalysis(QtControl, ProxyImageAnalysis):
         self.set_intensity(d.intensity)
         self.set_ROI_state(d.ROI_state)
         self.set_mask_ROI_state(d.mask_ROI_state)
+        self.set_mask(d.mask)
         self.observe('LOS_signal', self.arrays_model.updateLOS)
 
     def set_server_id(self, server_id):
@@ -471,7 +503,18 @@ class QtImageAnalysis(QtControl, ProxyImageAnalysis):
         if state == {}:
             return
 
+        if self._internal_ROI_update:
+            self._internal_ROI_update = False
+            return
+
         self.ROI.setState(state)
+
+    def set_mask(self, mask):
+        """Set the manual mask."""
+        #
+        # The mask should be calculated internally.
+        #
+        pass
 
     def set_mask_ROI_state(self, state):
         """Set the mask ROI."""
@@ -479,16 +522,21 @@ class QtImageAnalysis(QtControl, ProxyImageAnalysis):
         if state == {}:
             return
 
+        if self._internal_mask_ROI_update:
+            self._internal_mask_ROI_update = False
+            return
+
         self.mask_ROI.setState(state)
+        self._update_mask()
 
     def _ROI_updated(self):
         """Callback of ROI udpate."""
 
         #
-        # Propagate the state of the ROI
+        # Propagate the state of the ROI (used for saving).
         #
+        self._internal_ROI_update = True
         self.declaration.ROI_state = self.ROI.saveState()
-
         _, tr = self.ROI.getArraySlice(
             self.img_item.image,
             self.img_item
@@ -504,14 +552,50 @@ class QtImageAnalysis(QtControl, ProxyImageAnalysis):
              ((0, 0), (size.x(), 0), (0, size.y()), (size.x(), size.y()))]
         )
 
+        #
+        # Signal change of ROI (used by the map3d)
+        #
         self.ROI_signal.emit(
             {'server_id': self.server_id, 'pts': pts, 'shape': self.img_item.image.shape}
         )
 
-    def _mask_updated(self):
-        """Callback of mask udpate."""
+    def _mask_ROI_updated(self):
+        """Callback of mask ROI udpate."""
 
+        #
+        # Propagate the state of the mask_ROI (used for saving).
+        #
+        self._internal_mask_ROI_update = True
         self.declaration.mask_ROI_state = self.mask_ROI.saveState()
+
+        self._update_mask()
+
+    def _update_mask(self):
+        """Update the mask itself."""
+
+        #
+        # Get mask ROI region.
+        #
+        data = np.ones(self.img_item.image.shape[:2], np.uint8)
+        sl, _ = self.mask_ROI.getArraySlice(data, self.img_item, axes=(0, 1))
+        sl_mask = self.mask_ROI.getArrayRegion(data, self.img_item)
+
+        #
+        # The new version of pyqtgraph has some rounding problems.
+        # Fix it the slices accordingly.
+        #
+        fixed_slices = (
+            slice(sl[0].start, sl[0].start+sl_mask.shape[0]),
+            slice(sl[1].start, sl[1].start+sl_mask.shape[1])
+        )
+
+        mask = np.zeros(self.img_item.image.shape[:2], np.uint8)
+        mask[fixed_slices] = sl_mask
+
+        #
+        # Propagate the mask.
+        #
+        self.declaration.mask = mask
 
     def update_ROI_resolution(self, old_shape):
         """Update the ROI_resolution.

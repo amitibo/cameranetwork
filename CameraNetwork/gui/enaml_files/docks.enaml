@@ -115,10 +115,10 @@ enamldef ArrayView(FlowItem):
     alias image_widget
     alias Almucantar_coords: image_widget.Almucantar_coords
     alias PrincipalPlane_coords: image_widget.PrincipalPlane_coords
+    alias export_flag
 
     attr array_model
     attr arrays_model
-    attr img_data
 
     GroupBox: gb:
         ImageAnalysis: image_widget:
@@ -151,7 +151,7 @@ enamldef ArrayView(FlowItem):
             PushButton:
                 text = 'Image Data'
                 clicked ::
-                    ImageDataPopup(img_data_=img_data).show()
+                    ImageDataPopup(img_data_=array_model.img_data).show()
 
             CheckBox: export_flag:
                 tool_tip = "Export for reconstruction"

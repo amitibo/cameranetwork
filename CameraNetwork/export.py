@@ -12,6 +12,12 @@ import numpy as np
 import pymap3d
 
 
+def gaussian(center_x, center_y, height=1., width_x=0.1, width_y=0.1):
+    """Returns a gaussian function with the given parameters"""
+
+    return lambda x, y: height*np.exp(-(((center_x-x)/width_x)**2+((center_y-y)/width_y)**2)/2)
+
+
 def exportToShdom(
     base_path,
     array_items,
@@ -58,19 +64,14 @@ def exportToShdom(
     # Loop on all servers and collect information.
     #
     export_data = {}
-    for i, (server_id, (array_model, array_view)) in enumerate(array_items):
-        if not array_view.export_flag.checked:
-            logging.info(
-                "Reconstruction: Camera {} ignored.".format(server_id)
-            )
-            continue
-
+    for i, (server_id, (array_model, array_view)) in enumerate(array_items.items()):
         #
         # Store extra data like camera center, etc.
         #
-        extra_data = extraReconstructionData(array_model, array_view, lat0=lat, lon0=lon, h0=alt)
+        extra_data, sun_alt, sun_az = extraReconstructionData(
+            array_model, array_view, lat0=lat, lon0=lon, h0=alt)
 
-        img_array = array_view.img_array
+        img_array = array_model.img_array
 
         #
         # Calculate azimuth and elevation of each pixel.
@@ -80,7 +81,7 @@ def exportToShdom(
         # and elevation should take into account the earth carvature.
         # I.e. relative to the center of axis the angles are rotated.
         #
-        PHI_shdom, PSI_shdom = getShdomDirections(img_array, array_model)
+        PHI_shdom, PSI_shdom = getShdomDirections(array_model)
 
         #
         # Calculate Masks.
@@ -88,10 +89,12 @@ def exportToShdom(
         # sunshader mask is calculate using grabcut. This is used for removing the
         # sunshader.
         # Manual mask is the (ROI) mask marked by the user.
+        # sun mask is a mask the blocks the sun.
         #
         sunshader_mask = calcSunshaderMask(img_array, grabcut_threshold)
-        manual_mask = array_view.image_widget.getMask()
+        manual_mask = array_view.image_widget.mask
         joint_mask = (manual_mask * sunshader_mask).astype(np.uint8)
+        sun_mask = calcSunMask(img_array, sun_alt, sun_az)
 
         #
         # Project the grid on the image and check viewed voxels.
@@ -112,6 +115,7 @@ def exportToShdom(
             PHI=array_view.image_widget.getArrayRegion(PHI_shdom),
             PSI=array_view.image_widget.getArrayRegion(PSI_shdom),
             MASK=array_view.image_widget.getArrayRegion(joint_mask),
+            SUN_MASK=array_view.image_widget.getArrayRegion(sun_mask),
             Visibility=visibility,
         )
 
@@ -126,7 +130,7 @@ def exportToShdom(
     deferred_call(progress_callback, 0)
 
 
-def getShdomDirections(img_array, array_model):
+def getShdomDirections(array_model):
     """Calculate the (SHDOM) direction of each pixel.
 
     Directions are calculated in SHDOM convention where the direction is
@@ -134,8 +138,8 @@ def getShdomDirections(img_array, array_model):
     """
 
     Y_shdom, X_shdom = np.meshgrid(
-        np.linspace(-1, 1, img_array.shape[1]),
-        np.linspace(-1, 1, img_array.shape[0])
+        np.linspace(-1, 1, array_model.img_array.shape[1]),
+        np.linspace(-1, 1, array_model.img_array.shape[0])
     )
     PHI_shdom = np.pi + np.arctan2(Y_shdom, X_shdom)
     PSI_shdom = -np.pi + array_model.fov * np.sqrt(X_shdom**2 + Y_shdom**2)
@@ -165,7 +169,7 @@ def extraReconstructionData(array_model, array_view, lat0, lon0, h0):
     #
     # Calculate bounding coords (useful for debug visualization)
     #
-    bounding_phi, bounding_psi = calcROIbounds(array_model, array_view)
+    #bounding_phi, bounding_psi = calcROIbounds(array_model, array_view)
 
     #
     # Sun azimuth and altitude
@@ -188,10 +192,10 @@ def extraReconstructionData(array_model, array_view, lat0, lon0, h0):
             x=n,
             y=e,
             z=-d,
-            bounding_phi=bounding_phi,
-            bounding_psi=bounding_psi
+            #bounding_phi=bounding_phi,
+            #bounding_psi=bounding_psi
         )
-    return extra_data
+    return extra_data, sun_alt, sun_az
 
 
 def projectGridOnCamera(ecef_grid, array_model, joint_mask):
@@ -245,6 +249,37 @@ def calcSunshaderMask(img_array, grabcut_threshold, values_range=40):
     return sunshader_mask
 
 
+def calcSunMask(img_array, sun_alt, sun_az):
+    """Calculate a mask for the sun.
+
+    The sun pixels are weighted by a gaussian.
+
+    Args:
+        img_array (array): Image (float HDR).
+        grabcut_threshold (float): Threshold used to set the seed for the
+            background.
+        values_range (float): This value is used for normalizing the image.
+            It is an empirical number that works for HDR images captured
+            during the day.
+
+    Note:
+        The algorithm uses some "Magic" numbers that might need to be
+        adapted to different lighting levels.
+    """
+
+    sun_r = (np.pi/2 - sun_alt) / (np.pi/2)
+    sun_x = sun_r * np.sin(sun_az)
+    sun_y = sun_r * np.cos(sun_az)
+
+    X, Y = np.meshgrid(
+        np.linspace(-1, 1, img_array.shape[1]),
+        np.linspace(-1, 1, img_array.shape[0])
+    )
+    sun_mask = 1- gaussian(sun_x, sun_y)(X, Y)
+
+    return sun_mask
+
+
 def calcROIbounds(array_model, array_view):
     """Calculate bounds of ROI in array_view
 
@@ -254,18 +289,17 @@ def calcROIbounds(array_model, array_view):
     #
     # Get the ROI size
     #
-    roi = array_view.ROI
-    size = roi.state['size']
+    size = array_model.ROI_state['size']
 
     #
     # Get the transform from the ROI to the data.
     #
-    _, tr = roi.getArraySlice(array_view.img_array, array_view.image_widget.img_item)
+    _, tr = roi.getArraySlice(array_model.img_array, array_view.image_widget.img_item)
 
     #
     # Calculate the bounds.
     #
-    center = float(array_view.img_array.shape[0])/2
+    center = float(array_model.img_array.shape[0])/2
     pts = np.array(
         [tr.map(x, y) for x, y in \
          ((0, 0), (size.x(), 0), (0, size.y()), (size.x(), size.y()))]

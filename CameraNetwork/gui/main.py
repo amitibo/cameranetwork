@@ -361,7 +361,6 @@ class ArrayModel(Atom):
 
     main_model = ForwardTyped(lambda: MainModel)
     arrays_model = ForwardTyped(lambda: ArraysModel)
-    image_widget = Instance(Atom)
 
     img_data = Typed(DataObj, kwargs={})
     img_array = Typed(np.ndarray)
@@ -1197,7 +1196,13 @@ class MainModel(Atom):
         # Match array_models and array_views.
         #
         array_items = {}
-        for array_view in self.arrays.array_views:
+        for array_view in self.arrays.array_views.values():
+            if not array_view.export_flag.checked:
+                logging.info(
+                    "Reconstruction: Camera {} ignored.".format(array_view.server_id)
+                )
+                continue
+
             server_id = array_view.server_id
             array_items[server_id] = (self.arrays.array_items[server_id], array_view)
 
@@ -1497,7 +1502,7 @@ class Controller(Atom):
             title=new_server_id,
             server_id=new_server_id,
             array_model=change["value"][new_server_id],
-            arrays_model=self.arrays
+            arrays_model=self.arrays,
         )
 
         self.view.array_views.objects.insert(view_index, array_view)
