@@ -458,7 +458,7 @@ class ArrayModel(Atom):
 
         return LOS_ECEF
 
-    def projectECEF(self, ECEF_pts, filter_fov=True):
+    def projectECEF(self, ECEF_pts, filter_fov=True, errstate='warn'):
         """Project set of points in ECEF coords on the view.
 
         Args:
@@ -486,7 +486,7 @@ class ArrayModel(Atom):
         #
         # Normalize the points
         #
-        with np.errstate(all='raise'):
+        with np.errstate(all=errstate):
             neu_pts = \
                 neu_pts/np.linalg.norm(neu_pts, axis=1).reshape(-1, 1)
 

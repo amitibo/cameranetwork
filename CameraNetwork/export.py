@@ -10,6 +10,7 @@ import math
 import os
 import numpy as np
 import pymap3d
+import traceback
 
 
 def gaussian(center_x, center_y, height=1., width_x=0.1, width_y=0.1):
@@ -65,47 +66,56 @@ def exportToShdom(
     #
     export_data = {}
     for i, (server_id, (array_model, array_view)) in enumerate(array_items.items()):
-        #
-        # Store extra data like camera center, etc.
-        #
-        extra_data, sun_alt, sun_az = extraReconstructionData(
-            array_model, array_view, lat0=lat, lon0=lon, h0=alt)
+        try:
+            #
+            # Store extra data like camera center, etc.
+            #
+            extra_data, sun_alt, sun_az = extraReconstructionData(
+                array_model, array_view, lat0=lat, lon0=lon, h0=alt)
 
-        img_array = array_model.img_array
+            img_array = array_model.img_array
 
-        #
-        # Calculate azimuth and elevation of each pixel.
-        # TODO:
-        # The azimuth and elevation here are calculated assuming
-        # that the cameras are near. If they are far, the azimuth
-        # and elevation should take into account the earth carvature.
-        # I.e. relative to the center of axis the angles are rotated.
-        #
-        PHI_shdom, PSI_shdom = getShdomDirections(array_model)
+            #
+            # Calculate azimuth and elevation of each pixel.
+            # TODO:
+            # The azimuth and elevation here are calculated assuming
+            # that the cameras are near. If they are far, the azimuth
+            # and elevation should take into account the earth carvature.
+            # I.e. relative to the center of axis the angles are rotated.
+            #
+            PHI_shdom, PSI_shdom = getShdomDirections(array_model)
 
-        #
-        # Calculate Masks.
-        # Note:
-        # sunshader mask is calculate using grabcut. This is used for removing the
-        # sunshader.
-        # Manual mask is the (ROI) mask marked by the user.
-        # sun mask is a mask the blocks the sun.
-        #
-        sunshader_mask = calcSunshaderMask(img_array, grabcut_threshold)
-        manual_mask = array_view.image_widget.mask
-        joint_mask = (manual_mask * sunshader_mask).astype(np.uint8)
-        sun_mask = calcSunMask(img_array, sun_alt, sun_az)
+            #
+            # Calculate Masks.
+            # Note:
+            # sunshader mask is calculate using grabcut. This is used for removing the
+            # sunshader.
+            # Manual mask is the (ROI) mask marked by the user.
+            # sun mask is a mask the blocks the sun.
+            #
+            sunshader_mask = calcSunshaderMask(img_array, grabcut_threshold)
+            manual_mask = array_view.image_widget.mask
+            joint_mask = (manual_mask * sunshader_mask).astype(np.uint8)
+            sun_mask = calcSunMask(img_array, sun_alt, sun_az)
 
-        #
-        # Project the grid on the image and check viewed voxels.
-        # Note:
-        # This measurement is used for checking how many cameras see each voxel.
-        # TODO:
-        # This procedure is time expensive and can be cached.
-        # This should probably be a method of the camera, and this method should
-        # cache the result, or even be triggered by setting the grid.
-        #
-        visibility = projectGridOnCamera(ecef_grid, array_model, joint_mask)
+            #
+            # Project the grid on the image and check viewed voxels.
+            # Note:
+            # This measurement is used for checking how many cameras see each voxel.
+            # TODO:
+            # This procedure is time expensive and can be cached.
+            # This should probably be a method of the camera, and this method should
+            # cache the result, or even be triggered by setting the grid.
+            #
+            visibility = projectGridOnCamera(ecef_grid, array_model, joint_mask)
+        except Exception, e:
+            logging.error(
+                "Server {} ignored due to exception:\n{}".format(
+                    server_id,
+                    traceback.format_exc()
+                )
+            )
+            continue
 
         export_data[server_id] = dict(
             extra_data=extra_data,
