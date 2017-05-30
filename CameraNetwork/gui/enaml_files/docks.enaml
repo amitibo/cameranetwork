@@ -274,9 +274,8 @@ enamldef ArraysView(DockItem):
             maximum = 1000
             value := arrays.intensity
 
-        Field: intensity_txt:
-            text << u'{}'.format(intensity_slider.value)
-            read_only = True
+        IntField: intensity_txt:
+            value := intensity_slider.value
 
         CheckBox: gamma_cb:
             text = 'Gamma'
@@ -393,7 +392,7 @@ enamldef TimesView(DockItem):
     Container:
         constraints = [
             vbox(
-                hbox(update_pb, query_day, query_pb, spacer),
+                hbox(update_pb, query_day, query_pb, force_cb, spacer),
                 df,
                 hbox(resolution_lbl, resolution_fld, quality_cnt, seek_pb, spacer),
             ),
@@ -417,8 +416,12 @@ enamldef TimesView(DockItem):
                 times.clear()
                 main.broadcast_message(
                     gs.MSG_TYPE_QUERY,
-                    kwds=dict(query_date=query_day.selected)
+                    kwds=dict(query_date=query_day.selected, force=force_cb.checked)
                 )
+
+        CheckBox: force_cb:
+                tool_tip = "Force parsing day images."
+                text = "Force Read"
 
         DataFrameTable: df:
             data_frame << times.images_df

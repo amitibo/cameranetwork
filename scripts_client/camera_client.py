@@ -7,6 +7,11 @@ from __future__ import division
 
 import argparse
 
+#
+# enaml.qt is imported here to enable debug in wingide, else it
+# crashes on Qt API version mismatch.
+#
+import enaml.qt
 import CameraNetwork
 import CameraNetwork.global_settings as gs
 from CameraNetwork.gui.main import startGUI

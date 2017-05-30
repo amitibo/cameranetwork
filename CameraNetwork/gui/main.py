@@ -321,7 +321,7 @@ class TimesModel(Atom):
 
     days_list = List()
     images_df = Typed(pd.DataFrame)
-    img_index = Tuple()
+    img_index = Tuple(default=(0,))
 
     def _default_images_df(self):
         """Initialize an empty data frame."""
@@ -1248,7 +1248,7 @@ class ServerModel(Atom):
     days_list = List()
 
     images_df = Typed(pd.DataFrame)
-    img_index = Tuple()
+    img_index = Tuple(default=(0,))
 
     def init_server(self):
         pass
