@@ -3,7 +3,6 @@ from CameraNetwork.internet import *
 from CameraNetwork.client import *
 from CameraNetwork.calibration import *
 from CameraNetwork.hg import *
-#import CameraNetwork.gui as gui
 import CameraNetwork.mdp as mdp
 import CameraNetwork.image_utils as image_utils
 import CameraNetwork.integral_sphere as integral_sphere

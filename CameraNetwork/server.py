@@ -240,14 +240,13 @@ class Server(MDPWorker):
         """Update the proxy params
 
         This function helps handling the case that the ip of the proxy changes.
+
+        Note:
+            Currently the IP is hardcoded, so there is not really much to
+            update.
         """
 
-        try:
-            self.proxy_params = retrieve_proxy_parameters(self._local_proxy)
-        except:
-            logging.error('Failed to retrieve proxy parameters. Will use default values for now.')
-            self.proxy_params = json.loads(gs.DEFAULT_PROXY_PARAMS)
-
+        self.proxy_params = json.loads(gs.DEFAULT_PROXY_PARAMS)
         logging.info('Got proxy params: {params}'.format(params=self.proxy_params))
 
     def endpoint_callback(self):
