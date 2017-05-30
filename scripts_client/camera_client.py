@@ -11,6 +11,10 @@ import sys
 
 import argparse
 
+#
+# enaml.qt is imported here to enable debug in wingide, else it
+# crashes on Qt API version mismatch.
+#
 import enaml.qt
 
 import CameraNetwork

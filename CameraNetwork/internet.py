@@ -43,31 +43,7 @@ def retrieve_proxy_parameters(local_mode=False):
     Proxy settings are stored as a json file.
     """
 
-    logging.debug('Trying to load proxy parameters from url: %s' % CONFIGURATION_SERVER_URL_BASE)
-
-    try:
-        #
-        # Note:
-        # For some reason the odroid is caching an old result.
-        # I am trying to set no-cache, but it doesn't help.
-        #
-        header = {"pragma-directive" : "no-cache"}
-        req = urllib2.Request(CONFIGURATION_SERVER_URL_BASE, headers=header)
-        response = urllib2.urlopen(req)
-        soup = BeautifulSoup(response)
-
-        #
-        # Selected the newest proxy params file
-        #
-        proxy_file = sorted([f for f in soup.find_all(name='a', text=re.compile('.json'))])[-1]
-        proxy_file_path = posixpath.join(CONFIGURATION_SERVER_URL_BASE, proxy_file.text)
-        proxy_params = json.load(urllib2.urlopen(proxy_file_path))
-
-    except Exception, e:
-        logging.error(
-            "Failed retrieving proxy parameters:\n{}".format(traceback.format_exc())
-        )
-        proxy_params = json.loads(DEFAULT_PROXY_PARAMS)
+    proxy_params = json.loads(DEFAULT_PROXY_PARAMS)
 
     logging.debug("Proxy parameters:\n{}".format(proxy_params))
 
