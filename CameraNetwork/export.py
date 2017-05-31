@@ -87,7 +87,7 @@ def exportToShdom(
             )
             Y_shdom = array_view.image_widget.getArrayRegion(Y_shdom)
             X_shdom = array_view.image_widget.getArrayRegion(X_shdom)
-            PHI_shdom, PSI_shdom = getShdomDirections(Y_shdom, X_shdom)
+            PHI_shdom, PSI_shdom = getShdomDirections(Y_shdom, X_shdom, array_model.fov)
 
             #
             # Calculate Masks.
@@ -144,7 +144,7 @@ def exportToShdom(
     deferred_call(progress_callback, 0)
 
 
-def getShdomDirections(Y_shdom, X_shdom):
+def getShdomDirections(Y_shdom, X_shdom, fov=math.pi/2):
     """Calculate the (SHDOM) direction of each pixel.
 
     Directions are calculated in SHDOM convention where the direction is
@@ -152,7 +152,7 @@ def getShdomDirections(Y_shdom, X_shdom):
     """
 
     PHI_shdom = np.pi + np.arctan2(Y_shdom, X_shdom)
-    PSI_shdom = -np.pi + array_model.fov * np.sqrt(X_shdom**2 + Y_shdom**2)
+    PSI_shdom = -np.pi + fov * np.sqrt(X_shdom**2 + Y_shdom**2)
     return PHI_shdom, PSI_shdom
 
 
