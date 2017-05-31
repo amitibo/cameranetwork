@@ -772,15 +772,15 @@ class MainModel(Atom):
     # - GRID_ECEF: Used for visualization on the camera array.
     # - GRID_NED: The grid exported for reconstruction.
     #
-    delx = Float(100)
-    dely = Float(100)
-    delz = Float(100)
+    delx = Float(1000)
+    dely = Float(1000)
+    delz = Float(200)
     TOG = Float(6000)
     GRID_ECEF = Tuple()
     GRID_NED = Tuple()
     grid_mode = Str("Manual")
-    grid_width = Float(6000)
-    grid_length = Float(6000)
+    grid_width = Float(12000)
+    grid_length = Float(12000)
 
     #
     # Sunshader mask threshold used in grabcut algorithm.

@@ -77,13 +77,17 @@ def exportToShdom(
 
             #
             # Calculate azimuth and elevation of each pixel.
-            # TODO:
-            # The azimuth and elevation here are calculated assuming
-            # that the cameras are near. If they are far, the azimuth
-            # and elevation should take into account the earth carvature.
-            # I.e. relative to the center of axis the angles are rotated.
+            # Note:
+            # The interpolation is done in the Y_shdom, X_shdom to avoid
+            # the seam artifact of PHI at 180 degrees.
             #
-            PHI_shdom, PSI_shdom = getShdomDirections(array_model)
+            Y_shdom, X_shdom = np.meshgrid(
+                np.linspace(-1, 1, array_model.img_array.shape[1]),
+                np.linspace(-1, 1, array_model.img_array.shape[0])
+            )
+            Y_shdom = array_view.image_widget.getArrayRegion(Y_shdom)
+            X_shdom = array_view.image_widget.getArrayRegion(X_shdom)
+            PHI_shdom, PSI_shdom = getShdomDirections(Y_shdom, X_shdom)
 
             #
             # Calculate Masks.
@@ -122,8 +126,8 @@ def exportToShdom(
             R=array_view.image_widget.getArrayRegion(img_array[..., 0]),
             G=array_view.image_widget.getArrayRegion(img_array[..., 1]),
             B=array_view.image_widget.getArrayRegion(img_array[..., 2]),
-            PHI=array_view.image_widget.getArrayRegion(PHI_shdom),
-            PSI=array_view.image_widget.getArrayRegion(PSI_shdom),
+            PHI=PHI_shdom,
+            PSI=PSI_shdom,
             MASK=array_view.image_widget.getArrayRegion(joint_mask),
             SUN_MASK=array_view.image_widget.getArrayRegion(sun_mask),
             Visibility=visibility,
@@ -140,17 +144,13 @@ def exportToShdom(
     deferred_call(progress_callback, 0)
 
 
-def getShdomDirections(array_model):
+def getShdomDirections(Y_shdom, X_shdom):
     """Calculate the (SHDOM) direction of each pixel.
 
     Directions are calculated in SHDOM convention where the direction is
     of the photons.
     """
 
-    Y_shdom, X_shdom = np.meshgrid(
-        np.linspace(-1, 1, array_model.img_array.shape[1]),
-        np.linspace(-1, 1, array_model.img_array.shape[0])
-    )
     PHI_shdom = np.pi + np.arctan2(Y_shdom, X_shdom)
     PSI_shdom = -np.pi + array_model.fov * np.sqrt(X_shdom**2 + Y_shdom**2)
     return PHI_shdom, PSI_shdom
