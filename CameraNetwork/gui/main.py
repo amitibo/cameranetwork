@@ -772,8 +772,8 @@ class MainModel(Atom):
     # - GRID_ECEF: Used for visualization on the camera array.
     # - GRID_NED: The grid exported for reconstruction.
     #
-    delx = Float(1000)
-    dely = Float(1000)
+    delx = Float(250)
+    dely = Float(250)
     delz = Float(200)
     TOG = Float(6000)
     GRID_ECEF = Tuple()
