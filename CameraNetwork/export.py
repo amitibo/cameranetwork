@@ -91,10 +91,8 @@ def exportToShdom(
             # Manual mask is the (ROI) mask marked by the user.
             # sun mask is a mask the blocks the sun.
             #
-            sunshader_mask = calcSunshaderMask(img_array, grabcut_threshold)
             manual_mask = array_view.image_widget.mask
-            joint_mask = (manual_mask * sunshader_mask).astype(np.uint8)
-            sun_mask = calcSunMask(img_array, sun_alt, sun_az)
+            joint_mask = (manual_mask * array_model.sunshader_mask).astype(np.uint8)
 
             #
             # Project the grid on the image and check viewed voxels.
@@ -123,7 +121,7 @@ def exportToShdom(
             PHI=PHI_shdom,
             PSI=PSI_shdom,
             MASK=array_view.image_widget.getArrayRegion(joint_mask),
-            SUN_MASK=array_view.image_widget.getArrayRegion(sun_mask),
+            SUN_MASK=array_view.image_widget.getArrayRegion(array_model.sun_mask),
             Visibility=visibility,
         )
 

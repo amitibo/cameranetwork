@@ -14,6 +14,7 @@ from .popups import ImageDataPopup
 from .server_pages import (MainControlsPage, ImageControlPage, SeekControlPage,
     SunshaderControlPage, SprinklerControlPage, IntrinsicControlPage,
     ExtrinsicControlPage, RadiometricControlPage)
+from .settings import ArraySettingsDialog
 
 
 ################################################################################
@@ -108,57 +109,62 @@ enamldef ServerView(DockItem):
 ################################################################################
 # The Array View
 ################################################################################
-enamldef ArrayView(FlowItem):
-    alias title : gb.title
-    alias server_id : image_widget.server_id
-    alias image_widget
-    alias Almucantar_coords: image_widget.Almucantar_coords
-    alias PrincipalPlane_coords: image_widget.PrincipalPlane_coords
+enamldef ArrayView(FlowItem): array_view:
     alias export_flag
-
+    alias image_widget
+    
     attr array_model
     attr arrays_model
-
+    
     GroupBox: gb:
+        title = "Camera {}".format(array_model.server_id)
+        
         ImageAnalysis: image_widget:
             arrays_model = array_model.arrays_model
-            server_id = array_model.server_id
+            #
+            # Server data
+            #
             img_array << array_model.displayed_array
+            #
+            # Widgest coords
+            #
             Almucantar_coords << array_model.Almucantar_coords
             PrincipalPlane_coords << array_model.PrincipalPlane_coords
             GRID_coords << array_model.GRID_coords
             Epipolar_coords << array_model.Epipolar_coords
+            #
+            # View settings.
+            #
             gamma << arrays_model.gamma
             intensity << arrays_model.intensity
             show_grid << arrays_model.show_grid
             show_mask << arrays_model.show_masks
-            mask_ROI_state := array_model.mask_ROI_state
             show_ROI << arrays_model.show_ROIs
+            #
+            # Widget state
+            #
+            mask_ROI_state := array_model.mask_ROI_state
             ROI_state := array_model.ROI_state
 
         HGroup:
-            CheckBox: almucantar:
-                tool_tip = "Show the Almucantar"
-                checked := image_widget.show_almucantar
-                text = "Almucantar"
-
-            CheckBox: principal:
-                tool_tip = "Show the PrincipalPlane"
-                checked := image_widget.show_principalplane
-                text = "PrincipalPlane"
-
             PushButton:
                 text = 'Image Data'
                 clicked ::
                     ImageDataPopup(img_data_=array_model.img_data).show()
 
+            PushButton:
+                text = 'Image Settings'
+                clicked ::
+                    ArraySettingsDialog(
+                        title="Camera {}".format(array_model.server_id),
+                        array_model=array_view.array_model,
+                        image_widget=array_view.image_widget,
+                        ).show()
+
             CheckBox: export_flag:
                 tool_tip = "Export for reconstruction"
                 text = "Export"
 
-            FloatField: grabcut_val:
-                tool_tip = "Sunshader grabcut threshold."
-                value := array_model.grabcut_threshold
 
 
 ################################################################################

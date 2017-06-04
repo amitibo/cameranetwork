@@ -8,6 +8,35 @@ from CameraNetwork import global_settings as gs
 
 
 #
+# Array settings dialog.
+#
+enamldef ArraySettingsDialog(Dialog): array_dialog:
+    attr array_model
+    attr image_widget
+    modality = 'non_modal'
+
+    Container:
+        Form:
+            Label:
+                text = "Show Almucantar"
+            CheckBox: almucantar:
+                tool_tip = "Show the Almucantar"
+                checked := image_widget.show_almucantar
+
+            Label:
+                text = "Show PrincipalPlane"
+            CheckBox: principal:
+                tool_tip = "Show the PrincipalPlane"
+                checked := image_widget.show_principalplane
+
+            Label:
+                text = 'Sunshader Threshold'
+            FloatField: grabcut_val:
+                tool_tip = "Sunshader grabcut threshold."
+                value := array_model.grabcut_threshold
+
+
+#
 # Server Settings dialog.
 #
 enamldef SettingsDialog(Dialog): ServerSettingsPopup:

@@ -365,6 +365,8 @@ class ArrayModel(Atom):
     main_model = ForwardTyped(lambda: MainModel)
     arrays_model = ForwardTyped(lambda: ArraysModel)
 
+    server_id = Str()
+    
     img_data = Typed(DataObj, kwargs={})
     img_array = Typed(np.ndarray)
     sunshader_mask = Typed(np.ndarray)
@@ -681,7 +683,10 @@ class ArraysModel(Atom):
             # The specific camera is not displayed. Create it.
             #
             new_array_model = True
-            array_model = ArrayModel(main_model=self.main_model, arrays_model=self)
+            array_model = ArrayModel(
+                server_id=server_id,
+                main_model=self.main_model,
+                arrays_model=self)
 
         #
         # Update the model.
@@ -1544,8 +1549,6 @@ class Controller(Atom):
         view_index = sorted(server_keys).index(new_server_id)
 
         array_view = ArrayView(
-            title=new_server_id,
-            server_id=new_server_id,
             array_model=change["value"][new_server_id],
             arrays_model=self.arrays,
         )
