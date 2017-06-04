@@ -321,3 +321,75 @@ class Normalization(object):
         return self._tight_mask
 
 
+def calcSunshaderMask(img_array, grabcut_threshold, values_range=40):
+    """Calculate a mask for the sunshader.
+
+    Calculate a mask for the pixels covered by the sunshader.
+    Uses the grabcut algorithm.
+
+    Args:
+        img_array (array): Image (float HDR).
+        grabcut_threshold (float): Threshold used to set the seed for the
+            background.
+        values_range (float): This value is used for normalizing the image.
+            It is an empirical number that works for HDR images captured
+            during the day.
+
+    Note:
+        The algorithm uses some "Magic" numbers that might need to be
+        adapted to different lighting levels.
+    """
+
+    sunshader_mask = np.ones(img_array.shape[:2], np.uint8)*cv2.GC_PR_FGD
+    sunshader_mask[img_array.max(axis=2) < grabcut_threshold] = cv2.GC_PR_BGD
+    img_u8 = (255 * np.clip(img_array, 0, values_range) / values_range).astype(np.uint8)
+    bgdModel = np.zeros((1, 65), np.float64)
+    fgdModel = np.zeros((1, 65), np.float64)
+    rect = (0, 0, 0, 0)
+    cv2.grabCut(img_u8, sunshader_mask, rect, bgdModel, fgdModel, 5, cv2.GC_INIT_WITH_MASK)
+    sunshader_mask = np.where(
+        (sunshader_mask==cv2.GC_FGD) | (sunshader_mask==cv2.GC_PR_FGD),
+        1,
+        0).astype('uint8')
+
+    return sunshader_mask
+
+
+def gaussian(center_x, center_y, height=1., width_x=0.1, width_y=0.1):
+    """Returns a gaussian function with the given parameters"""
+
+    return lambda x, y: height*np.exp(-(((center_x-x)/width_x)**2+((center_y-y)/width_y)**2)/2)
+
+
+def calcSunMask(img_shape, sun_alt, sun_az):
+    """Calculate a mask for the sun.
+
+    The sun pixels are weighted by a gaussian.
+
+    Args:
+        img_array (array): Image (float HDR).
+        grabcut_threshold (float): Threshold used to set the seed for the
+            background.
+        values_range (float): This value is used for normalizing the image.
+            It is an empirical number that works for HDR images captured
+            during the day.
+
+    Note:
+        The algorithm uses some "Magic" numbers that might need to be
+        adapted to different lighting levels.
+    """
+
+    sun_r = (np.pi/2 - sun_alt) / (np.pi/2)
+    sun_x = sun_r * np.sin(sun_az)
+    sun_y = sun_r * np.cos(sun_az)
+
+    X, Y = np.meshgrid(
+        np.linspace(-1, 1, img_shape[1]),
+        np.linspace(-1, 1, img_shape[0])
+    )
+    sun_mask = 1- gaussian(sun_x, sun_y)(X, Y)
+
+    return sun_mask
+
+
+

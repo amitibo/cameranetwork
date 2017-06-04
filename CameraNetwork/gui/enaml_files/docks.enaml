@@ -109,7 +109,6 @@ enamldef ServerView(DockItem):
 # The Array View
 ################################################################################
 enamldef ArrayView(FlowItem):
-    alias img_array: image_widget.img_array
     alias title : gb.title
     alias server_id : image_widget.server_id
     alias image_widget
@@ -124,7 +123,7 @@ enamldef ArrayView(FlowItem):
         ImageAnalysis: image_widget:
             arrays_model = array_model.arrays_model
             server_id = array_model.server_id
-            img_array << array_model.img_array
+            img_array << array_model.displayed_array
             Almucantar_coords << array_model.Almucantar_coords
             PrincipalPlane_coords << array_model.PrincipalPlane_coords
             GRID_coords << array_model.GRID_coords
@@ -156,6 +155,10 @@ enamldef ArrayView(FlowItem):
             CheckBox: export_flag:
                 tool_tip = "Export for reconstruction"
                 text = "Export"
+
+            FloatField: grabcut_val:
+                tool_tip = "Sunshader grabcut threshold."
+                value := array_model.grabcut_threshold
 
 
 ################################################################################
@@ -189,6 +192,7 @@ enamldef ArraysView(DockItem):
                 ),
                 arrays_cont,
                 hbox(
+                    type_combo,
                     intensity_lbl,
                     intensity_slider,
                     intensity_txt,
@@ -262,6 +266,11 @@ enamldef ArraysView(DockItem):
             clicked ::
                 arrays.clear_arrays()
                 array_views.objects = []
+
+        ComboBox: type_combo:
+            tool_tip = "Type of displayed image."
+            items = ['Image', 'Mask', 'Sun Mask']
+            selected_item >> arrays.image_type
 
         Label: intensity_lbl:
             text = 'Intensity Level'

@@ -16,7 +16,8 @@ from enaml.qt.qt_application import QtApplication
 from enaml.qt.qt_factories import QT_FACTORIES
 
 from atom.api import Atom, Bool, Signal, Float, Int, Str, Unicode, \
-     Typed, observe, Dict, Value, List, Tuple, Instance, ForwardTyped
+     Typed, observe, Dict, Value, List, Tuple, Instance, ForwardTyped, \
+     Enum
 
 #
 # Import the enaml view.
@@ -51,6 +52,8 @@ from zmq.eventloop import ioloop
 import CameraNetwork
 from CameraNetwork import global_settings as gs
 from CameraNetwork.export import exportToShdom
+from CameraNetwork.image_utils import calcSunMask
+from CameraNetwork.image_utils import calcSunshaderMask
 from CameraNetwork.mdp import MDP
 from CameraNetwork.radiosonde import load_radiosonde
 from CameraNetwork.sunphotometer import calcSunphometerCoords
@@ -364,6 +367,9 @@ class ArrayModel(Atom):
 
     img_data = Typed(DataObj, kwargs={})
     img_array = Typed(np.ndarray)
+    sunshader_mask = Typed(np.ndarray)
+    sun_mask = Typed(np.ndarray)
+    displayed_array = Typed(np.ndarray)
 
     resolution = Int(301)
     fov = Float(math.pi/2)
@@ -401,6 +407,11 @@ class ArrayModel(Atom):
     #
     ROI_state = Dict()
     mask_ROI_state = Dict()
+
+    #
+    # Sunshader mask threshold used in grabcut algorithm.
+    #
+    grabcut_threshold = Float(3)
 
     def _default_Epipolar_coords(self):
         Epipolar_coords = self.projectECEF(self.arrays_model.LOS_ECEF)
@@ -512,13 +523,30 @@ class ArrayModel(Atom):
         else:
             return xs, ys, cosPSI>0
 
-    @observe("img_array")
-    def _update_img_data(self, change):
+    @observe("img_array", "grabcut_threshold")
+    def _update_img_array(self, change):
 
         if change["value"] is None:
             return
 
-        self.resolution = self.img_array.shape[0]
+        self.resolution = int(self.img_array.shape[0])
+
+        #
+        # Calculate masks.
+        #
+        self.sunshader_mask = calcSunshaderMask(
+            self.img_array, self.grabcut_threshold)
+
+    @observe("arrays_model.image_type", "img_array", "sunshader_mask",
+             "sun_mask")
+    def _update_img_type(self, change):
+
+        if self.arrays_model.image_type == "Image":
+            self.displayed_array = self.img_array
+        elif self.arrays_model.image_type == "Mask":
+            self.displayed_array = self.sunshader_mask
+        else:
+            self.displayed_array = self.sun_mask
 
     @observe("img_data")
     def _update_img_data(self, change):
@@ -526,6 +554,9 @@ class ArrayModel(Atom):
         if change["value"] is None:
             return
 
+        #
+        # Load the geo data.
+        #
         self.longitude = float(self.img_data.longitude)
         self.latitude = float(self.img_data.latitude)
         self.altitude = float(self.img_data.altitude)
@@ -537,10 +568,23 @@ class ArrayModel(Atom):
             self.altitude
         )
 
+        #
+        # Update the Almacuntart and Principle plane.
+        #
         alm_coords, pp_coords = \
             calcSunphometerCoords(self.img_data, resolution=self.resolution)
         self.Almucantar_coords = alm_coords
         self.PrincipalPlane_coords = pp_coords
+
+        #
+        # Update the sun mask.
+        #
+        sun_alt, sun_az = sun_direction(
+            latitude=str(self.latitude),
+            longitude=str(self.longitude),
+            altitude=self.altitude,
+            at_time=self.img_data.name_time)
+        self.sun_mask = calcSunMask(self.img_array.shape, sun_alt, sun_az)
 
     @observe('arrays_model.LOS_ECEF')
     def _updateEpipolar(self, change):
@@ -566,6 +610,7 @@ class ArraysModel(Atom):
     #
     # Intensity level for displayed images.
     #
+    image_type = Enum('Image', 'Mask', 'Sun Mask')
     intensity = Int(100)
     gamma = Bool(False)
 
