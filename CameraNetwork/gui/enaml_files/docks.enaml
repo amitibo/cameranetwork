@@ -112,13 +112,14 @@ enamldef ServerView(DockItem):
 enamldef ArrayView(FlowItem): array_view:
     alias export_flag
     alias image_widget
-    
+
     attr array_model
     attr arrays_model
-    
+    attr server_id
+
     GroupBox: gb:
-        title = "Camera {}".format(array_model.server_id)
-        
+        title = "Camera {}".format(array_view.server_id)
+
         ImageAnalysis: image_widget:
             arrays_model = array_model.arrays_model
             #
@@ -156,7 +157,7 @@ enamldef ArrayView(FlowItem): array_view:
                 text = 'Image Settings'
                 clicked ::
                     ArraySettingsDialog(
-                        title="Camera {}".format(array_model.server_id),
+                        title="Camera {}".format(array_view.server_id),
                         array_model=array_view.array_model,
                         image_widget=array_view.image_widget,
                         ).show()

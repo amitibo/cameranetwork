@@ -366,7 +366,7 @@ class ArrayModel(Atom):
     arrays_model = ForwardTyped(lambda: ArraysModel)
 
     server_id = Str()
-    
+
     img_data = Typed(DataObj, kwargs={})
     img_array = Typed(np.ndarray)
     sunshader_mask = Typed(np.ndarray)
@@ -1551,6 +1551,7 @@ class Controller(Atom):
         array_view = ArrayView(
             array_model=change["value"][new_server_id],
             arrays_model=self.arrays,
+            server_id=new_server_id,
         )
 
         self.view.array_views.objects.insert(view_index, array_view)
