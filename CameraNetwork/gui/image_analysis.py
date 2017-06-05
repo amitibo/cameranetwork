@@ -80,6 +80,9 @@ class ProxyImageAnalysis(ProxyControl):
     def getArrayRegion(self, data):
         raise NotImplementedError
 
+    def updateROIresolution(self, old_shape):
+        raise NotImplementedError
+
 
 class ImageAnalysis(Control):
     """A base for PyQtGraph Widgets for enaml.
@@ -142,6 +145,9 @@ class ImageAnalysis(Control):
 
     #
     # Manual mask.
+    # Note:
+    # This mask is used by the export process. I am not sure why I decided to
+    # calculate it here and not use getArrayRegion as I use for all other arrays.
     #
     mask = d_(Typed(np.ndarray))
 
@@ -150,6 +156,12 @@ class ImageAnalysis(Control):
             return
 
         return self.proxy.getArrayRegion(data)
+
+    def updateROIresolution(self, old_shape):
+        if not self.proxy_is_active:
+            return
+
+        return self.proxy.updateROIresolution(old_shape)
 
     def _default_mask(self):
         return np.ones((301, 301), dtype=np.uint8)
@@ -305,7 +317,7 @@ class QtImageAnalysis(QtControl, ProxyImageAnalysis):
         self.ROI.setVisible(False)
 
         #
-        # Callback when the user stopsmoving a ROI.
+        # Callback when the user stops moving a ROI.
         #
         self.ROI.sigRegionChangeFinished.connect(self._ROI_updated)
         self.mask_ROI.sigRegionChangeFinished.connect(self._mask_ROI_updated)
@@ -498,12 +510,21 @@ class QtImageAnalysis(QtControl, ProxyImageAnalysis):
         self.img_item.setLevels((0, intensity))
 
     def set_ROI_state(self, state):
-        """Set the ROI."""
+        """Set the ROI.
+
+        This is called for example when loading saved ROI.
+        """
 
         if state == {}:
             return
 
         if self._internal_ROI_update:
+            #
+            # These are used for avoiding double updates of the ROI and mask_ROI
+            # states. The updates are caused when declaration.xxx is set (to update
+            # view) which calls the 'set_' callback. These double update cause an
+            # exception in the pyqtgraph (don't know why).
+            #
             self._internal_ROI_update = False
             return
 
@@ -517,12 +538,21 @@ class QtImageAnalysis(QtControl, ProxyImageAnalysis):
         pass
 
     def set_mask_ROI_state(self, state):
-        """Set the mask ROI."""
+        """Set the mask ROI.
+
+        This is called for example when loading saved ROI.
+        """
 
         if state == {}:
             return
 
         if self._internal_mask_ROI_update:
+            #
+            # These are used for avoiding double updates of the ROI and mask_ROI
+            # states. The updates are caused when declaration.xxx is set (to update
+            # view) which calls the 'set_' callback. These double update cause an
+            # exception in the pyqtgraph (don't know why).
+            #
             self._internal_mask_ROI_update = False
             return
 
@@ -530,40 +560,45 @@ class QtImageAnalysis(QtControl, ProxyImageAnalysis):
         self._update_mask()
 
     def _ROI_updated(self):
-        """Callback of ROI udpate."""
+        """Callback of ROI udpate.
+
+        This is called when the user stops moving the ROI controls.
+        """
 
         #
-        # Propagate the state of the ROI (used for saving).
+        # Propagate the state of the ROI (used for saving from the main GUI).
         #
         self._internal_ROI_update = True
         self.declaration.ROI_state = self.ROI.saveState()
+
+        #
+        #
+        # Signal change of ROI (used by the map3d)
+        #
+        # Calculate the bounds.
+        #
         _, tr = self.ROI.getArraySlice(
             self.img_item.image,
             self.img_item
         )
-
         size = self.ROI.state['size']
-
-        #
-        # Calculate the bounds.
-        #
         pts = np.array(
             [tr.map(x, y) for x, y in \
              ((0, 0), (size.x(), 0), (0, size.y()), (size.x(), size.y()))]
         )
 
-        #
-        # Signal change of ROI (used by the map3d)
-        #
         self.ROI_signal.emit(
             {'server_id': self.server_id, 'pts': pts, 'shape': self.img_item.image.shape}
         )
 
     def _mask_ROI_updated(self):
-        """Callback of mask ROI udpate."""
+        """Callback of mask ROI udpate.
+
+        This is called when the user stops moving the mask ROI controls.
+        """
 
         #
-        # Propagate the state of the mask_ROI (used for saving).
+        # Propagate the state of the mask_ROI (used for saving from the main GUI).
         #
         self._internal_mask_ROI_update = True
         self.declaration.mask_ROI_state = self.mask_ROI.saveState()
@@ -590,26 +625,37 @@ class QtImageAnalysis(QtControl, ProxyImageAnalysis):
         )
 
         mask = np.zeros(self.img_item.image.shape[:2], np.uint8)
-        mask[fixed_slices] = sl_mask
+        try:
+            mask[fixed_slices] = sl_mask
+        except ValueError, e:
+            #
+            # When loading old ROIS their shape might not fit the
+            # resolution of the current images.
+            #
+            pass
 
         #
         # Propagate the mask.
         #
         self.declaration.mask = mask
 
-    def update_ROI_resolution(self, old_shape):
-        """Update the ROI_resolution.
+    def updateROIresolution(self, old_shape):
+        """Update the resolution of ROI.
 
-        Used to fix the save ROI resolution to new array resolution.
+        Used to fix the saved ROI resolution to new array resolution.
         """
+
+        logging.info("Updating ROI of camera: {}".format(self.server_id))
 
         s = float(self.img_item.image.shape[0]) / float(old_shape[0])
         c = np.array(old_shape)/2
         t = np.array(self.img_item.image.shape[:2])/2 -c
-        self.ROI.scale(s, center=c)
+        self.ROI.scale(s, center=[0.5, 0.5])
         self.ROI.translate((t[0], t[1]))
-        self.mask_ROI.scale(s, center=c)
+        self.mask_ROI.scale(s, center=[0.5, 0.5])
         self.mask_ROI.translate((t[0], t[1]))
+
+        self._update_mask()
 
     def getArrayRegion(self, data):
         """Get the region selected by ROI.
@@ -619,9 +665,6 @@ class QtImageAnalysis(QtControl, ProxyImageAnalysis):
 
         Args:
             data (array): The array to crop the ROI from.
-
-        TODO:
-            Fix the bug that creates artifacts.
         """
 
         #

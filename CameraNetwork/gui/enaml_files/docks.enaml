@@ -125,7 +125,9 @@ enamldef ArrayView(FlowItem): array_view:
             #
             # Server data
             #
+            server_id = array_view.server_id
             img_array << array_model.displayed_array
+
             #
             # Widgest coords
             #

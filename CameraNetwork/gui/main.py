@@ -759,9 +759,11 @@ class ArraysModel(Atom):
                 if server_id not in rois_dict:
                     continue
 
+                logging.info("Setting ROIs of camera: {}".format(server_id))
+
                 self.array_items[server_id].ROI_state = rois_dict[server_id]
                 self.array_items[server_id].mask_ROI_state = masks_dict[server_id]
-                #self.array_views[server_id].image_widget.update_ROI_resolution(array_shapes[server_id])
+                self.array_views[server_id].image_widget.updateROIresolution(array_shapes[server_id])
 
         except Exception as e:
             logging.error(
