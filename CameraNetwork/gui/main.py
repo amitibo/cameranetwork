@@ -414,7 +414,7 @@ class ArrayModel(Atom):
     # Sunshader mask threshold used in grabcut algorithm.
     #
     grabcut_threshold = Float(3)
-    sun_mask_radius = Float(0.2)
+    sun_mask_radius = Float(0.1)
 
     def _default_Epipolar_coords(self):
         Epipolar_coords = self.projectECEF(self.arrays_model.LOS_ECEF)
@@ -601,6 +601,9 @@ class ArrayModel(Atom):
             radius=self.sun_mask_radius
         )
 
+    @observe("arrays_model.sun_mask_radius")
+    def _update_global_sunmask(self, change):
+        self.sun_mask_radius = self.arrays_model.sun_mask_radius
 
     @observe('arrays_model.LOS_ECEF')
     def _updateEpipolar(self, change):
@@ -640,7 +643,7 @@ class ArraysModel(Atom):
     #
     # Global sun mask.
     #
-    sun_mask_radius = Float(0.2)
+    sun_mask_radius = Float(0.1)
 
     #
     # The 'mouse click' Line Of Site points in ECEF coords.

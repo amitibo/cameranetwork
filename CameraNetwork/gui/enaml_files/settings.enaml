@@ -158,6 +158,14 @@ enamldef ArraysSettingsDialog(Dialog): array_dialog:
                 tool_tip = "Show the camera Masks"
                 checked := arrays_model.show_masks
 
+            Label:
+                text = 'Sunmask Radius'
+            FloatField: sunmask_val:
+                minimum = 0.05
+                maximum = 0.25
+                tool_tip = "Set the global sunmask gaussian radius."
+                value := arrays_model.sun_mask_radius
+
 
 #
 # Server Settings dialog.
