@@ -14,7 +14,7 @@ from .popups import ImageDataPopup
 from .server_pages import (MainControlsPage, ImageControlPage, SeekControlPage,
     SunshaderControlPage, SprinklerControlPage, IntrinsicControlPage,
     ExtrinsicControlPage, RadiometricControlPage)
-from .settings import ArraySettingsDialog, ArraysSettingsDialog
+from .settings import ArraySettingsDialog, ArraysSettingsDialog, CaptureDialog
 
 
 ################################################################################
@@ -186,82 +186,24 @@ enamldef ArraysView(DockItem): arrays_view:
         constraints = [
             vbox(
                 hbox(
-                    exposure_lbl,
-                    exposure_fld,
-                    gain_cb,
-                    get_pb,
-                    clear_pb,
-                    spacer,
-                ),
-                hbox(
-                    quality_cnt,
-                    resolution_lbl,
-                    resolution_fld,
-                    spacer,
-                ),
-                arrays_cont,
-                hbox(
+                    capture_pb,
                     view_pb,
+                    clear_pb,
                     spacer,
                     load_pb,
                     save_pb
-                )
+                ),
+                arrays_cont,
             ),
         ]
 
-        Label: exposure_lbl:
-            text = 'Exp[us]:'
-        IntField: exposure_fld:
-            minimum = 0
-            value = 500
-
-        CheckBox: gain_cb:
-            text = 'Gain Boost:'
-
-        Container: quality_cnt:
-            constraints = [
-                hbox(HDR_cb, JPEG_cb, quality_fld),
-            ]
-
-            RadioButton: HDR_cb:
-                tool_tip = "Return HDR image"
-                checked = False
-                text = "HDR"
-
-            RadioButton: JPEG_cb:
-                tool_tip = "Use JPEG compression"
-                checked = True
-                text = "JPEG"
-
-            IntField: quality_fld:
-                minimum = gs.MIN_JPEG_QUALITY
-                value = 80
-                maximum = 100
-                enabled << JPEG_cb.checked
-
-        Label: resolution_lbl:
-            text = 'Resolution:'
-        IntField: resolution_fld:
-            minimum = 201
-            value = 301
-
-        PushButton: get_pb:
-            text = 'Get'
+        PushButton: capture_pb:
+            text = 'Capture Settings'
             clicked ::
-                main.clear_map()
-                main.broadcast_message(
-                    gs.MSG_TYPE_ARRAY,
-                    kwds=dict(
-                        exposure_us=exposure_fld.value,
-                        gain_db=0,
-                        frames_num=1,
-                        color_mode=gs.COLOR_RAW,
-                        gain_boost=gain_cb.checked,
-                        normalize=True,
-                        jpeg=quality_fld.value if JPEG_cb.checked else False,
-                        resolution=resolution_fld.value
-                    )
-                )
+                CaptureDialog(
+                    title="Capture Settings",
+                    main_model=arrays_view.main,
+                    ).show()
 
         PushButton: view_pb:
             text = 'View Settings'

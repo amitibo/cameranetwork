@@ -46,6 +46,69 @@ enamldef ArraySettingsDialog(Dialog): arrays_dialog:
 #
 # Capture settings
 #
+enamldef CaptureDialog(Dialog): capture_dialog:
+    attr main_model
+    modality = 'non_modal'
+
+    Container:
+        Form:
+            Label: exposure_lbl:
+                text = 'Exp[us]:'
+            IntField: exposure_fld:
+                minimum = 0
+                value = 500
+
+            Label: gain_lbl:
+                text = 'Gain Boost:'
+            CheckBox: gain_cb:
+                tool_tip = "Apply gain boost to the capture"
+
+            Label: HDR_lbl:
+                text = "HDR"
+            RadioButton: HDR_cb:
+                tool_tip = "Return HDR image"
+                checked = False
+
+            Label: jpeg_lbl:
+                text = "JPEG"
+            RadioButton: JPEG_cb:
+                tool_tip = "Use JPEG compression"
+                checked = True
+
+            Label: jpeg_quality_lbl:
+                text = "Jpeg Quality"
+            IntField: quality_fld:
+                tool_tip = "Quality of JPEG compression"
+                minimum = gs.MIN_JPEG_QUALITY
+                value = 80
+                maximum = 100
+                enabled << JPEG_cb.checked
+
+            Label: resolution_lbl:
+                text = 'Resolution:'
+            IntField: resolution_fld:
+                tool_tip = "Image resolution"
+                minimum = 101
+                value = 301
+
+            PushButton: get_pb:
+                text = 'Capture'
+                clicked ::
+                    main_model.clear_map()
+                    main_model.broadcast_message(
+                        gs.MSG_TYPE_ARRAY,
+                        kwds=dict(
+                            exposure_us=exposure_fld.value,
+                            gain_db=0,
+                            frames_num=1,
+                            color_mode=gs.COLOR_RAW,
+                            gain_boost=gain_cb.checked,
+                            normalize=True,
+                            jpeg=quality_fld.value if JPEG_cb.checked else False,
+                            resolution=resolution_fld.value
+                        )
+                    )
+
 
 #
 # Arrays settings dialog.
