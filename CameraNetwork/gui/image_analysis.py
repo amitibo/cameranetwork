@@ -528,7 +528,9 @@ class QtImageAnalysis(QtControl, ProxyImageAnalysis):
             self._internal_ROI_update = False
             return
 
+        self.ROI.sigRegionChangeFinished.disconnect(self._ROI_updated)
         self.ROI.setState(state)
+        self.ROI.sigRegionChangeFinished.connect(self._ROI_updated)
 
     def set_mask(self, mask):
         """Set the manual mask."""
@@ -556,10 +558,13 @@ class QtImageAnalysis(QtControl, ProxyImageAnalysis):
             self._internal_mask_ROI_update = False
             return
 
+        self.mask_ROI.sigRegionChangeFinished.disconnect(self._mask_ROI_updated)
         self.mask_ROI.setState(state)
+        self.mask_ROI.sigRegionChangeFinished.connect(self._mask_ROI_updated)
+
         self._update_mask()
 
-    def _ROI_updated(self):
+    def _ROI_updated(self, *args):
         """Callback of ROI udpate.
 
         This is called when the user stops moving the ROI controls.
@@ -591,7 +596,7 @@ class QtImageAnalysis(QtControl, ProxyImageAnalysis):
             {'server_id': self.server_id, 'pts': pts, 'shape': self.img_item.image.shape}
         )
 
-    def _mask_ROI_updated(self):
+    def _mask_ROI_updated(self, *args):
         """Callback of mask ROI udpate.
 
         This is called when the user stops moving the mask ROI controls.
@@ -645,15 +650,14 @@ class QtImageAnalysis(QtControl, ProxyImageAnalysis):
         Used to fix the saved ROI resolution to new array resolution.
         """
 
-        logging.info("Updating ROI of camera: {}".format(self.server_id))
-
         s = float(self.img_item.image.shape[0]) / float(old_shape[0])
-        c = np.array(old_shape)/2
-        t = np.array(self.img_item.image.shape[:2])/2 -c
-        self.ROI.scale(s, center=[0.5, 0.5])
-        self.ROI.translate((t[0], t[1]))
-        self.mask_ROI.scale(s, center=[0.5, 0.5])
-        self.mask_ROI.translate((t[0], t[1]))
+
+        self.ROI.sigRegionChangeFinished.disconnect(self._ROI_updated)
+        self.mask_ROI.sigRegionChangeFinished.disconnect(self._mask_ROI_updated)
+        self.ROI.scale(s)
+        self.mask_ROI.scale(s)
+        self.ROI.sigRegionChangeFinished.connect(self._ROI_updated)
+        self.mask_ROI.sigRegionChangeFinished.connect(self._mask_ROI_updated)
 
         self._update_mask()
 
