@@ -10,7 +10,7 @@ from CameraNetwork import global_settings as gs
 #
 # Array settings dialog.
 #
-enamldef ArraySettingsDialog(Dialog): array_dialog:
+enamldef ArraySettingsDialog(Dialog): arrays_dialog:
     attr array_model
     attr image_widget
     modality = 'non_modal'
@@ -42,6 +42,58 @@ enamldef ArraySettingsDialog(Dialog): array_dialog:
                 maximum = 0.25
                 tool_tip = "Sun mask gaussian radius."
                 value := array_model.sun_mask_radius
+
+#
+# Capture settings
+#
+
+#
+# Arrays settings dialog.
+#
+enamldef ArraysSettingsDialog(Dialog): array_dialog:
+    attr arrays_model
+    modality = 'non_modal'
+
+    Container:
+        Form:
+            Label: type_lbl:
+                text = 'View Type'
+            ComboBox: type_combo:
+                tool_tip = "Type of displayed image."
+                items = ['Image', 'Mask', 'Sun Mask']
+                selected_item >> arrays_model.image_type
+
+            Label: intensity_lbl:
+                text = 'Intensity Level'
+            IntField: intensity_txt:
+                tool_tip = "Control the intensity of the displayed image."
+                minimum = 1
+                maximum = 1000
+                value := arrays_model.intensity
+
+            Label: gamma_lbl:
+                text = 'Gamma Correction'
+            CheckBox: gamma_cb:
+                tool_tip = "Apply Gamma correction to the Image"
+                checked := arrays_model.gamma
+
+            Label: grid_lbl:
+                text = "Show Grid"
+            CheckBox: grid_cb:
+                tool_tip = "Show the reconstrction grid"
+                checked := arrays_model.show_grid
+
+            Label: rois_lbl:
+                text = "Show ROIs"
+            CheckBox: ROIs_cb:
+                tool_tip = "Show the camera ROIs"
+                checked := arrays_model.show_ROIs
+
+            Label: masks_lbl:
+                text = "Show Masks"
+            CheckBox: masks_cb:
+                tool_tip = "Show the camera Masks"
+                checked := arrays_model.show_masks
 
 
 #

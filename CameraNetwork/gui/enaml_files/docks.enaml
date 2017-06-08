@@ -14,7 +14,7 @@ from .popups import ImageDataPopup
 from .server_pages import (MainControlsPage, ImageControlPage, SeekControlPage,
     SunshaderControlPage, SprinklerControlPage, IntrinsicControlPage,
     ExtrinsicControlPage, RadiometricControlPage)
-from .settings import ArraySettingsDialog
+from .settings import ArraySettingsDialog, ArraysSettingsDialog
 
 
 ################################################################################
@@ -174,7 +174,7 @@ enamldef ArrayView(FlowItem): array_view:
 # ArraysView
 # Displays captured images/arrays.
 #
-enamldef ArraysView(DockItem):
+enamldef ArraysView(DockItem): arrays_view:
 
     attr arrays
     attr main
@@ -201,14 +201,7 @@ enamldef ArraysView(DockItem):
                 ),
                 arrays_cont,
                 hbox(
-                    type_combo,
-                    intensity_lbl,
-                    intensity_slider,
-                    intensity_txt,
-                    gamma_cb,
-                    grid_cb,
-                    ROIs_cb,
-                    masks_cb,
+                    view_pb,
                     spacer,
                     load_pb,
                     save_pb
@@ -270,35 +263,19 @@ enamldef ArraysView(DockItem):
                     )
                 )
 
+        PushButton: view_pb:
+            text = 'View Settings'
+            clicked ::
+                ArraysSettingsDialog(
+                    title="Arrays Settings",
+                    arrays_model=arrays_view.arrays,
+                    ).show()
+
         PushButton: clear_pb:
             text = 'Clear'
             clicked ::
                 arrays.clear_arrays()
                 array_views.objects = []
-
-        ComboBox: type_combo:
-            tool_tip = "Type of displayed image."
-            items = ['Image', 'Mask', 'Sun Mask']
-            selected_item >> arrays.image_type
-
-        Label: intensity_lbl:
-            text = 'Intensity Level'
-
-        Slider: intensity_slider:
-            tool_tip = "Control the intensity of the displayed image."
-            tracking = False
-            tick_interval = 50
-            minimum = 1
-            maximum = 1000
-            value := arrays.intensity
-
-        IntField: intensity_txt:
-            value := intensity_slider.value
-
-        CheckBox: gamma_cb:
-            text = 'Gamma'
-            tool_tip = "Apply Gamma correction to the Image"
-            checked := arrays.gamma
 
         Container: arrays_cont:
             FlowArea: arrays_area:
@@ -318,21 +295,6 @@ enamldef ArraysView(DockItem):
             tool_tip = "Save the ROIs"
             clicked ::
                 arrays.save_rois()
-
-        CheckBox: grid_cb:
-            text = "Show Grid"
-            tool_tip = "Show the reconstrction grid"
-            checked := arrays.show_grid
-
-        CheckBox: ROIs_cb:
-            text = "Show ROIs"
-            tool_tip = "Show the camera ROIs"
-            checked := arrays.show_ROIs
-
-        CheckBox: masks_cb:
-            text = "Show Masks"
-            tool_tip = "Show the camera Masks"
-            checked := arrays.show_masks
 
 
 ################################################################################

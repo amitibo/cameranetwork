@@ -601,7 +601,7 @@ class ArrayModel(Atom):
             radius=self.sun_mask_radius
         )
 
-    
+
     @observe('arrays_model.LOS_ECEF')
     def _updateEpipolar(self, change):
         """Project the LOS points (mouse click position) to camera."""
@@ -636,6 +636,11 @@ class ArraysModel(Atom):
     show_ROIs = Bool(True)
     show_grid = Bool(False)
     show_masks = Bool(False)
+
+    #
+    # Global sun mask.
+    #
+    sun_mask_radius = Float(0.2)
 
     #
     # The 'mouse click' Line Of Site points in ECEF coords.
@@ -847,7 +852,7 @@ class MainModel(Atom):
     grid_mode = Str("Manual")
     grid_width = Float(12000)
     grid_length = Float(12000)
-    
+
     #
     # Global (broadcast) capture settings.
     #
