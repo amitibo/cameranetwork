@@ -414,6 +414,7 @@ class ArrayModel(Atom):
     # Sunshader mask threshold used in grabcut algorithm.
     #
     grabcut_threshold = Float(3)
+    sun_mask_radius = Float(0.2)
 
     def _default_Epipolar_coords(self):
         Epipolar_coords = self.projectECEF(self.arrays_model.LOS_ECEF)
@@ -581,13 +582,26 @@ class ArrayModel(Atom):
         #
         # Update the sun mask.
         #
+        self._update_sunmask(None)
+
+    @observe("sun_mask_radius")
+    def _update_sunmask(self, change):
+        #
+        # Update the sun mask.
+        #
         sun_alt, sun_az = sun_direction(
             latitude=str(self.latitude),
             longitude=str(self.longitude),
             altitude=self.altitude,
             at_time=self.img_data.name_time)
-        self.sun_mask = calcSunMask(self.img_array.shape, sun_alt, sun_az)
+        self.sun_mask = calcSunMask(
+            self.img_array.shape,
+            sun_alt,
+            sun_az,
+            radius=self.sun_mask_radius
+        )
 
+    
     @observe('arrays_model.LOS_ECEF')
     def _updateEpipolar(self, change):
         """Project the LOS points (mouse click position) to camera."""
@@ -833,12 +847,7 @@ class MainModel(Atom):
     grid_mode = Str("Manual")
     grid_width = Float(12000)
     grid_length = Float(12000)
-
-    #
-    # Sunshader mask threshold used in grabcut algorithm.
-    #
-    grabcut_threshold = Float(3)
-
+    
     #
     # Global (broadcast) capture settings.
     #
@@ -1270,7 +1279,6 @@ class MainModel(Atom):
                 lat=self.latitude,
                 lon=self.longitude,
                 alt=self.altitude,
-                grabcut_threshold=self.grabcut_threshold,
                 progress_callback=self.updateExportProgress
             )
         )

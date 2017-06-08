@@ -35,6 +35,14 @@ enamldef ArraySettingsDialog(Dialog): array_dialog:
                 tool_tip = "Sunshader grabcut threshold."
                 value := array_model.grabcut_threshold
 
+            Label:
+                text = 'Sunmask Radius'
+            FloatField: sunmask_val:
+                minimum = 0.05
+                maximum = 0.25
+                tool_tip = "Sun mask gaussian radius."
+                value := array_model.sun_mask_radius
+
 
 #
 # Server Settings dialog.

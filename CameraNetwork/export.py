@@ -20,7 +20,6 @@ def exportToShdom(
     lat,
     lon,
     alt,
-    grabcut_threshold,
     progress_callback):
     """Process export of reconstruction data on separate thread.
     The export is intended for use in SHDOM.
@@ -31,8 +30,6 @@ def exportToShdom(
         grid (list): List of grid array. This is the grid to reconstruct.
         lat, lon, lat (float): The latitude, longitude and altitude of the center
             of the grid.
-        grabcut_threshold (float): Threshold for grabcut algorithm applied for
-            sunshader segmentation.
         progress_callback (function): Callback function to update the (GUI) with
             the progress of the export.
 
