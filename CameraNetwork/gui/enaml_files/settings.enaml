@@ -449,12 +449,6 @@ enamldef ReconstructDialog(Dialog): popup:
                     tool_tip = "Top of Lidar Grid [m]"
                     value := main_model.TOG
 
-                Label:
-                    text = 'Grabcut Threshold:'
-                FloatField: grabcut_threshold:
-                    tool_tip = "Threshold for the sunshader segmentation."
-                    value := main_model.grabcut_threshold
-
         DialogButtonBox: bbox:
             buttons = [
                 DialogButton('OK', 'accept'),
