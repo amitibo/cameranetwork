@@ -346,11 +346,15 @@ def calcSunshaderMask(img_array, grabcut_threshold, values_range=40):
     bgdModel = np.zeros((1, 65), np.float64)
     fgdModel = np.zeros((1, 65), np.float64)
     rect = (0, 0, 0, 0)
-    cv2.grabCut(img_u8, sunshader_mask, rect, bgdModel, fgdModel, 5, cv2.GC_INIT_WITH_MASK)
-    sunshader_mask = np.where(
-        (sunshader_mask==cv2.GC_FGD) | (sunshader_mask==cv2.GC_PR_FGD),
-        1,
-        0).astype('uint8')
+    try:
+        cv2.grabCut(img_u8, sunshader_mask, rect, bgdModel, fgdModel, 5, cv2.GC_INIT_WITH_MASK)
+        sunshader_mask = np.where(
+            (sunshader_mask==cv2.GC_FGD) | (sunshader_mask==cv2.GC_PR_FGD),
+            1,
+            0).astype('uint8')
+    except Exception, e:
+        logging.error("Failed to calculate grabcut sunshader.")
+        sunshader_mask = np.ones(img_array.shape[:2], np.uint8)*cv2.GC_PR_FGD
 
     return sunshader_mask
 
