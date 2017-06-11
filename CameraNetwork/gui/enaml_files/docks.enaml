@@ -7,7 +7,7 @@ from enaml.stdlib.dialog_buttons import DialogButtonBox, DialogButton
 from CameraNetwork import global_settings as gs
 from CameraNetwork.gui.data_frame_table import DataFrameTable
 from CameraNetwork.gui.image_analysis import ImageAnalysis
-from traits_enaml.widgets.mayavi_canvas import MayaviCanvas
+from CameraNetwork.gui.mayavi_canvas import MayaviCanvas
 
 from .extra import GradientButtonSheet
 from .popups import ImageDataPopup
