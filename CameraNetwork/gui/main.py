@@ -537,8 +537,12 @@ class ArrayModel(Atom):
         #
         # Calculate masks.
         #
-        self.sunshader_mask = calcSunshaderMask(
-            self.img_array, self.grabcut_threshold)
+        thread = Thread(
+            target=calcSunshaderMask,
+            args=(self, self.img_array, self.grabcut_threshold)
+        )
+        thread.daemon = True
+        thread.start()
 
     @observe("arrays_model.image_type", "img_array", "sunshader_mask",
              "sun_mask")

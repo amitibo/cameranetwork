@@ -3,6 +3,7 @@
 from __future__ import division, absolute_import, print_function
 from CameraNetwork.utils import obj
 import cv2
+from enaml.application import deferred_call
 import logging
 import numpy as np
 
@@ -321,7 +322,7 @@ class Normalization(object):
         return self._tight_mask
 
 
-def calcSunshaderMask(img_array, grabcut_threshold, values_range=40):
+def calcSunshaderMask(array_model, img_array, grabcut_threshold, values_range=40):
     """Calculate a mask for the sunshader.
 
     Calculate a mask for the pixels covered by the sunshader.
@@ -356,7 +357,7 @@ def calcSunshaderMask(img_array, grabcut_threshold, values_range=40):
         logging.error("Failed to calculate grabcut sunshader.")
         sunshader_mask = np.ones(img_array.shape[:2], np.uint8)*cv2.GC_PR_FGD
 
-    return sunshader_mask
+    deferred_call(setattr, array_model, 'sunshader_mask', sunshader_mask)
 
 
 def gaussian(center_x, center_y, height=1., width_x=0.25, width_y=0.25):
