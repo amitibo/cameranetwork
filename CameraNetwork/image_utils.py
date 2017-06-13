@@ -38,7 +38,6 @@
 from __future__ import division, absolute_import, print_function
 from CameraNetwork.utils import obj
 import cv2
-from enaml.application import deferred_call
 import logging
 import numpy as np
 
@@ -375,6 +374,8 @@ def calcSunshaderMask(array_model, img_array, grabcut_threshold, values_range=40
         The algorithm uses some "Magic" numbers that might need to be
         adapted to different lighting levels.
     """
+
+    from enaml.application import deferred_call
 
     sunshader_mask = np.ones(img_array.shape[:2], np.uint8)*cv2.GC_PR_FGD
     sunshader_mask[img_array.max(axis=2) < grabcut_threshold] = cv2.GC_PR_BGD
