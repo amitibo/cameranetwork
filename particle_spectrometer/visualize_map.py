@@ -108,7 +108,7 @@ class Visualization(object):
         self.z = z
         self.s = s
 
-        self.animation_index = 2
+        self.animation_index = 1
 
         #
         # Setup the map.
@@ -117,7 +117,7 @@ class Visualization(object):
             bgcolor=(1, 1, 1),
             size=(900, 900)
         )
-        #self.draw_map(map_coords)
+        self.draw_map(map_coords)
         self.draw_path()
 
     def draw_map(self, map_coords):
@@ -134,12 +134,19 @@ class Visualization(object):
 
     def draw_path(self):
 
+        scalars = np.zeros_like(self.s)
+        scalars[0] = self.s[0]
+
         self.pts3d = mlab.points3d(
             self.x,
             self.y,
             MAP_ZSCALE*self.z,
-            self.s
+            scalars,
+            vmax=self.s.max(),
+            vmin=self.s.min(),
+            colormap='hot'
         )
+        self.pts3d.module_manager.scalar_lut_manager.reverse_lut = True
 
     def update_pts3d(self):
         """Update the animation of the path."""
@@ -148,21 +155,17 @@ class Visualization(object):
         mask = np.zeros_like(self.x, dtype=np.bool)
         mask[:self.animation_index] = True
 
-        self.pts3d.mlab_source.reset(
-            x=self.x[mask],
-            y=self.y[mask],
-            z=self.z[mask],
-            scalars=self.s[mask]
-        )
+        scalars = np.zeros_like(self.s)
+        scalars[mask] = self.s[mask]
+        self.pts3d.mlab_source.scalars = scalars
 
-
-@mlab.animate(delay=50)
-def anim():
-    f = mlab.gcf()
-    while 1:
-        f.scene.camera.azimuth(1)
-        vis.update_pts3d()
-        yield
+    @mlab.animate(delay=50)
+    def anim(self):
+        f = mlab.gcf()
+        while 1:
+            f.scene.camera.azimuth(1)
+            self.update_pts3d()
+            yield
 
 
 def main():
@@ -170,7 +173,7 @@ def main():
     # Load the path data.
     #
     df, x, y, z = load_path()
-    s = df[PARTICLE_SIZE].values
+    s = df[PARTICLE_SIZE].values.astype(np.float)
 
     #
     # Mask the path.
@@ -187,9 +190,8 @@ def main():
     #
     # Create the visualization.
     #
-    global vis
     vis = Visualization(map_coords, x, y, z, s)
-    animation = anim()
+    animation = vis.anim()
 
     #
     # Start.
