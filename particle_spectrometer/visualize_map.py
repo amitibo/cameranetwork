@@ -1,10 +1,12 @@
 from __future__ import division
+import argparse
 import mayavi.mlab as mlab
 from CameraNetwork.visualization import calcSeaMask
 import matplotlib.mlab as ml
 import datetime
 import glob
 import json
+import moviepy.editor as mpy
 import numpy as np
 import os
 import pandas as pd
@@ -17,8 +19,10 @@ PARTICLE_SIZE = 0.28
 
 COLUMNS = [0.25, 0.28, 0.3, 0.35, 0.4, 0.45, 0.5, 0.58, 0.65, 0.7, 0.8, 1, 1.3, 1.6, 2, 2.5, 3, 3.5, 4, 5, 6.5, 7.5, 8.5, 10, 12.5, 15, 17.5, 20, 25, 30, 32]
 
+CLIP_DURATION = 18
 
-def load_path(flight_path=FLIGHT_PATH, lat0=32.775776, lon0=35.024963, alt0=229):
+
+def load_path(flight_path, lat0=32.775776, lon0=35.024963, alt0=229):
     """Load the flight path."""
 
     file_paths = sorted(glob.glob(os.path.join(flight_path, '*.json')))
@@ -161,18 +165,29 @@ class Visualization(object):
 
     @mlab.animate(delay=50)
     def anim(self):
+        """Animate the scene."""
+
         f = mlab.gcf()
         while 1:
             f.scene.camera.azimuth(1)
             self.update_pts3d()
             yield
 
+    def make_frame(self, t):
+        """Make a frame."""
 
-def main():
+        f = mlab.gcf()
+        f.scene.camera.azimuth(1)
+        self.update_pts3d()
+
+        return mlab.screenshot(antialiased=True)
+
+
+def main(view, flight_path, dst_path):
     #
     # Load the path data.
     #
-    df, x, y, z = load_path()
+    df, x, y, z = load_path(flight_path)
     s = df[PARTICLE_SIZE].values.astype(np.float)
 
     #
@@ -191,13 +206,19 @@ def main():
     # Create the visualization.
     #
     vis = Visualization(map_coords, x, y, z, s)
-    animation = vis.anim()
-
-    #
-    # Start.
-    #
-    mlab.show()
+    if view:
+        animation = vis.anim()
+        mlab.show()
+    else:
+        clip = mpy.VideoClip(vis.make_frame, duration=CLIP_DURATION)
+        clip.write_videofile(dst_path, fps=20)
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description="Create particle spectrometer animation.")
+    parser.add_argument("--view", action="store_true", help="Show animation.")
+    parser.add_argument("--dst_path", type=str, help="Destination file name.", default="movie.mp4")
+    parser.add_argument("--flight_path", type=str, help="Path to flight data.", default=FLIGHT_PATH)
+    args = parser.parse_args()
+
+    main(args.view, args.flight_path, args.dst_path)
