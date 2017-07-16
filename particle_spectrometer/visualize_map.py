@@ -1,6 +1,6 @@
 from __future__ import division
-from CameraNetwork.visualization import calcSeaMask
 import mayavi.mlab as mlab
+from CameraNetwork.visualization import calcSeaMask
 import matplotlib.mlab as ml
 import datetime
 import glob
@@ -20,7 +20,7 @@ COLUMNS = [0.25, 0.28, 0.3, 0.35, 0.4, 0.45, 0.5, 0.58, 0.65, 0.7, 0.8, 1, 1.3, 
 
 def load_path(flight_path=FLIGHT_PATH, lat0=32.775776, lon0=35.024963, alt0=229):
     """Load the flight path."""
-    
+
     file_paths = sorted(glob.glob(os.path.join(flight_path, '*.json')))
 
     data = []
@@ -73,10 +73,10 @@ def loadMapData():
         hgt2 = np.fromfile(hgt_data, np.dtype('>i2')).reshape((1201, 1201))[:1200, :1200]
     hgt = np.hstack((hgt1, hgt2)).astype(np.float32)
     lon, lat = np.meshgrid(np.linspace(34, 36, 2400, endpoint=False), np.linspace(32, 33, 1200, endpoint=False)[::-1])
-    
+
     x_slice = slice(100, 400)
     y_slice = slice(1100, 1400)
-    
+
     return lat[x_slice, y_slice], lon[x_slice, y_slice], hgt[x_slice, y_slice]
 
 
@@ -112,6 +112,15 @@ def draw_map(mayavi_scene, map_coords):
     mlab.mesh(Y, X, MAP_ZSCALE * Z, figure=mayavi_scene, mask=Z_mask, color=(0.7, 0.7, 0.7))
 
 
+@mlab.animate(delay=100)
+def anim():
+    f = mlab.gcf()
+    while 1:
+        f.scene.camera.azimuth(2)
+        f.scene.render()
+        yield
+
+
 def main():
     #
     # Load the path data.
@@ -122,10 +131,10 @@ def main():
     #
     # Setup the map.
     #
-    map_coords = loadMapData()    
-    mayavi_scene = mlab.figure(bgcolor=(1, 1, 1))
+    map_coords = loadMapData()
+    mayavi_scene = mlab.figure(bgcolor=(1, 1, 1), size=(900, 900))
     draw_map(mayavi_scene, map_coords)
-    
+
     #
     # Setup to the path.
     #
@@ -133,6 +142,7 @@ def main():
     mask = (x>-10000) & (x<10000) & (y>-10000) & (y<10000)
     mlab.points3d(x[mask], y[mask], MAP_ZSCALE * z[mask], s[mask])
 
+    a = anim()
     mlab.show()
 
 
