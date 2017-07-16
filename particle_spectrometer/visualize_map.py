@@ -119,10 +119,12 @@ class Visualization(object):
         #
         self.mayavi_scene = mlab.figure(
             bgcolor=(1, 1, 1),
-            size=(900, 900)
+            size=(1280, 960)
         )
         self.draw_map(map_coords)
         self.draw_path()
+
+        mlab.view(distance=40000, focalpoint=[0, 0, -1200])
 
     def draw_map(self, map_coords):
         """Clear the map view and draw elevation map."""
@@ -134,7 +136,8 @@ class Visualization(object):
             map_coords[2],
         )
 
-        mlab.mesh(Y, X, MAP_ZSCALE * Z, figure=self.mayavi_scene, mask=Z_mask, color=(0.7, 0.7, 0.7))
+        mesh = mlab.mesh(Y, X, MAP_ZSCALE * Z, figure=self.mayavi_scene, mask=Z_mask, color=(0.7, 0.7, 0.7))
+        self.mayavi_scene.children[0].children[0].filter.feature_angle = 100
 
     def draw_path(self):
 
