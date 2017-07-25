@@ -1,10 +1,10 @@
 (dp1
 S'exposure_us'
 p2
-I120000
+I500000
 sS'color_mode'
 p3
-S'raw'
+S'rgb'
 p4
 sS'gain_db'
 p5
