@@ -289,6 +289,8 @@ class Server(MDPWorker):
         The sprinkler should clean the lens once a day in the morning.
         """
 
+        logging.info("Setup the sprinkler timer.")
+
         #
         # Check if the sprinkler was used today.
         #
@@ -312,6 +314,9 @@ class Server(MDPWorker):
                             ),
                         self.sprinkler_callback
                     )
+
+                    logging.debug("Already sprinkled today. No need to sprinkle.")
+
                     return
 
         except Exception as e:
@@ -329,6 +334,8 @@ class Server(MDPWorker):
     @gen.coroutine
     def sprinkler_callback(self):
         """Activate the sprinklers to clean the lens in the morning."""
+
+        logging.info("Morning sprinkled happiness.")
 
         #
         # Setup a timer for tommorow.
