@@ -255,9 +255,20 @@ class Server(MDPWorker):
         if not self._offline:
             #
             # Start the different timers.
+            # ---------------------------
+            #
+            # 1) Start the sunshader timer. This timer handles scanning for the
+            #    position of the sun.
             #
             IOLoop.current().spawn_callback(self.sunshader_timer)
 
+            #
+            # 2) Setup a timer to activate the sprinklers.
+            #
+            IOLoop.current().spawn_callback(self.setup_sprinkler_timer)
+
+            #
+            # 3) Start the capture loop.
             #
             # If the start_loop is set, start the capture loop.
             #
@@ -270,6 +281,89 @@ class Server(MDPWorker):
             # Start in offline mode.
             #
             logging.info("Starting in offline mode.")
+
+    @gen.coroutine
+    def setup_sprinkler_timer(self):
+        """Setup the timer of the sprinkler.
+
+        The sprinkler should clean the lens once a day in the morning.
+        """
+
+        logging.info("Setup the sprinkler timer.")
+
+        #
+        # Check if the sprinkler was used today.
+        #
+        try:
+            if os.path.exists(gs.SPRINKLER_LAST_DAY_FILE):
+                with open(gs.SPRINKLER_LAST_DAY_FILE, "rb") as f:
+                    last_day = cPickle.load(f)
+
+                if last_day == datetime.now().date():
+                    #
+                    # The sprinkler was already used today.
+                    #
+                    # Setup a timer for tommorow.
+                    #
+                    t = datetime.now()
+                    IOLoop.current().call_at(
+                        time.mktime(
+                            datetime(
+                                t.year, t.month, t.day+1, gs.SPRINKLER_TIMER_HOUR
+                                ).timetuple()
+                            ),
+                        self.sprinkler_callback
+                    )
+
+                    logging.debug("Already sprinkled today. No need to sprinkle.")
+
+                    return
+
+        except Exception as e:
+            logging.error('Error while checking last sprinkler tim:\n{}'.format(
+                traceback.format_exc()))
+            if os.path.exists(gs.SPRINKLER_LAST_DAY_FILE):
+                os.remove(gs.SPRINKLER_LAST_DAY_FILE)
+
+        #
+        # The sprinkler was not used to, add a callback to use it in 1 min
+        # (to let the sunshader finish its scan before the lens get wet).
+        #
+        IOLoop.current().call_later(60, self.sprinkler_callback)
+
+    @gen.coroutine
+    def sprinkler_callback(self):
+        """Activate the sprinklers to clean the lens in the morning."""
+
+        logging.info("Morning sprinkled happiness.")
+
+        #
+        # Setup a timer for tommorow.
+        #
+        t = datetime.now()
+        IOLoop.current().call_at(
+            time.mktime(
+                datetime(
+                    t.year, t.month, t.day+1, gs.SPRINKLER_TIMER_HOUR
+                    ).timetuple()
+                ),
+            self.sprinkler_callback
+        )
+
+        #
+        # Activate the sprinklers.
+        #
+        yield self.push_cmd(
+            gs.SPRINKLER_CMD,
+            priority=50,
+            period=gs.SPRINKLER_PERIOD
+        )
+
+        #
+        # Store that the sprinklers were used today.
+        #
+        with open(gs.SPRINKLER_LAST_DAY_FILE, "wb") as f:
+            cPickle.dump(datetime.now().date(), f)
 
     def update_proxy_params(self):
         """Update the proxy params
