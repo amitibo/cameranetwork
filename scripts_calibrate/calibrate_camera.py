@@ -78,8 +78,8 @@ DO_GEOMETRIC_CALIBRATION = True
 NX, NY = 9, 6
 GEOMETRIC_EXPOSURE = 500000
 GEOMETRIC_STEPS = 12
-GEOMETRIC_XMIN, GEOMETRIC_XMAX = 40, 165
-GEOMETRIC_YMIN, GEOMETRIC_YMAX = 0, 110
+GEOMETRIC_XMIN, GEOMETRIC_XMAX = 40, 140
+GEOMETRIC_YMIN, GEOMETRIC_YMAX = 40, 140
 GEOMETRIC_SLEEP_TIME = 4
 CHESSBOARD_DETECTION_THRESHOLD = 20
 SHOW_REPROJECTION = True
@@ -93,7 +93,7 @@ DO_BLACK_IMG = True
 # Vignetting calibration.
 #
 VIGNETTING_STEPS = 24
-VIGNETTING_EXPOSURE = 65000
+VIGNETTING_EXPOSURE = 60000
 LED_POWER = {"BLUE(470)": 35, "GREEN(505)": 100, "RED(625)": 50}
 VIGNETTING_SLEEP_TIME = 1
 
@@ -188,8 +188,8 @@ def main():
 
         imgs = []
         img_index = 0
+        raw_input("Put the chessboard and press any key")
         for _ in range(5):
-            raw_input("Move chessboard to new position and press any key")
             for (x, y) in zip(
                 np.random.choice(X_grid.ravel(), size=20),
                 np.random.choice(Y_grid.ravel(), size=20)
