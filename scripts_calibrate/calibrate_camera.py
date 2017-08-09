@@ -277,11 +277,8 @@ def main():
         black_img = np.mean(cam.capture(settings, frames_num=10)[0], axis=2)
         winsound.Beep(5000, 500)
         np.save(os.path.join(results_path, 'black_img.npy'), black_img)
-
-    #
-    # Make path to store img measurements.
-    #
-    safe_mkdirs(results_path)
+    else:
+        black_img = np.load(os.path.join(results_path, 'black_img.npy'))
 
     #
     # Print the COLIBRI LED POWER
@@ -323,8 +320,6 @@ def main():
         indexing='xy')
     X_grid = X_grid.astype(np.int32)
     Y_grid = Y_grid.astype(np.int32)
-
-    black_img = np.load(os.path.join(results_path, 'black_img.npy'))
 
     measurements = []
     for i, (x, y) in enumerate(zip(X_grid.ravel(), Y_grid.ravel())):
