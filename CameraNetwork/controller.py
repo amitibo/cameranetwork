@@ -223,7 +223,10 @@ class Controller(object):
                 (default), will be taken directly from the sensor.
         """
 
+        logging.debug("Loading Camera Calibration.")
+
         if serial_num is None:
+            logging.debug("Serial number not given.")
             if capture_date is not None:
                 #
                 # Read the serial number from an arbitrary image from the
@@ -242,6 +245,9 @@ class Controller(object):
                         with open(data_path, "rb") as f:
                             data = cPickle.load(f)
                         serial_num = data.camera_info["serial_num"]
+                        logging.debug(
+                            "Serial number {} taken from: {}".format(serial_num, data_path)
+                        )
                         break
                     except:
                         pass
@@ -250,6 +256,9 @@ class Controller(object):
                 # Not loading a previously saved image use the camera sensor num.
                 #
                 serial_num = self._camera.info['serial_num']
+                logging.debug(
+                    "Serial number {} taken from Camera sensor.".format(serial_num)
+                )
 
         self.base_calibration_path = os.path.join(
             pkg_resources.resource_filename(__name__, '../data/calibration/'),
@@ -275,15 +284,19 @@ class Controller(object):
                 #
                 calibration_index = -1
             else:
-                calibration_index = bisect.bisect(calibration_dates, capture_date.date())
+                calibration_index = bisect.bisect(calibration_dates, capture_date) - 1
 
             calibration_path = calibration_dates_paths[calibration_index]
+
+        logging.debug("Calibration path is: {}".format(calibration_path))
 
         if self._last_calibration_path is not None and \
            self._last_calibration_path == calibration_path:
             #
             # No need to load new calibration data.
             #
+            logging.debug("Calibration data previously loaded.")
+
             return
 
         self._last_calibration_path = calibration_path
@@ -930,7 +943,7 @@ class Controller(object):
         # Update the calibration data.
         #
         self.loadCameraCalibration(
-            capture_date=datetime.strptime(date, "%Y_%m_%d").date()
+            capture_date=datetime.strptime(date, "%Y_%m_%d")
         )
 
         #
