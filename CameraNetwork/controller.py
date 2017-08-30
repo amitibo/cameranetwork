@@ -943,7 +943,7 @@ class Controller(object):
         # Update the calibration data.
         #
         self.loadCameraCalibration(
-            capture_date=datetime.strptime(date, "%Y_%m_%d").date()
+            capture_date=datetime.strptime(date, "%Y_%m_%d")
         )
 
         #
