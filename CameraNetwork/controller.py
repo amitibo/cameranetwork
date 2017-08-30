@@ -1014,6 +1014,30 @@ class Controller(object):
         return rotated_directions, calculated_directions, R
 
     @cmd_callback
+    @gen.coroutine
+    def handle_save_extrinsic(
+        self,
+        date
+        ):
+        """Handle save extrinsic calibration command
+
+        This command saves the current extrinsic calibration on a specific
+        date.
+        """
+
+        #
+        # Update normalization model.
+        #
+        np.save(
+            os.path.join(
+                gs.CAPTURE_PATH,
+                date,
+                gs.EXTRINSIC_SETTINGS_FILENAME
+                ),
+            self._normalization.R
+        )
+
+    @cmd_callback
     @run_on_executor
     def handle_radiometric(
         self,

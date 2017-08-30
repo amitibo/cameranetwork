@@ -1106,6 +1106,25 @@ class Server(MDPWorker):
             'R': R,}))
 
     @gen.coroutine
+    def handle_save_extrinsic(self, date):
+        """Handle save extrinsic calibration.
+
+        Args:
+            date (datetime object): date to save the extrinsic calibration in.
+        """
+
+        if type(date) == str:
+            date = dtparser.parse(date)
+
+        #
+        # Send command to the controller.
+        #
+        yield self.push_cmd(
+            gs.SAVE_EXTRINSIC_CMD,
+            date=date.strftime("%Y_%m_%d")
+        )
+
+    @gen.coroutine
     def handle_radiometric(self, date, time_index, residual_threshold, save):
         """Handle radiometric calibration.
 
