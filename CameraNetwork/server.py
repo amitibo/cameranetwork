@@ -928,7 +928,9 @@ class Server(MDPWorker):
             hdr_index=0,
             normalize=False,
             jpeg=False,
-            resolution=gs.DEFAULT_NORMALIZATION_SIZE):
+            resolution=gs.DEFAULT_NORMALIZATION_SIZE,
+            ignore_date_extrinsic=False
+            ):
         """Seek for a previously captured (loop) array.
 
         Args:
@@ -939,6 +941,8 @@ class Server(MDPWorker):
             normalize (bool, optional): Whether to normalize the frame. Default True.
             jpeg (bool, optional): Whether to compress as jpeg stream. Default False.
             resolution (int, optional): The resolution of the normalized frame.
+            ignore_date_extrinsic (bool, optional): Ignore the extrinsic calibration
+                settings in the image folder (if exists).
 
         Return:
             Compressed mat file in the form of a string.
@@ -959,7 +963,8 @@ class Server(MDPWorker):
             normalize,
             resolution,
             jpeg,
-            self.camera_settings
+            self.camera_settings,
+            ignore_date_extrinsic=ignore_date_extrinsic
         )
 
         #

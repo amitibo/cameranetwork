@@ -1237,7 +1237,8 @@ class Controller(object):
         resolution,
         jpeg,
         camera_settings,
-        correct_radiometric=True
+        correct_radiometric=True,
+        ignore_date_extrinsic=False
         ):
         """Seek an image array.
 
@@ -1255,6 +1256,8 @@ class Controller(object):
             correct_radiometric (bool): Whether to apply radiometric correction.
                 When calculating radiometric correction, it is important NOT to
                 fix the measurements.
+            ignore_date_extrinsic (bool, optional): Ignore the extrinsic calibration
+                settings in the image folder (if exists).
         """
 
         logging.debug("Seeking time: {} and hdr: {}".format(seek_time, hdr_index))
@@ -1317,7 +1320,9 @@ class Controller(object):
             normalize,
             resolution,
             jpeg,
-            correct_radiometric)
+            correct_radiometric,
+            ignore_date_extrinsic
+        )
 
         return img_datas, img_array
 
@@ -1329,7 +1334,9 @@ class Controller(object):
             normalize,
             resolution,
             jpeg=False,
-            correct_radiometric=True):
+            correct_radiometric=True,
+            ignore_date_extrinsic=False
+            ):
         """Apply preprocessing to the raw array:
         dark_image substraction, normalization, vignetting, HDR...
 
@@ -1340,6 +1347,8 @@ class Controller(object):
             correct_radiometric (bool): Whether to apply radiometric correction.
                 When calculating radiometric correction, it is important NOT to
                 fix the measurements.
+            ignore_date_extrinsic (bool, optional): Ignore the extrinsic calibration
+                settings in the image folder (if exists).
 
         Note:
             If multiple arrays/data are passed to the function, these are merged to
@@ -1364,7 +1373,7 @@ class Controller(object):
             img_time.strftime("%Y_%m_%d"),
             gs.EXTRINSIC_SETTINGS_FILENAME
         )
-        if os.path.exists(extrinsic_path):
+        if not ignore_date_extrinsic and os.path.exists(extrinsic_path):
             try:
                 self._normalization.R = np.load(extrinsic_path)
             except:
