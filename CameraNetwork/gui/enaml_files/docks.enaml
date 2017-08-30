@@ -3,8 +3,8 @@ from enaml.core.api import Include, Conditional, Looper
 from enaml.stdlib.fields import IntField, FloatField
 from enaml.widgets.api import *
 from enaml.stdlib.dialog_buttons import DialogButtonBox, DialogButton
-
-from mayavi.tools.mlab_scene_model import MlabSceneModel
+from enaml.stdlib.message_box import (MessageBox, about, critical, information,
+    question, warning)
 
 from CameraNetwork import global_settings as gs
 from CameraNetwork.gui.data_frame_table import DataFrameTable
@@ -187,58 +187,67 @@ enamldef ArraysView(DockItem): arrays_view:
     Container:
         constraints = [
             vbox(
-                hbox(
-                    capture_pb,
-                    view_pb,
-                    clear_pb,
-                    spacer,
-                    load_pb,
-                    save_pb
-                ),
+                arrays_tb,
                 arrays_cont,
             ),
         ]
 
-        PushButton: capture_pb:
-            text = 'Capture Settings'
-            clicked ::
-                CaptureDialog(
-                    title="Capture Settings",
-                    main_model=arrays_view.main,
-                    ).show()
+        ToolBar: arrays_tb:
+            ActionGroup:
+                Action:
+                    text = 'Capture Settings'
+                    triggered ::
+                        CaptureDialog(
+                            title="Capture Settings",
+                            main_model=arrays_view.main,
+                            ).show()
 
-        PushButton: view_pb:
-            text = 'View Settings'
-            clicked ::
-                ArraysSettingsDialog(
-                    title="Arrays Settings",
-                    arrays_model=arrays_view.arrays,
-                    ).show()
+                Action:
+                    text = 'View Settings'
+                    triggered ::
+                        ArraysSettingsDialog(
+                            title="Arrays Settings",
+                            arrays_model=arrays_view.arrays,
+                            ).show()
 
-        PushButton: clear_pb:
-            text = 'Clear'
-            clicked ::
-                arrays.clear_arrays()
-                array_views.objects = []
+                Action:
+                    text = 'Clear'
+                    triggered ::
+                        arrays.clear_arrays()
+                        array_views.objects = []
+
+                Action:
+                    separator = True
+
+            ActionGroup:
+                Action:
+                    text = 'Load ROI'
+                    tool_tip = "Load the ROIs"
+                    triggered ::
+                        path = FileDialogEx.get_open_file_name()
+                        if path:
+                            arrays.load_rois(path)
+
+                Action:
+                    text = 'Save ROI'
+                    tool_tip = "Save the ROIs"
+                    triggered ::
+                        arrays.save_rois()
+
+                Action:
+                    separator = True
+
+            ActionGroup:
+                 Action:
+                    text = 'Save Extrinsics'
+                    tool_tip = "Save current extrinsic on date."
+                    triggered ::
+                        arrays.save_extrinsics()
 
         Container: arrays_cont:
             FlowArea: arrays_area:
                 Include: array_views:
                     pass
-
-        PushButton: load_pb:
-            text = 'Load ROI'
-            tool_tip = "Load the ROIs"
-            clicked ::
-                path = FileDialogEx.get_open_file_name()
-                if path:
-                    arrays.load_rois(path)
-
-        PushButton: save_pb:
-            text = 'Save ROI'
-            tool_tip = "Save the ROIs"
-            clicked ::
-                arrays.save_rois()
 
 
 ################################################################################
@@ -345,6 +354,7 @@ enamldef TimesView(DockItem):
 
         CheckBox: force_cb:
                 tool_tip = "Force parsing day images."
+                checked = True
                 text = "Force Read"
 
         DataFrameTable: df:
@@ -416,12 +426,6 @@ enamldef ServerButton(FlowItem):
                 title = 'Camera %s' % server_id
 
                 if name not in [item.name for item in root_object().dock_area.dock_items()]:
-                    #
-                    # Recreate the extrinsic scene. It seems that the engine dies
-                    # so I restart it.
-                    #
-                    server.extrinsic_scene = MlabSceneModel()
-
                     item = ServerView(
                         root_object().dock_area,
                         name=name,

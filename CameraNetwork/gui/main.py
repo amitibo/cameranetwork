@@ -1,12 +1,12 @@
 ##
 ## Copyright (C) 2017, Amit Aides, all rights reserved.
-## 
+##
 ## This file is part of Camera Network
 ## (see https://bitbucket.org/amitibo/cameranetwork_git).
-## 
+##
 ## Redistribution and use in source and binary forms, with or without modification,
 ## are permitted provided that the following conditions are met:
-## 
+##
 ## 1)  The software is provided under the terms of this license strictly for
 ##     academic, non-commercial, not-for-profit purposes.
 ## 2)  Redistributions of source code must retain the above copyright notice, this
@@ -22,7 +22,7 @@
 ##     limited to academic journal and conference publications, technical reports and
 ##     manuals, must cite the following works:
 ##     Dmitry Veikherman, Amit Aides, Yoav Y. Schechner and Aviad Levis, "Clouds in The Cloud" Proc. ACCV, pp. 659-674 (2014).
-## 
+##
 ## THIS SOFTWARE IS PROVIDED BY THE AUTHOR "AS IS" AND ANY EXPRESS OR IMPLIED
 ## WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
 ## MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO
@@ -802,6 +802,30 @@ class ArraysModel(Atom):
         #
         with open(dst_path, 'wb') as f:
             cPickle.dump((rois_dict, masks_dict, array_shapes), f)
+
+    def save_extrinsics(self):
+        """Send save extrinsic command to all servers visible in the arrays view."""
+
+        #
+        # Send the save extrinsic command all servers.
+        # The date to save is taken from the displayed
+        # image.
+        #
+        for server_id, server_model in self.array_items.items():
+            date = server_model.img_data.name_time
+            try:
+                self.main_model.send_message(
+                    self.main_model.servers_dict[server_id],
+                    gs.MSG_TYPE_SAVE_EXTRINSIC,
+                    kwds=dict(date=date)
+                )
+            except Exception as e:
+                logging.error(
+                    "Failed sending 'save_extrinsic' command to server {}:\n{}".format(
+                        server_id,
+                        traceback.format_exc()
+                    )
+                )
 
     def load_rois(self, path='./ROIS.pkl'):
         """Apply the saved rois on the current arrays."""
