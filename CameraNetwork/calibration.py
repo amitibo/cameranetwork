@@ -1,12 +1,12 @@
 ##
 ## Copyright (C) 2017, Amit Aides, all rights reserved.
-## 
+##
 ## This file is part of Camera Network
 ## (see https://bitbucket.org/amitibo/cameranetwork_git).
-## 
+##
 ## Redistribution and use in source and binary forms, with or without modification,
 ## are permitted provided that the following conditions are met:
-## 
+##
 ## 1)  The software is provided under the terms of this license strictly for
 ##     academic, non-commercial, not-for-profit purposes.
 ## 2)  Redistributions of source code must retain the above copyright notice, this
@@ -22,7 +22,7 @@
 ##     limited to academic journal and conference publications, technical reports and
 ##     manuals, must cite the following works:
 ##     Dmitry Veikherman, Amit Aides, Yoav Y. Schechner and Aviad Levis, "Clouds in The Cloud" Proc. ACCV, pp. 659-674 (2014).
-## 
+##
 ## THIS SOFTWARE IS PROVIDED BY THE AUTHOR "AS IS" AND ANY EXPRESS OR IMPLIED
 ## WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
 ## MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO
@@ -285,19 +285,28 @@ class VignettingCalibration():
     """Apply vignetting calibration.
 
     Note:
-    The vignetting is applied to raw (1200x1600) images. Nonetheless the models
-    are learnt on rgb (600x800) images.
+    The vignetting is applied to raw (1200x1600) images. Nonetheless the
+    models are learnt on rgb (600x800) images.
     """
 
     COLORS = ['red', 'green', 'blue']
 
-    def __init__(self, models=None, polynomial_degree=4, residual_threshold=20):
+    def __init__(
+        self,
+        models=None,
+        polynomial_degree=4,
+        residual_threshold=20,
+        min_samples=300
+        ):
 
         if models is None:
             self._models = [
                 make_pipeline(
                     PolynomialFeatures(degree=polynomial_degree),
-                    RANSACRegressor(residual_threshold=residual_threshold)
+                    RANSACRegressor(
+                        residual_threshold=residual_threshold,
+                        min_samples=min_samples
+                    )
                     ) for i in range(3)
             ]
         else:
