@@ -4,6 +4,8 @@ from enaml.stdlib.fields import IntField, FloatField
 from enaml.widgets.api import *
 from enaml.stdlib.dialog_buttons import DialogButtonBox, DialogButton
 
+from mayavi.tools.mlab_scene_model import MlabSceneModel
+
 from CameraNetwork import global_settings as gs
 from CameraNetwork.gui.data_frame_table import DataFrameTable
 from CameraNetwork.gui.image_analysis import ImageAnalysis
@@ -414,6 +416,12 @@ enamldef ServerButton(FlowItem):
                 title = 'Camera %s' % server_id
 
                 if name not in [item.name for item in root_object().dock_area.dock_items()]:
+                    #
+                    # Recreate the extrinsic scene. It seems that the engine dies
+                    # so I restart it.
+                    #
+                    server.extrinsic_scene = MlabSceneModel()
+
                     item = ServerView(
                         root_object().dock_area,
                         name=name,
