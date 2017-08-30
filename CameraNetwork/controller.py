@@ -284,7 +284,7 @@ class Controller(object):
                 #
                 calibration_index = -1
             else:
-                calibration_index = bisect.bisect(calibration_dates, capture_date.date())
+                calibration_index = bisect.bisect(calibration_dates, capture_date) - 1
 
             calibration_path = calibration_dates_paths[calibration_index]
 
