@@ -1,12 +1,12 @@
 ##
 ## Copyright (C) 2017, Amit Aides, all rights reserved.
-## 
+##
 ## This file is part of Camera Network
 ## (see https://bitbucket.org/amitibo/cameranetwork_git).
-## 
+##
 ## Redistribution and use in source and binary forms, with or without modification,
 ## are permitted provided that the following conditions are met:
-## 
+##
 ## 1)  The software is provided under the terms of this license strictly for
 ##     academic, non-commercial, not-for-profit purposes.
 ## 2)  Redistributions of source code must retain the above copyright notice, this
@@ -22,7 +22,7 @@
 ##     limited to academic journal and conference publications, technical reports and
 ##     manuals, must cite the following works:
 ##     Dmitry Veikherman, Amit Aides, Yoav Y. Schechner and Aviad Levis, "Clouds in The Cloud" Proc. ACCV, pp. 659-674 (2014).
-## 
+##
 ## THIS SOFTWARE IS PROVIDED BY THE AUTHOR "AS IS" AND ANY EXPRESS OR IMPLIED
 ## WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
 ## MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO
@@ -53,6 +53,10 @@ import logging
 logging.basicConfig(level=logging.INFO)
 import time
 
+#
+# List here hosts that you would not like to update.
+#
+HOSTS_IGNORE_LIST = ["219"]
 
 def set_hosts():
     #
@@ -72,11 +76,17 @@ def set_hosts():
     #
     credentials_dict = camera_client.send_mmi(MDP.MMI_TUNNELS)
 
-    ports = {k: v['tunnel_port'] for \
-             k, v in credentials_dict.items() if not k.endswith("L") and k in camera_client.servers_list}
+    ports = {
+        k: v['tunnel_port'] for  k, v in credentials_dict.items() \
+        if not k.endswith("L") and \
+        k in camera_client.servers_list and \
+        k not in HOSTS_IGNORE_LIST
+    }
 
     global hosts_map
-    hosts_map = {'odroid@{ip}:{port}'.format(ip=proxy_params['ip'], port=port): k for k, port in ports.items()}
+    hosts_map = {
+        'odroid@{ip}:{port}'.format(ip=proxy_params['ip'], port=port): k for k, port in ports.items()
+    }
     env.hosts = hosts_map.keys()
 
 

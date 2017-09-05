@@ -1,12 +1,12 @@
 ##
 ## Copyright (C) 2017, Amit Aides, all rights reserved.
-## 
+##
 ## This file is part of Camera Network
 ## (see https://bitbucket.org/amitibo/cameranetwork_git).
-## 
+##
 ## Redistribution and use in source and binary forms, with or without modification,
 ## are permitted provided that the following conditions are met:
-## 
+##
 ## 1)  The software is provided under the terms of this license strictly for
 ##     academic, non-commercial, not-for-profit purposes.
 ## 2)  Redistributions of source code must retain the above copyright notice, this
@@ -22,7 +22,7 @@
 ##     limited to academic journal and conference publications, technical reports and
 ##     manuals, must cite the following works:
 ##     Dmitry Veikherman, Amit Aides, Yoav Y. Schechner and Aviad Levis, "Clouds in The Cloud" Proc. ACCV, pp. 659-674 (2014).
-## 
+##
 ## THIS SOFTWARE IS PROVIDED BY THE AUTHOR "AS IS" AND ANY EXPRESS OR IMPLIED
 ## WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
 ## MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO
@@ -285,6 +285,7 @@ MSG_TYPE_SEEK = 'seek'
 MSG_TYPE_SET_SETTINGS = 'set_settings'
 MSG_TYPE_STATUS = 'status'
 MSG_TYPE_EXTRINSIC = 'extrinsic'
+MSG_TYPE_SAVE_EXTRINSIC = 'save_extrinsic'
 MSG_TYPE_SPRINKLER = 'sprinkler'
 MSG_TYPE_SUNSHADER = 'sunshader'
 MSG_TYPE_SUNSHADER_SCAN = 'sunshader_scan'
@@ -360,6 +361,7 @@ RADIOMETRIC_CMD = 'radiometric'
 RESET_CAMERA_CMD = 'reset_camera'
 SEEK_CMD = 'seek'
 EXTRINSIC_CMD = 'extrinsic'
+SAVE_EXTRINSIC_CMD = 'save_extrinsic'
 RESTART_CMD = 'restart'
 SPRINKLER_CMD = 'sprinkler'
 SUNSHADER_CMD = 'sunshader'
