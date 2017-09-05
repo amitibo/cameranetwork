@@ -76,12 +76,9 @@ def main(base_path, debug_mode=False, local_proxy=False):
         servers.append(sbp.Popen(['python'] +
                                  ['../scripts/start_server.py','--local_path', path] + (["--local_proxy"] if local_proxy else [])))
 
-    try:
-        client.wait()
-    finally:
-        proxy.kill()
-        for server in servers:
-            server.kill()
+
+    for server in servers:
+        server.wait()
 
 
 if __name__ == '__main__':

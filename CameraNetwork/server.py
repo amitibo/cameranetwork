@@ -183,7 +183,7 @@ class Server(MDPWorker):
         if identity == None:
             identity = str(self.camera_settings[gs.CAMERA_IDENTITY])
             if self._local_mode:
-                identity += "L"
+                identity = os.path.split(local_path)[1] + "L"
 
         super(Server, self).__init__(
             context=self.ctx,
