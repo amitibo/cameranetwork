@@ -340,7 +340,9 @@ SUNSHADER_MAX_MEASURED = 160
 #
 # Sprinkler parameters
 #
-SPRINKLER_PERIOD = 1.
+SPRINKLER_PERIOD = 0.5
+SPRINKLER_LAST_DAY_FILE = os.path.expanduser('~/.sprinkler_last_day.pkl')
+SPRINKLER_TIMER_HOUR = 7
 
 #
 # Sun Mask parameters

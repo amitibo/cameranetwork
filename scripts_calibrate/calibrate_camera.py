@@ -1,12 +1,12 @@
 ##
 ## Copyright (C) 2017, Amit Aides, all rights reserved.
-## 
+##
 ## This file is part of Camera Network
 ## (see https://bitbucket.org/amitibo/cameranetwork_git).
-## 
+##
 ## Redistribution and use in source and binary forms, with or without modification,
 ## are permitted provided that the following conditions are met:
-## 
+##
 ## 1)  The software is provided under the terms of this license strictly for
 ##     academic, non-commercial, not-for-profit purposes.
 ## 2)  Redistributions of source code must retain the above copyright notice, this
@@ -22,7 +22,7 @@
 ##     limited to academic journal and conference publications, technical reports and
 ##     manuals, must cite the following works:
 ##     Dmitry Veikherman, Amit Aides, Yoav Y. Schechner and Aviad Levis, "Clouds in The Cloud" Proc. ACCV, pp. 659-674 (2014).
-## 
+##
 ## THIS SOFTWARE IS PROVIDED BY THE AUTHOR "AS IS" AND ANY EXPRESS OR IMPLIED
 ## WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
 ## MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO
@@ -78,9 +78,9 @@ DO_GEOMETRIC_CALIBRATION = True
 NX, NY = 9, 6
 GEOMETRIC_EXPOSURE = 500000
 GEOMETRIC_STEPS = 12
-GEOMETRIC_XMIN, GEOMETRIC_XMAX = 40, 165
-GEOMETRIC_YMIN, GEOMETRIC_YMAX = 0, 110
-GEOMETRIC_SLEEP_TIME = 3.5
+GEOMETRIC_XMIN, GEOMETRIC_XMAX = 40, 140
+GEOMETRIC_YMIN, GEOMETRIC_YMAX = 40, 140
+GEOMETRIC_SLEEP_TIME = 4
 CHESSBOARD_DETECTION_THRESHOLD = 20
 SHOW_REPROJECTION = True
 
@@ -93,7 +93,7 @@ DO_BLACK_IMG = True
 # Vignetting calibration.
 #
 VIGNETTING_STEPS = 24
-VIGNETTING_EXPOSURE = 65000
+VIGNETTING_EXPOSURE = 60000
 LED_POWER = {"BLUE(470)": 35, "GREEN(505)": 100, "RED(625)": 50}
 VIGNETTING_SLEEP_TIME = 1
 
@@ -130,7 +130,7 @@ def main():
     import oceanoptics
     spec = oceanoptics.get_a_random_spectrometer()
 
-    p = Gimbal(com="COM5")
+    p = Gimbal(com="COM3")
 
     #
     # Put here a break point if you want to adjust the focus.
@@ -188,8 +188,8 @@ def main():
 
         imgs = []
         img_index = 0
+        raw_input("Put the chessboard and press any key")
         for _ in range(5):
-            raw_input("Move chessboard to new position and press any key")
             for (x, y) in zip(
                 np.random.choice(X_grid.ravel(), size=20),
                 np.random.choice(Y_grid.ravel(), size=20)
@@ -277,11 +277,8 @@ def main():
         black_img = np.mean(cam.capture(settings, frames_num=10)[0], axis=2)
         winsound.Beep(5000, 500)
         np.save(os.path.join(results_path, 'black_img.npy'), black_img)
-
-    #
-    # Make path to store img measurements.
-    #
-    safe_mkdirs(results_path)
+    else:
+        black_img = np.load(os.path.join(results_path, 'black_img.npy'))
 
     #
     # Print the COLIBRI LED POWER
@@ -323,8 +320,6 @@ def main():
         indexing='xy')
     X_grid = X_grid.astype(np.int32)
     Y_grid = Y_grid.astype(np.int32)
-
-    black_img = np.load(os.path.join(results_path, 'black_img.npy'))
 
     measurements = []
     for i, (x, y) in enumerate(zip(X_grid.ravel(), Y_grid.ravel())):
