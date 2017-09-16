@@ -448,7 +448,8 @@ class ArrayModel(Atom):
     #
     # Sunshader mask threshold used in grabcut algorithm.
     #
-    grabcut_threshold = Float(3)
+    grabcut_threshold = Float(10)
+    dilate_size = Int(7)
     sun_mask_radius = Float(0.1)
 
     def _default_Epipolar_coords(self):
@@ -561,7 +562,7 @@ class ArrayModel(Atom):
         else:
             return xs, ys, cosPSI>0
 
-    @observe("img_array", "grabcut_threshold")
+    @observe("img_array", "grabcut_threshold", "dilate_size")
     def _update_img_array(self, change):
 
         if change["value"] is None:
@@ -574,7 +575,12 @@ class ArrayModel(Atom):
         #
         thread = Thread(
             target=calcSunshaderMask,
-            args=(self, self.img_array, self.grabcut_threshold)
+            args=(
+                self,
+                self.img_array,
+                self.grabcut_threshold,
+                self.dilate_size
+            )
         )
         thread.daemon = True
         thread.start()

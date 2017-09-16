@@ -30,10 +30,16 @@ enamldef ArraySettingsDialog(Dialog): arrays_dialog:
                 checked := image_widget.show_principalplane
 
             Label:
-                text = 'Sunshader Threshold'
+                text = 'Sunshader Grabcut'
             FloatField: grabcut_val:
                 tool_tip = "Sunshader grabcut threshold."
                 value := array_model.grabcut_threshold
+
+            Label:
+                text = 'Sunshader Dilate'
+            IntField: grabcut_val:
+                tool_tip = "Morpholical Dilation size."
+                value := array_model.dilate_size
 
             Label:
                 text = 'Sunmask Radius'

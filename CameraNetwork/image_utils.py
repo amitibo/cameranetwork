@@ -1,12 +1,12 @@
 ##
 ## Copyright (C) 2017, Amit Aides, all rights reserved.
-## 
+##
 ## This file is part of Camera Network
 ## (see https://bitbucket.org/amitibo/cameranetwork_git).
-## 
+##
 ## Redistribution and use in source and binary forms, with or without modification,
 ## are permitted provided that the following conditions are met:
-## 
+##
 ## 1)  The software is provided under the terms of this license strictly for
 ##     academic, non-commercial, not-for-profit purposes.
 ## 2)  Redistributions of source code must retain the above copyright notice, this
@@ -22,7 +22,7 @@
 ##     limited to academic journal and conference publications, technical reports and
 ##     manuals, must cite the following works:
 ##     Dmitry Veikherman, Amit Aides, Yoav Y. Schechner and Aviad Levis, "Clouds in The Cloud" Proc. ACCV, pp. 659-674 (2014).
-## 
+##
 ## THIS SOFTWARE IS PROVIDED BY THE AUTHOR "AS IS" AND ANY EXPRESS OR IMPLIED
 ## WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
 ## MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO
@@ -356,7 +356,13 @@ class Normalization(object):
         return self._tight_mask
 
 
-def calcSunshaderMask(array_model, img_array, grabcut_threshold, values_range=40):
+def calcSunshaderMask(
+    array_model,
+    img_array,
+    grabcut_threshold,
+    dilate_size,
+    values_range=40
+    ):
     """Calculate a mask for the sunshader.
 
     Calculate a mask for the pixels covered by the sunshader.
@@ -366,6 +372,7 @@ def calcSunshaderMask(array_model, img_array, grabcut_threshold, values_range=40
         img_array (array): Image (float HDR).
         grabcut_threshold (float): Threshold used to set the seed for the
             background.
+        dilate_size (int): Size of the dilate kernel.
         values_range (float): This value is used for normalizing the image.
             It is an empirical number that works for HDR images captured
             during the day.
@@ -377,6 +384,9 @@ def calcSunshaderMask(array_model, img_array, grabcut_threshold, values_range=40
 
     from enaml.application import deferred_call
 
+    #
+    # Apply the grabcut algorithm.
+    #
     sunshader_mask = np.ones(img_array.shape[:2], np.uint8)*cv2.GC_PR_FGD
     sunshader_mask[img_array.max(axis=2) < grabcut_threshold] = cv2.GC_PR_BGD
     img_u8 = (255 * np.clip(img_array, 0, values_range) / values_range).astype(np.uint8)
@@ -393,6 +403,21 @@ def calcSunshaderMask(array_model, img_array, grabcut_threshold, values_range=40
         logging.error("Failed to calculate grabcut sunshader.")
         sunshader_mask = np.ones(img_array.shape[:2], np.uint8)*cv2.GC_PR_FGD
 
+    #
+    # Dilate the mask.
+    # Note:
+    # The actual action is ersion, as the mask is inversion of the sunshader.
+    #
+    if dilate_size > 1:
+        kernel = cv2.getStructuringElement(
+            cv2.MORPH_ELLIPSE,
+            (dilate_size, dilate_size)
+        )
+        sunshader_mask = cv2.erode(sunshader_mask, kernel)
+
+    #
+    # Sent the results back to the GUI thread.
+    #
     deferred_call(setattr, array_model, 'sunshader_mask', sunshader_mask)
 
 
