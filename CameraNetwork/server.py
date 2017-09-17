@@ -1,12 +1,12 @@
 ##
 ## Copyright (C) 2017, Amit Aides, all rights reserved.
-## 
+##
 ## This file is part of Camera Network
 ## (see https://bitbucket.org/amitibo/cameranetwork_git).
-## 
+##
 ## Redistribution and use in source and binary forms, with or without modification,
 ## are permitted provided that the following conditions are met:
-## 
+##
 ## 1)  The software is provided under the terms of this license strictly for
 ##     academic, non-commercial, not-for-profit purposes.
 ## 2)  Redistributions of source code must retain the above copyright notice, this
@@ -22,7 +22,7 @@
 ##     limited to academic journal and conference publications, technical reports and
 ##     manuals, must cite the following works:
 ##     Dmitry Veikherman, Amit Aides, Yoav Y. Schechner and Aviad Levis, "Clouds in The Cloud" Proc. ACCV, pp. 659-674 (2014).
-## 
+##
 ## THIS SOFTWARE IS PROVIDED BY THE AUTHOR "AS IS" AND ANY EXPRESS OR IMPLIED
 ## WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
 ## MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO
@@ -63,8 +63,8 @@ except:
     #
     from concurrent import futures
 import glob
-import Image
-import ImageDraw
+from PIL import Image
+from PIL import ImageDraw
 import json
 import logging
 import math
@@ -183,7 +183,7 @@ class Server(MDPWorker):
         if identity == None:
             identity = str(self.camera_settings[gs.CAMERA_IDENTITY])
             if self._local_mode:
-                identity += "L"
+                identity = os.path.split(local_path)[1] + "L"
 
         super(Server, self).__init__(
             context=self.ctx,
@@ -255,9 +255,20 @@ class Server(MDPWorker):
         if not self._offline:
             #
             # Start the different timers.
+            # ---------------------------
+            #
+            # 1) Start the sunshader timer. This timer handles scanning for the
+            #    position of the sun.
             #
             IOLoop.current().spawn_callback(self.sunshader_timer)
 
+            #
+            # 2) Setup a timer to activate the sprinklers.
+            #
+            IOLoop.current().spawn_callback(self.setup_sprinkler_timer)
+
+            #
+            # 3) Start the capture loop.
             #
             # If the start_loop is set, start the capture loop.
             #
@@ -270,6 +281,89 @@ class Server(MDPWorker):
             # Start in offline mode.
             #
             logging.info("Starting in offline mode.")
+
+    @gen.coroutine
+    def setup_sprinkler_timer(self):
+        """Setup the timer of the sprinkler.
+
+        The sprinkler should clean the lens once a day in the morning.
+        """
+
+        logging.info("Setup the sprinkler timer.")
+
+        #
+        # Check if the sprinkler was used today.
+        #
+        try:
+            if os.path.exists(gs.SPRINKLER_LAST_DAY_FILE):
+                with open(gs.SPRINKLER_LAST_DAY_FILE, "rb") as f:
+                    last_day = cPickle.load(f)
+
+                if last_day == datetime.now().date():
+                    #
+                    # The sprinkler was already used today.
+                    #
+                    # Setup a timer for tommorow.
+                    #
+                    t = datetime.now()
+                    IOLoop.current().call_at(
+                        time.mktime(
+                            datetime(
+                                t.year, t.month, t.day+1, gs.SPRINKLER_TIMER_HOUR
+                                ).timetuple()
+                            ),
+                        self.sprinkler_callback
+                    )
+
+                    logging.debug("Already sprinkled today. No need to sprinkle.")
+
+                    return
+
+        except Exception as e:
+            logging.error('Error while checking last sprinkler tim:\n{}'.format(
+                traceback.format_exc()))
+            if os.path.exists(gs.SPRINKLER_LAST_DAY_FILE):
+                os.remove(gs.SPRINKLER_LAST_DAY_FILE)
+
+        #
+        # The sprinkler was not used to, add a callback to use it in 1 min
+        # (to let the sunshader finish its scan before the lens get wet).
+        #
+        IOLoop.current().call_later(60, self.sprinkler_callback)
+
+    @gen.coroutine
+    def sprinkler_callback(self):
+        """Activate the sprinklers to clean the lens in the morning."""
+
+        logging.info("Morning sprinkled happiness.")
+
+        #
+        # Setup a timer for tommorow.
+        #
+        t = datetime.now()
+        IOLoop.current().call_at(
+            time.mktime(
+                datetime(
+                    t.year, t.month, t.day+1, gs.SPRINKLER_TIMER_HOUR
+                    ).timetuple()
+                ),
+            self.sprinkler_callback
+        )
+
+        #
+        # Activate the sprinklers.
+        #
+        yield self.push_cmd(
+            gs.SPRINKLER_CMD,
+            priority=50,
+            period=gs.SPRINKLER_PERIOD
+        )
+
+        #
+        # Store that the sprinklers were used today.
+        #
+        with open(gs.SPRINKLER_LAST_DAY_FILE, "wb") as f:
+            cPickle.dump(datetime.now().date(), f)
 
     def update_proxy_params(self):
         """Update the proxy params
@@ -834,7 +928,9 @@ class Server(MDPWorker):
             hdr_index=0,
             normalize=False,
             jpeg=False,
-            resolution=gs.DEFAULT_NORMALIZATION_SIZE):
+            resolution=gs.DEFAULT_NORMALIZATION_SIZE,
+            ignore_date_extrinsic=False
+            ):
         """Seek for a previously captured (loop) array.
 
         Args:
@@ -845,6 +941,8 @@ class Server(MDPWorker):
             normalize (bool, optional): Whether to normalize the frame. Default True.
             jpeg (bool, optional): Whether to compress as jpeg stream. Default False.
             resolution (int, optional): The resolution of the normalized frame.
+            ignore_date_extrinsic (bool, optional): Ignore the extrinsic calibration
+                settings in the image folder (if exists).
 
         Return:
             Compressed mat file in the form of a string.
@@ -865,7 +963,8 @@ class Server(MDPWorker):
             normalize,
             resolution,
             jpeg,
-            self.camera_settings
+            self.camera_settings,
+            ignore_date_extrinsic=ignore_date_extrinsic
         )
 
         #
@@ -1010,6 +1109,25 @@ class Server(MDPWorker):
             'rotated_directions': rotated_directions,
             'calculated_directions': calculated_directions,
             'R': R,}))
+
+    @gen.coroutine
+    def handle_save_extrinsic(self, date):
+        """Handle save extrinsic calibration.
+
+        Args:
+            date (datetime object): date to save the extrinsic calibration in.
+        """
+
+        if type(date) == str:
+            date = dtparser.parse(date)
+
+        #
+        # Send command to the controller.
+        #
+        yield self.push_cmd(
+            gs.SAVE_EXTRINSIC_CMD,
+            date=date.strftime("%Y_%m_%d")
+        )
 
     @gen.coroutine
     def handle_radiometric(self, date, time_index, residual_threshold, save):

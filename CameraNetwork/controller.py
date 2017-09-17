@@ -1,12 +1,12 @@
 ##
 ## Copyright (C) 2017, Amit Aides, all rights reserved.
-## 
+##
 ## This file is part of Camera Network
 ## (see https://bitbucket.org/amitibo/cameranetwork_git).
-## 
+##
 ## Redistribution and use in source and binary forms, with or without modification,
 ## are permitted provided that the following conditions are met:
-## 
+##
 ## 1)  The software is provided under the terms of this license strictly for
 ##     academic, non-commercial, not-for-profit purposes.
 ## 2)  Redistributions of source code must retain the above copyright notice, this
@@ -22,7 +22,7 @@
 ##     limited to academic journal and conference publications, technical reports and
 ##     manuals, must cite the following works:
 ##     Dmitry Veikherman, Amit Aides, Yoav Y. Schechner and Aviad Levis, "Clouds in The Cloud" Proc. ACCV, pp. 659-674 (2014).
-## 
+##
 ## THIS SOFTWARE IS PROVIDED BY THE AUTHOR "AS IS" AND ANY EXPRESS OR IMPLIED
 ## WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
 ## MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO
@@ -34,6 +34,7 @@
 ## OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 ## ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.##
 from __future__ import division
+import bisect
 from CameraNetwork.arduino_utils import ArduinoAPI
 from CameraNetwork.calibration import RadiometricCalibration
 from CameraNetwork.calibration import VignettingCalibration
@@ -161,32 +162,17 @@ class Controller(object):
         self._offline = offline
 
         #
-        # Set the camera serial_num
+        # Set the last calibration path.
+        # Note:
+        # The calibration path handles the case of multiple calibration dates.
         #
-        self._last_serial_num = None
-        if self._camera is not None:
-            self._last_serial_num = self._camera.info['serial_num']
-        else:
-            #
-            # If no camera is connected (offline mode). Read the serial
-            # number from an arbitrary image from the last day.
-            #
-            days_paths = sorted(glob.glob(os.path.join(gs.CAPTURE_PATH, "*")))
-            datas_list = sorted(glob.glob(os.path.join(days_paths[-1], '*.pkl')))
-
-            for data_path in datas_list:
-                try:
-                    with open(data_path, "rb") as f:
-                        data = cPickle.load(f)
-                    self._last_serial_num = data.camera_info["serial_num"]
-                    break
-                except:
-                    pass
+        self._last_calibration_path = None
 
         #
         # Load the camera calibration information.
         #
-        self.loadCameraCalibration()
+        if self._camera is not None:
+            self.loadCameraCalibration()
 
         #
         # Load dark images.
@@ -225,34 +211,112 @@ class Controller(object):
         else:
             self.sky_mask_base = None
 
-    def loadCameraCalibration(self):
+    def loadCameraCalibration(self, capture_date=None, serial_num=None):
         """Load camera calibration data
 
         Load the intrinsic and radiometric calibration data.
+
+        Args:
+            capture_date (datetime object, optional): Date of capture. If
+                None (default), now will be assumed.
+            serial_num (str, optional): serial number of sensor. If None
+                (default), will be taken directly from the sensor.
         """
 
-        if self._last_serial_num is None:
-            return
+        logging.debug("Loading Camera Calibration.")
+
+        if serial_num is None:
+            logging.debug("Serial number not given.")
+            if capture_date is not None:
+                #
+                # Read the serial number from an arbitrary image from the
+                # requested dat.
+                #
+                day_path = os.path.join(gs.CAPTURE_PATH, capture_date.strftime("%Y_%m_%d"))
+                datas_list = sorted(glob.glob(os.path.join(day_path, '*.pkl')))
+
+                #
+                # I search the inverted datas_list for the case that the
+                # function was called to handle intrinsic calibration. This
+                # handles the case that the sensor was replaced during the day.
+                #
+                for data_path in datas_list[::-1]:
+                    try:
+                        with open(data_path, "rb") as f:
+                            data = cPickle.load(f)
+                        serial_num = data.camera_info["serial_num"]
+                        logging.debug(
+                            "Serial number {} taken from: {}".format(serial_num, data_path)
+                        )
+                        break
+                    except:
+                        pass
+            else:
+                #
+                # Not loading a previously saved image use the camera sensor num.
+                #
+                serial_num = self._camera.info['serial_num']
+                logging.debug(
+                    "Serial number {} taken from Camera sensor.".format(serial_num)
+                )
+
+        self.base_calibration_path = os.path.join(
+            pkg_resources.resource_filename(__name__, '../data/calibration/'),
+            serial_num
+        )
 
         #
-        # Check if the data exisits in the data folder of the code.
+        # Get the list of calibration dates.
+        #
+        calibration_dates_paths = sorted(glob.glob(os.path.join(self.base_calibration_path, "20*")))
+        if len(calibration_dates_paths) == 0:
+            calibration_path = self.base_calibration_path
+        else:
+            calibration_dates = [os.path.split(cdp)[-1] for cdp in calibration_dates_paths]
+            calibration_dates = [datetime.strptime(d, "%Y_%m_%d") for d in calibration_dates]
+
+            #
+            # Check the relevant calibration date.
+            #
+            if capture_date is None:
+                #
+                # Live capture, take the most updated index.
+                #
+                calibration_index = -1
+            else:
+                calibration_index = bisect.bisect(calibration_dates, capture_date) - 1
+
+            calibration_path = calibration_dates_paths[calibration_index]
+
+        logging.debug("Calibration path is: {}".format(calibration_path))
+
+        if self._last_calibration_path is not None and \
+           self._last_calibration_path == calibration_path:
+            #
+            # No need to load new calibration data.
+            #
+            logging.debug("Calibration data previously loaded.")
+
+            return
+
+        self._last_calibration_path = calibration_path
+
+        #
+        # Check if the data exists in the data folder of the code.
         # If so, the data is copied to the home folder.
         # Note:
         # This is done to support old cameras that were not calibrated
         # using the testbench.
         #
-        self.calibration_path = os.path.join(
-            pkg_resources.resource_filename(__name__, '../data/calibration/'),
-            self._last_serial_num)
-
-        if os.path.exists(self.calibration_path):
-            for file_name, dst_path in zip(
+        if os.path.exists(self.base_calibration_path):
+            for base_path, file_name, dst_path in zip(
+                (calibration_path, calibration_path, self.base_calibration_path),
                 (gs.INTRINSIC_SETTINGS_FILENAME, gs.VIGNETTING_SETTINGS_FILENAME, gs.RADIOMETRIC_SETTINGS_FILENAME),
                 (gs.INTRINSIC_SETTINGS_PATH, gs.VIGNETTING_SETTINGS_PATH, gs.RADIOMETRIC_SETTINGS_PATH)
                 ):
                 try:
                     shutil.copyfile(
-                        os.path.join(self.calibration_path, file_name),
+                        os.path.join(base_path, file_name),
                         dst_path)
                 except Exception as e:
                     logging.error("Failed copying calibration data: {}\n{}".format(
@@ -876,6 +940,13 @@ class Controller(object):
         """Handle extrinsic calibration"""
 
         #
+        # Update the calibration data.
+        #
+        self.loadCameraCalibration(
+            capture_date=datetime.strptime(date, "%Y_%m_%d")
+        )
+
+        #
         # Load sun measurments.
         #
         today_positions_path = os.path.join(
@@ -956,6 +1027,30 @@ class Controller(object):
         return rotated_directions, calculated_directions, R
 
     @cmd_callback
+    @gen.coroutine
+    def handle_save_extrinsic(
+        self,
+        date
+        ):
+        """Handle save extrinsic calibration command
+
+        This command saves the current extrinsic calibration on a specific
+        date.
+        """
+
+        #
+        # Update normalization model.
+        #
+        np.save(
+            os.path.join(
+                gs.CAPTURE_PATH,
+                date,
+                gs.EXTRINSIC_SETTINGS_FILENAME
+                ),
+            self._normalization.R
+        )
+
+    @cmd_callback
     @run_on_executor
     def handle_radiometric(
         self,
@@ -1026,14 +1121,14 @@ class Controller(object):
             #
             # serial_num
             #
-            if self.calibration_path is not None:
+            if self.base_calibration_path is not None:
                 logging.info("Save radiometric calibration in repo.")
                 #
                 # Store the radiometric data in the repo folder.
                 #
                 shutil.copyfile(
                     gs.RADIOMETRIC_SETTINGS_PATH,
-                    os.path.join(self.calibration_path, gs.RADIOMETRIC_SETTINGS_FILENAME),
+                    os.path.join(self.base_calibration_path, gs.RADIOMETRIC_SETTINGS_FILENAME),
                 )
             self._radiometric = RadiometricCalibration(ratios)
 
@@ -1142,7 +1237,8 @@ class Controller(object):
         resolution,
         jpeg,
         camera_settings,
-        correct_radiometric=True
+        correct_radiometric=True,
+        ignore_date_extrinsic=False
         ):
         """Seek an image array.
 
@@ -1160,6 +1256,8 @@ class Controller(object):
             correct_radiometric (bool): Whether to apply radiometric correction.
                 When calculating radiometric correction, it is important NOT to
                 fix the measurements.
+            ignore_date_extrinsic (bool, optional): Ignore the extrinsic calibration
+                settings in the image folder (if exists).
         """
 
         logging.debug("Seeking time: {} and hdr: {}".format(seek_time, hdr_index))
@@ -1222,7 +1320,9 @@ class Controller(object):
             normalize,
             resolution,
             jpeg,
-            correct_radiometric)
+            correct_radiometric,
+            ignore_date_extrinsic
+        )
 
         return img_datas, img_array
 
@@ -1234,7 +1334,9 @@ class Controller(object):
             normalize,
             resolution,
             jpeg=False,
-            correct_radiometric=True):
+            correct_radiometric=True,
+            ignore_date_extrinsic=False
+            ):
         """Apply preprocessing to the raw array:
         dark_image substraction, normalization, vignetting, HDR...
 
@@ -1245,6 +1347,8 @@ class Controller(object):
             correct_radiometric (bool): Whether to apply radiometric correction.
                 When calculating radiometric correction, it is important NOT to
                 fix the measurements.
+            ignore_date_extrinsic (bool, optional): Ignore the extrinsic calibration
+                settings in the image folder (if exists).
 
         Note:
             If multiple arrays/data are passed to the function, these are merged to
@@ -1258,9 +1362,8 @@ class Controller(object):
         # different cameras.
         #
         serial_num = img_datas[0].camera_info["serial_num"]
-        if self._last_serial_num != serial_num:
-            self._last_serial_num = serial_num
-            self.loadCameraCalibration()
+        capture_date = img_datas[0].capture_time
+        self.loadCameraCalibration(capture_date=capture_date, serial_num=serial_num)
 
         #
         # Check if there a need to update the extrinsic calibration.
@@ -1270,7 +1373,7 @@ class Controller(object):
             img_time.strftime("%Y_%m_%d"),
             gs.EXTRINSIC_SETTINGS_FILENAME
         )
-        if os.path.exists(extrinsic_path):
+        if not ignore_date_extrinsic and os.path.exists(extrinsic_path):
             try:
                 self._normalization.R = np.load(extrinsic_path)
             except:
