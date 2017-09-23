@@ -929,6 +929,7 @@ class Server(MDPWorker):
             normalize=False,
             jpeg=False,
             resolution=gs.DEFAULT_NORMALIZATION_SIZE,
+            correct_radiometric=True,
             ignore_date_extrinsic=False
             ):
         """Seek for a previously captured (loop) array.
@@ -941,6 +942,9 @@ class Server(MDPWorker):
             normalize (bool, optional): Whether to normalize the frame. Default True.
             jpeg (bool, optional): Whether to compress as jpeg stream. Default False.
             resolution (int, optional): The resolution of the normalized frame.
+            correct_radiometric (bool): Whether to apply radiometric correction.
+                When calculating radiometric correction, it is important NOT to
+                fix the measurements.
             ignore_date_extrinsic (bool, optional): Ignore the extrinsic calibration
                 settings in the image folder (if exists).
 
@@ -964,6 +968,7 @@ class Server(MDPWorker):
             resolution,
             jpeg,
             self.camera_settings,
+            correct_radiometric=correct_radiometric,
             ignore_date_extrinsic=ignore_date_extrinsic
         )
 
