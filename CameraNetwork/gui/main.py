@@ -963,14 +963,14 @@ class MainModel(Atom):
     def _default_GRID_NED(self):
         """Initialize the reconstruction grid."""
 
-        self.updateGRID()
+        self.updateGRID(None)
 
         return self.GRID_NED
 
     def _default_GRID_ECEF(self):
         """Initialize the reconstruction grid."""
 
-        self.updateGRID()
+        self.updateGRID(None)
         return self.GRID_ECEF
 
     ############################################################################
@@ -1212,7 +1212,17 @@ class MainModel(Atom):
     ############################################################################
     # Misc.
     ############################################################################
-    def updateGRID(self):
+    @observe(
+        "grid_length",
+        "grid_width",
+        "TOG",
+        "delx",
+        "dely",
+        "delz",
+        "latitude",
+        "longitude",
+        "altitude")
+    def updateGRID(self, change):
         """Update the reconstruction grid.
 
         The grid is calculate in ECEF coords.
