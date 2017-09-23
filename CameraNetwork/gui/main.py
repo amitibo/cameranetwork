@@ -450,7 +450,7 @@ class ArrayModel(Atom):
     #
     grabcut_threshold = Float(10)
     dilate_size = Int(7)
-    sun_mask_radius = Float(0.1)
+    sun_mask_radius = Float(0.25)
 
     def _default_Epipolar_coords(self):
         Epipolar_coords = self.projectECEF(self.arrays_model.LOS_ECEF)
