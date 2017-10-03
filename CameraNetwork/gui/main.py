@@ -448,8 +448,9 @@ class ArrayModel(Atom):
     #
     # Sunshader mask threshold used in grabcut algorithm.
     #
-    grabcut_threshold = Float(3)
-    sun_mask_radius = Float(0.1)
+    grabcut_threshold = Float(10)
+    dilate_size = Int(7)
+    sun_mask_radius = Float(0.25)
 
     def _default_Epipolar_coords(self):
         Epipolar_coords = self.projectECEF(self.arrays_model.LOS_ECEF)
@@ -561,7 +562,7 @@ class ArrayModel(Atom):
         else:
             return xs, ys, cosPSI>0
 
-    @observe("img_array", "grabcut_threshold")
+    @observe("img_array", "grabcut_threshold", "dilate_size")
     def _update_img_array(self, change):
 
         if change["value"] is None:
@@ -574,7 +575,12 @@ class ArrayModel(Atom):
         #
         thread = Thread(
             target=calcSunshaderMask,
-            args=(self, self.img_array, self.grabcut_threshold)
+            args=(
+                self,
+                self.img_array,
+                self.grabcut_threshold,
+                self.dilate_size
+            )
         )
         thread.daemon = True
         thread.start()
@@ -957,14 +963,14 @@ class MainModel(Atom):
     def _default_GRID_NED(self):
         """Initialize the reconstruction grid."""
 
-        self.updateGRID()
+        self.updateGRID(None)
 
         return self.GRID_NED
 
     def _default_GRID_ECEF(self):
         """Initialize the reconstruction grid."""
 
-        self.updateGRID()
+        self.updateGRID(None)
         return self.GRID_ECEF
 
     ############################################################################
@@ -1206,7 +1212,17 @@ class MainModel(Atom):
     ############################################################################
     # Misc.
     ############################################################################
-    def updateGRID(self):
+    @observe(
+        "grid_length",
+        "grid_width",
+        "TOG",
+        "delx",
+        "dely",
+        "delz",
+        "latitude",
+        "longitude",
+        "altitude")
+    def updateGRID(self, change):
         """Update the reconstruction grid.
 
         The grid is calculate in ECEF coords.

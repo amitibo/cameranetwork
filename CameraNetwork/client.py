@@ -1,12 +1,12 @@
 ##
 ## Copyright (C) 2017, Amit Aides, all rights reserved.
-## 
+##
 ## This file is part of Camera Network
 ## (see https://bitbucket.org/amitibo/cameranetwork_git).
-## 
+##
 ## Redistribution and use in source and binary forms, with or without modification,
 ## are permitted provided that the following conditions are met:
-## 
+##
 ## 1)  The software is provided under the terms of this license strictly for
 ##     academic, non-commercial, not-for-profit purposes.
 ## 2)  Redistributions of source code must retain the above copyright notice, this
@@ -22,7 +22,7 @@
 ##     limited to academic journal and conference publications, technical reports and
 ##     manuals, must cite the following works:
 ##     Dmitry Veikherman, Amit Aides, Yoav Y. Schechner and Aviad Levis, "Clouds in The Cloud" Proc. ACCV, pp. 659-674 (2014).
-## 
+##
 ## THIS SOFTWARE IS PROVIDED BY THE AUTHOR "AS IS" AND ANY EXPRESS OR IMPLIED
 ## WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
 ## MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO
@@ -502,7 +502,9 @@ class CLIclient(object):
         seek_time,
         hdr_index,
         jpeg,
-        resolution
+        resolution,
+        correct_radiometric=True,
+        ignore_date_extrinsic=False
         ):
 
         args_answers, kwds_answers = self.send_message(
@@ -513,7 +515,9 @@ class CLIclient(object):
                 hdr_index=hdr_index,
                 normalize=True,
                 jpeg=jpeg,
-                resolution=resolution
+                resolution=resolution,
+                correct_radiometric=correct_radiometric,
+                ignore_date_extrinsic=ignore_date_extrinsic
             )
         )
 

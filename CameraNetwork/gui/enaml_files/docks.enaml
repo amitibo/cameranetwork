@@ -139,6 +139,7 @@ enamldef ArrayView(FlowItem): array_view:
             PrincipalPlane_coords << array_model.PrincipalPlane_coords
             GRID_coords << array_model.GRID_coords
             Epipolar_coords << array_model.Epipolar_coords
+
             #
             # View settings.
             #
@@ -147,6 +148,7 @@ enamldef ArrayView(FlowItem): array_view:
             show_grid << arrays_model.show_grid
             show_mask << arrays_model.show_masks
             show_ROI << arrays_model.show_ROIs
+
             #
             # Widget state
             #
@@ -329,7 +331,15 @@ enamldef TimesView(DockItem):
             vbox(
                 hbox(update_pb, query_day, query_pb, force_cb, spacer),
                 df,
-                hbox(resolution_lbl, resolution_fld, quality_cnt, ignore_date_extrinsics_cb, seek_pb, spacer),
+                hbox(
+                    resolution_lbl,
+                    resolution_fld,
+                    quality_cnt,
+                    correct_radiometric_cb,
+                    ignore_date_extrinsics_cb,
+                    seek_pb,
+                    spacer
+                ),
             ),
             query_day.width == 90
         ]
@@ -391,6 +401,11 @@ enamldef TimesView(DockItem):
                 maximum = 100
                 enabled << JPEG_cb.checked
 
+        CheckBox: correct_radiometric_cb:
+                tool_tip = "Apply radiometric correction."
+                checked = True
+                text = "Whether to apply radiometric correction."
+
         CheckBox: ignore_date_extrinsics_cb:
                 tool_tip = "Ignore the Extrinsic calibration save for dated."
                 checked = True
@@ -409,7 +424,8 @@ enamldef TimesView(DockItem):
                         normalize=True,
                         jpeg=quality_fld.value if JPEG_cb.checked else False,
                         resolution=resolution_fld.value,
-                        ignore_date_extrinsic=ignore_date_extrinsics_cb.checked
+                        correct_radiometric=correct_radiometric_cb.checked,
+                        ignore_date_extrinsic=ignore_date_extrinsics_cb.checked,
                     )
                 )
 
