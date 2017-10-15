@@ -51,6 +51,7 @@ from CameraNetwork.cameras import IDSCamera
 from CameraNetwork import Gimbal, findSpot
 from CameraNetwork.image_utils import raw2RGB
 import CameraNetwork.global_settings as gs
+from datetime import datetime
 import logging
 import numpy as np
 import matplotlib.pyplot as plt
@@ -144,7 +145,8 @@ def main():
     #
     # All the results of the calibration are stored on disk.
     #
-    results_path = os.path.join('vignetting_calibration', cam.info['serial_num'])
+    date_sign = datetime.now().strftime("%Y_%m_%d")
+    results_path = os.path.join('vignetting_calibration', cam.info['serial_num'], date_sign)
     safe_mkdirs(results_path)
     safe_mkdirs(os.path.join(results_path, 'images'))
 
@@ -152,7 +154,7 @@ def main():
     # Calibration data is stored in repo.
     #
     data_path = pkg_resources.resource_filename(__name__, '../data/calibration/')
-    data_path = os.path.join(data_path, cam.info['serial_num'])
+    data_path = os.path.join(data_path, cam.info['serial_num'], date_sign)
     safe_mkdirs(data_path)
 
     #

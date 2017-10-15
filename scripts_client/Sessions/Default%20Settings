@@ -3,7 +3,11 @@ SCPAutoPwd\0\
 ACSinUTF\0\
 Comment\\
 CtrlTabSwitch\0\
+<<<<<<< HEAD
+Password\6b2p3\
+=======
 Password\4v131\
+>>>>>>> bitbucket/master
 ForegroundOnBell\0\
 SaveWindowPos\0\
 WindowState\0\
