@@ -297,6 +297,26 @@ class Map3dModel(Atom):
         self.grid_cube = grid_mesh
         grid_mesh.visible = self.show_grid
 
+    @observe('main_model.GRID_NED')
+    def _update_grid(self, change=None):
+        """Draw the reconstruction grid/cube on the map."""
+
+        if self.grid_cube is None:
+            return
+
+        X, Y, Z = self.main_model.GRID_NED
+        x_min, x_max = X.min(), X.max()
+        y_min, y_max = Y.min(), Y.max()
+        z_min, z_max = Z.min(), Z.max()
+
+        x = np.array((x_min, x_max, x_max, x_min, x_min, x_max, x_max, x_min))
+        y = np.array((y_min, y_min, y_max, y_max, y_min, y_min, y_max, y_max))
+        z = np.array((z_min, z_min, z_min, z_min, z_max, z_max, z_max, z_max))
+
+        self.grid_cube.mlab_source.set(
+            x=x, y=y, z=-z
+        )
+
     def draw_map(self):
         """Clear the map view and draw elevation map."""
 
