@@ -173,7 +173,7 @@ enamldef ArrayView(FlowItem): array_view:
             CheckBox: export_flag:
                 tool_tip = "Export for reconstruction"
                 text = "Export"
-
+                checked = True
 
 
 ################################################################################
@@ -297,7 +297,8 @@ enamldef MapperView(DockItem):
                 hbox(
                     grid_cb,
                     ROIs_cb,
-                    spacer
+                    spacer,
+                    clouds_pb
                 ),
             ),
         ]
@@ -315,6 +316,11 @@ enamldef MapperView(DockItem):
             tool_tip = "Show the camera ROIs"
             checked := map3d.show_ROIs
             text = "Show ROIs"
+
+        PushButton: clouds_pb:
+            text = 'Show Clouds'
+            clicked ::
+                map3d.draw_clouds_grid()
 
 
 ################################################################################
@@ -402,9 +408,9 @@ enamldef TimesView(DockItem):
                 enabled << JPEG_cb.checked
 
         CheckBox: correct_radiometric_cb:
-                tool_tip = "Apply radiometric correction."
+                tool_tip = "Whether to apply radiometric correction."
                 checked = True
-                text = "Whether to apply radiometric correction."
+                text = "Apply radiometric correction"
 
         CheckBox: ignore_date_extrinsics_cb:
                 tool_tip = "Ignore the Extrinsic calibration save for dated."

@@ -120,6 +120,7 @@ ROI_length = 6000
 EPIPOLAR_N = 200
 EPIPOLAR_length = 10000
 MAP_ZSCALE = 3
+ECEF_GRID_RESOLUTION = 20
 
 
 ################################################################################
@@ -180,8 +181,12 @@ class Map3dModel(Atom):
     map_scene = Typed(MlabSceneModel)
     map_coords = Tuple()
 
+    #
+    # Different 3D objects.
+    #
     cameras_ROIs = Dict()
     grid_cube = Typed(Surface)
+    clouds_dict = Dict()
 
     #
     # Flags for controlling the map details.
@@ -257,6 +262,91 @@ class Map3dModel(Atom):
         # Write the id of the camera.
         #
         self.map_scene.mlab.text3d(x, y, z+50, server_id, color=(0, 0, 0), scale=500.)
+
+    def draw_clouds_grid(self):
+        """Draw the space curving cloud grid."""
+
+        if self.main_model.GRID_NED == ():
+            return
+
+        if self.clouds_dict is not None:
+            for cloud_item in self.clouds_dict.values():
+                cloud_item.remove()
+
+        #
+        # Match array_models and array_views.
+        #
+        cloud_weights = []
+        for array_view in self.main_model.arrays.array_views.values():
+            if not array_view.export_flag.checked:
+                logging.info(
+                    "Reconstruction: Camera {} ignored.".format(array_view.server_id)
+                )
+                continue
+
+            #
+            # Collect cloud weights from participating cameras.
+            #
+            server_id = array_view.server_id
+            array_model = self.main_model.arrays.array_items[server_id]
+
+            #
+            # Get the masks.
+            #
+            manual_mask = array_view.image_widget.mask
+            joint_mask = (manual_mask * array_model.sunshader_mask).astype(np.uint8)
+
+            #
+            # Get the masked grid scores for the specific camera.
+            #
+            grid_scores = \
+                (array_model.cloud_weights*joint_mask)[
+                    array_model.grid_2D[:, 0],
+                    array_model.grid_2D[:, 1]
+                ]
+
+            cloud_weights.append(grid_scores)
+
+        if len(cloud_weights) == 0:
+            #
+            # No participating cameras.
+            #
+            return
+
+        #
+        # Calculate the collective clouds weight.
+        #
+        weights = np.array(cloud_weights).prod(axis=0)**(1/len(cloud_weights))
+
+        #
+        # Hack to get the ECEF grid in NED coords.
+        #
+        X, Y, Z = self.main_model.GRID_NED
+        x_min, x_max = X.min(), X.max()
+        y_min, y_max = Y.min(), Y.max()
+        z_min, z_max = Z.min(), Z.max()
+        X, Y, Z = np.meshgrid(
+            np.linspace(x_min, x_max, ECEF_GRID_RESOLUTION),
+            np.linspace(y_min, y_max, ECEF_GRID_RESOLUTION),
+            np.linspace(-z_max, -z_min, ECEF_GRID_RESOLUTION),
+        )
+        clouds_score = weights.reshape(*X.shape)
+
+        mlab = self.map_scene.mlab
+
+        src = mlab.pipeline.scalar_field(Y, X, Z, clouds_score)
+        src.update_image_data = True
+
+        ipw_x = mlab.pipeline.image_plane_widget(src, plane_orientation='x_axes')
+        ipw_z = mlab.pipeline.image_plane_widget(src, plane_orientation='z_axes')
+
+        outline = mlab.outline(color=(0.0, 0.0, 0.0))
+
+        self.clouds_dict = dict(
+            ipw_x=ipw_x,
+            ipw_z=ipw_z,
+            outline=outline
+        )
 
     def draw_grid(self):
         """Draw the reconstruction grid/cube on the map."""
@@ -426,7 +516,7 @@ class ArrayModel(Atom):
     img_array = Typed(np.ndarray)
     sunshader_mask = Typed(np.ndarray)
     cloud_weights = Typed(np.ndarray)
-    grid_scores = Typed(np.ndarray)
+    grid_2D = Typed(np.ndarray)
     sun_mask = Typed(np.ndarray)
     displayed_array = Typed(np.ndarray)
 
@@ -477,14 +567,14 @@ class ArrayModel(Atom):
     #
     # Clouds scoring threshold.
     #
-    cloud_weight_threshold = Float(0.8)
+    cloud_weight_threshold = Float(0.5)
 
     def _default_Epipolar_coords(self):
         Epipolar_coords = self.projectECEF(self.arrays_model.LOS_ECEF)
         return Epipolar_coords
 
     def _default_GRID_coords(self):
-        GRID_coords = self.projectECEF(self.main_model.GRID_ECEF)
+        GRID_coords = self.projectECEF(self.main_model.GRID_ECEF, filter_fov=False)
         return GRID_coords
 
     def calcLOS(self, x, y):
@@ -713,29 +803,24 @@ class ArrayModel(Atom):
     def _updateGRID(self, change):
         """Project the reconstruction GRID points to camera coords."""
 
-        self.GRID_coords = self.projectECEF(self.main_model.GRID_ECEF)
+        self.GRID_coords = self.projectECEF(self.main_model.GRID_ECEF, filter_fov=False)
 
-    @observe('GRID_coords', 'cloud_weights')
-    def _sampleGridScores(self, change):
-        """Sample the cloud weights onto the Grid."""
+    @observe('GRID_coords')
+    def _updateGrid2D(self, change):
+        """Update the projection of the Grid onto the image."""
 
-        xs, ys = self.GRID_coords
-        points2D = np.array((ys, xs)).astype(np.int)
+        xs, ys, _ = self.GRID_coords
+        grid_2D = np.array((ys, xs)).T.astype(np.int)
 
         #
         # Map points outside the fov to 0, 0.
         #
         h, w = self.cloud_weights.shape
-        points2D[points2D[:, 0]<0] = 0
-        points2D[points2D[:, 1]<0] = 0
-        points2D[points2D[:, 0]>=h] = 0
-        points2D[points2D[:, 1]>=w] = 0
+        grid_2D[grid_2D<0] = 0
+        grid_2D[grid_2D[:, 0]>=h] = 0
+        grid_2D[grid_2D[:, 1]>=w] = 0
 
-        #
-        # Mask ROI and sunshader.
-        # TODO
-        #
-        self.grid_scores = self.cloud_weights[points2D[:, 0], points2D[:, 1]]
+        self.grid_2D = grid_2D
 
 
 class ArraysModel(Atom):
@@ -1326,9 +1411,9 @@ class MainModel(Atom):
         # image arrays.
         #
         X, Y, Z = np.meshgrid(
-            np.linspace(s_pts[0], e_pts[0], 10),
-            np.linspace(s_pts[1], e_pts[1], 10),
-            np.linspace(s_pts[2], e_pts[2], 10),
+            np.linspace(s_pts[0], e_pts[0], ECEF_GRID_RESOLUTION),
+            np.linspace(s_pts[1], e_pts[1], ECEF_GRID_RESOLUTION),
+            np.linspace(s_pts[2], e_pts[2], ECEF_GRID_RESOLUTION),
         )
 
         self.GRID_ECEF = pymap3d.ned2ecef(
