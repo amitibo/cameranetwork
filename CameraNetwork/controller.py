@@ -480,14 +480,13 @@ class Controller(object):
         raising an error.
         """
 
-        captured = False
         retries = max_retries
-        while not captured:
+        while True:
             try:
                 img_array, real_exposure_us, real_gain_db = \
                     self._camera.capture(settings, frames_num)
-                captured = True
-            except Exception, e:
+                break
+            except Exception as e:
                 if retries <= 0:
                     logging.exception(
                         'The camera failed too many consequtive times. Reboot.'
@@ -502,9 +501,17 @@ class Controller(object):
                     )
                 )
 
-                self.delete_camera()
-                time.sleep(gs.CAMERA_RESTART_PERIOD)
-                self.start_camera()
+                try:
+                    self.delete_camera()
+                    time.sleep(gs.CAMERA_RESTART_PERIOD)
+                    self.start_camera()
+                except Exception as e:
+                    logging.exception(
+                        'The camera failed restarting. Reboot.'
+                    )
+                    logging.shutdown()
+                    time.sleep(120)
+                    os.system('sudo reboot')
 
         return img_array, real_exposure_us, real_gain_db
 
