@@ -37,7 +37,7 @@ enamldef ArraySettingsDialog(Dialog): arrays_dialog:
 
             Label:
                 text = 'Sunshader Dilate'
-            IntField: grabcut_val:
+            IntField: dilate_val:
                 tool_tip = "Morpholical Dilation size."
                 value := array_model.dilate_size
 
@@ -48,6 +48,15 @@ enamldef ArraySettingsDialog(Dialog): arrays_dialog:
                 maximum = 0.25
                 tool_tip = "Sun mask gaussian radius."
                 value := array_model.sun_mask_radius
+
+            Label:
+                text = 'Clouds Threshold'
+            FloatField: clouds_val:
+                minimum = 0.0
+                maximum = 1.
+                tool_tip = "Cloud weights threshold."
+                value := array_model.cloud_weight_threshold
+
 
 #
 # Capture settings
@@ -129,7 +138,7 @@ enamldef ArraysSettingsDialog(Dialog): array_dialog:
                 text = 'View Type'
             ComboBox: type_combo:
                 tool_tip = "Type of displayed image."
-                items = ['Image', 'Mask', 'Sun Mask']
+                items = ['Image', 'Mask', 'Sun Mask', 'Cloud Weights']
                 selected_item >> arrays_model.image_type
 
             Label: intensity_lbl:

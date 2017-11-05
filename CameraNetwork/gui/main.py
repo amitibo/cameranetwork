@@ -405,6 +405,7 @@ class ArrayModel(Atom):
     img_data = Typed(DataObj, kwargs={})
     img_array = Typed(np.ndarray)
     sunshader_mask = Typed(np.ndarray)
+    cloud_weights = Typed(np.ndarray)
     sun_mask = Typed(np.ndarray)
     displayed_array = Typed(np.ndarray)
 
@@ -451,6 +452,11 @@ class ArrayModel(Atom):
     grabcut_threshold = Float(10)
     dilate_size = Int(7)
     sun_mask_radius = Float(0.25)
+
+    #
+    # Clouds scoring threshold.
+    #
+    cloud_weight_threshold = Float(0.8)
 
     def _default_Epipolar_coords(self):
         Epipolar_coords = self.projectECEF(self.arrays_model.LOS_ECEF)
@@ -562,6 +568,30 @@ class ArrayModel(Atom):
         else:
             return xs, ys, cosPSI>0
 
+    @observe("img_array", "cloud_weight_threshold")
+    def _update_cloud_weights(self, change):
+
+        if change["value"] is None:
+            return
+
+        r = self.img_array[..., 0].astype(np.float)
+        b = self.img_array[..., 2].astype(np.float)
+
+        cloud_weights = np.zeros_like(r)
+        eps = np.finfo(b.dtype).eps
+
+        threshold = self.cloud_weight_threshold
+        ratio = r / (b+eps)
+        ratio_mask = ratio>threshold
+        cloud_weights[ratio_mask] = \
+            (2-threshold)/(1-threshold)*(ratio[ratio_mask]-threshold)/(ratio[ratio_mask]+1-threshold)
+
+        #
+        # Limit cloud_weights to 1.
+        #
+        cloud_weights[cloud_weights>1] = 1
+        self.cloud_weights = cloud_weights
+
     @observe("img_array", "grabcut_threshold", "dilate_size")
     def _update_img_array(self, change):
 
@@ -586,13 +616,15 @@ class ArrayModel(Atom):
         thread.start()
 
     @observe("arrays_model.image_type", "img_array", "sunshader_mask",
-             "sun_mask")
+             "sun_mask", "cloud_weights")
     def _update_img_type(self, change):
 
         if self.arrays_model.image_type == "Image":
             self.displayed_array = self.img_array
         elif self.arrays_model.image_type == "Mask":
             self.displayed_array = self.sunshader_mask
+        elif self.arrays_model.image_type == "Cloud Weights":
+            self.displayed_array = self.cloud_weights
         else:
             self.displayed_array = self.sun_mask
 
@@ -674,7 +706,7 @@ class ArraysModel(Atom):
     #
     # Intensity level for displayed images.
     #
-    image_type = Enum('Image', 'Mask', 'Sun Mask')
+    image_type = Enum('Image', 'Mask', 'Sun Mask', 'Cloud Weights')
     intensity = Int(100)
     gamma = Bool(False)
 
