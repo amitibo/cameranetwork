@@ -426,6 +426,7 @@ class ArrayModel(Atom):
     img_array = Typed(np.ndarray)
     sunshader_mask = Typed(np.ndarray)
     cloud_weights = Typed(np.ndarray)
+    grid_scores = Typed(np.ndarray)
     sun_mask = Typed(np.ndarray)
     displayed_array = Typed(np.ndarray)
 
@@ -713,6 +714,28 @@ class ArrayModel(Atom):
         """Project the reconstruction GRID points to camera coords."""
 
         self.GRID_coords = self.projectECEF(self.main_model.GRID_ECEF)
+
+    @observe('GRID_coords', 'cloud_weights')
+    def _sampleGridScores(self, change):
+        """Sample the cloud weights onto the Grid."""
+
+        xs, ys = self.GRID_coords
+        points2D = np.array((ys, xs)).astype(np.int)
+
+        #
+        # Map points outside the fov to 0, 0.
+        #
+        h, w = self.cloud_weights.shape
+        points2D[points2D[:, 0]<0] = 0
+        points2D[points2D[:, 1]<0] = 0
+        points2D[points2D[:, 0]>=h] = 0
+        points2D[points2D[:, 1]>=w] = 0
+
+        #
+        # Mask ROI and sunshader.
+        # TODO
+        #
+        self.grid_scores = self.cloud_weights[points2D[:, 0], points2D[:, 1]]
 
 
 class ArraysModel(Atom):
