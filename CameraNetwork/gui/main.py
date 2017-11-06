@@ -120,7 +120,7 @@ ROI_length = 6000
 EPIPOLAR_N = 200
 EPIPOLAR_length = 10000
 MAP_ZSCALE = 3
-ECEF_GRID_RESOLUTION = 20
+ECEF_GRID_RESOLUTION = 40
 
 
 ################################################################################
@@ -331,6 +331,8 @@ class Map3dModel(Atom):
             np.linspace(-z_max, -z_min, ECEF_GRID_RESOLUTION),
         )
         clouds_score = weights.reshape(*X.shape)
+        clouds_score = clouds_score[..., ::-1]
+        print(-z_max, -z_min)
 
         mlab = self.map_scene.mlab
 
