@@ -38,7 +38,8 @@
 Based on the example by blink1073:
 https://gist.github.com/blink1073/7411284
 """
-from atom.api import Dict, Instance, Signal, Str, Int, observe, List, Bool, ForwardTyped, Typed, Tuple, Instance, Atom
+from atom.api import Dict, Float, Instance, Signal, Str, Int, observe, List, \
+     Bool, ForwardTyped, Typed, Tuple, Instance, Atom
 from enaml.core.declarative import d_
 from enaml.qt import QtCore, QtGui
 from enaml.qt.qt_control import QtControl
@@ -165,7 +166,7 @@ class ImageAnalysis(Control):
     # Flags that control the display
     #
     gamma = d_(Bool(False))
-    intensity = d_(Int(100))
+    intensity = d_(Float(100))
     show_grid = d_(Bool(False))
     show_mask = d_(Bool(False))
     show_ROI = d_(Bool(False))
@@ -492,7 +493,7 @@ class QtImageAnalysis(QtControl, ProxyImageAnalysis):
             self.initGrid(GRID_coords)
             return
 
-        xs, ys, mask = grid_coords
+        xs, ys, mask = GRID_coords
         self.grid_scatter.setData(
             pos=np.array((xs[mask], ys[mask])).T
         )

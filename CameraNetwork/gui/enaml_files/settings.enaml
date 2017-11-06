@@ -143,10 +143,10 @@ enamldef ArraysSettingsDialog(Dialog): array_dialog:
 
             Label: intensity_lbl:
                 text = 'Intensity Level'
-            IntField: intensity_txt:
+            FloatField: intensity_txt:
                 tool_tip = "Control the intensity of the displayed image."
-                minimum = 1
-                maximum = 1000
+                minimum = 0.01
+                maximum = 1000.
                 value := arrays_model.intensity
 
             Label: gamma_lbl:

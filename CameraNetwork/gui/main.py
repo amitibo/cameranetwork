@@ -560,7 +560,7 @@ class ArrayModel(Atom):
     #
     # Sunshader mask threshold used in grabcut algorithm.
     #
-    grabcut_threshold = Float(10)
+    grabcut_threshold = Float(0.1)
     dilate_size = Int(7)
     sun_mask_radius = Float(0.25)
 
@@ -835,7 +835,7 @@ class ArraysModel(Atom):
     # Intensity level for displayed images.
     #
     image_type = Enum('Image', 'Mask', 'Sun Mask', 'Cloud Weights')
-    intensity = Int(100)
+    intensity = Float(100.)
     gamma = Bool(False)
 
     #
