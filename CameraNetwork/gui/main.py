@@ -332,7 +332,6 @@ class Map3dModel(Atom):
         )
         clouds_score = weights.reshape(*X.shape)
         clouds_score = clouds_score[..., ::-1]
-        print(-z_max, -z_min)
 
         mlab = self.map_scene.mlab
 
