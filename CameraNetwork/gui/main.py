@@ -325,9 +325,9 @@ class Map3dModel(Atom):
         x_min, x_max = X.min(), X.max()
         y_min, y_max = Y.min(), Y.max()
         z_min, z_max = Z.min(), Z.max()
-        X, Y, Z = np.meshgrid(
-            np.linspace(x_min, x_max, ECEF_GRID_RESOLUTION),
+        Y, X, Z = np.meshgrid(
             np.linspace(y_min, y_max, ECEF_GRID_RESOLUTION),
+            np.linspace(x_min, x_max, ECEF_GRID_RESOLUTION),
             np.linspace(-z_max, -z_min, ECEF_GRID_RESOLUTION),
         )
         clouds_score = weights.reshape(*X.shape)
@@ -335,7 +335,7 @@ class Map3dModel(Atom):
 
         mlab = self.map_scene.mlab
 
-        src = mlab.pipeline.scalar_field(Y, X, Z, clouds_score)
+        src = mlab.pipeline.scalar_field(X, Y, Z, clouds_score)
         src.update_image_data = True
 
         ipw_x = mlab.pipeline.image_plane_widget(src, plane_orientation='x_axes')
