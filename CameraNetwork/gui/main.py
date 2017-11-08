@@ -119,7 +119,7 @@ from matplotlib.figure import Figure
 ROI_length = 6000
 EPIPOLAR_N = 200
 EPIPOLAR_length = 10000
-MAP_ZSCALE = 3
+MAP_ZSCALE = 1
 ECEF_GRID_RESOLUTION = 40
 
 
@@ -276,7 +276,8 @@ class Map3dModel(Atom):
         #
         # Match array_models and array_views.
         #
-        cloud_weights = []
+        grid_scores = []
+        grid_masks = []
         for array_view in self.main_model.arrays.array_views.values():
             if not array_view.export_flag.checked:
                 logging.info(
@@ -299,15 +300,23 @@ class Map3dModel(Atom):
             #
             # Get the masked grid scores for the specific camera.
             #
-            grid_scores = \
-                (array_model.cloud_weights*joint_mask)[
+            mask_inds = joint_mask == 1
+            grid_score = np.ones_like(array_model.cloud_weights)
+            grid_score[mask_inds] = array_model.cloud_weights[mask_inds]
+            grid_scores.append(
+                grid_score[
                     array_model.grid_2D[:, 0],
                     array_model.grid_2D[:, 1]
                 ]
+            )
+            grid_masks.append(
+                joint_mask[
+                    array_model.grid_2D[:, 0],
+                    array_model.grid_2D[:, 1]
+                ]
+            )
 
-            cloud_weights.append(grid_scores)
-
-        if len(cloud_weights) == 0:
+        if len(grid_scores) == 0:
             #
             # No participating cameras.
             #
@@ -316,7 +325,14 @@ class Map3dModel(Atom):
         #
         # Calculate the collective clouds weight.
         #
-        weights = np.array(cloud_weights).prod(axis=0)**(1/len(cloud_weights))
+        weights = np.array(grid_scores).prod(axis=0)**(1/len(grid_scores))
+
+        #
+        # voxels that are not seen (outside the fov/sun_mask) by at least two cameras
+        # are zeroed.
+        #
+        grid_masks = np.array(grid_masks).sum(axis=0)
+        weights[grid_masks<2] = 0
 
         #
         # Hack to get the ECEF grid in NED coords.
