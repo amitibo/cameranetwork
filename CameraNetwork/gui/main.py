@@ -82,6 +82,7 @@ import subprocess
 import time
 from threading import Thread
 import traceback
+import warnings
 from zmq.eventloop import ioloop
 
 import CameraNetwork
@@ -263,21 +264,25 @@ class Map3dModel(Atom):
         #
         self.map_scene.mlab.text3d(x, y, z+50, server_id, color=(0, 0, 0), scale=500.)
 
-    def draw_clouds_grid(self):
+    def draw_clouds_grid(self, use_color_consistency=True):
         """Draw the space curving cloud grid."""
 
         if self.main_model.GRID_NED == ():
             return
 
         if self.clouds_dict is not None:
-            for cloud_item in self.clouds_dict.values():
-                cloud_item.remove()
+            for k, cloud_item in self.clouds_dict.items():
+                try:
+                    cloud_item.remove()
+                except Exception as e:
+                    warnings.warn("Failure to remove {} from pipline (probably just the order of removal).".format(k))
 
         #
         # Match array_models and array_views.
         #
         grid_scores = []
         grid_masks = []
+        cloud_rgb = []
         for array_view in self.main_model.arrays.array_views.values():
             if not array_view.export_flag.checked:
                 logging.info(
@@ -316,6 +321,17 @@ class Map3dModel(Atom):
                 ]
             )
 
+            #
+            # Collect RGB values at grid points.
+            #
+            cloud_rgb.append(
+                array_model.img_array[
+                    array_model.grid_2D[:, 0],
+                    array_model.grid_2D[:, 1],
+                    ...
+                ]
+            )
+
         if len(grid_scores) == 0:
             #
             # No participating cameras.
@@ -333,6 +349,19 @@ class Map3dModel(Atom):
         #
         grid_masks = np.array(grid_masks).sum(axis=0)
         weights[grid_masks<2] = 0
+
+        #
+        # Calculate color consistency as described in the article
+        #
+        sigma=50
+        var_rgb = np.dstack(cloud_rgb).var(axis=2).sum(axis=1)
+        color_consistency = np.exp(-var_rgb/sigma)
+
+        #
+        # Take into account both the clouds weights and photo consistency.
+        #
+        if use_color_consistency:
+            weights = color_consistency * weights
 
         #
         # Hack to get the ECEF grid in NED coords.
@@ -360,6 +389,7 @@ class Map3dModel(Atom):
         outline = mlab.outline(color=(0.0, 0.0, 0.0))
 
         self.clouds_dict = dict(
+            src=src,
             ipw_x=ipw_x,
             ipw_z=ipw_z,
             outline=outline

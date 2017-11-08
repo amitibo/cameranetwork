@@ -416,7 +416,7 @@ def calcSunshaderMask(
         sunshader_mask = cv2.erode(sunshader_mask, kernel)
 
     #
-    # Sent the results back to the GUI thread.
+    # Send the results back to the GUI thread.
     #
     deferred_call(setattr, array_model, 'sunshader_mask', sunshader_mask)
 
