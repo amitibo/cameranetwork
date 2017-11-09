@@ -292,7 +292,7 @@ class QtImageAnalysis(QtControl, ProxyImageAnalysis):
             pickle.dump(grid_coords, f)
 
         self.grid_scatter = pg.ScatterPlotItem(
-            size=1, pen=pg.mkPen(None), brush=pg.mkBrush(255, 255, 255, 120)
+            size=3, pen=pg.mkPen(None), brush=pg.mkBrush(255, 0, 0, 255)
         )
 
         xs, ys, mask = grid_coords

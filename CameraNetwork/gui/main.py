@@ -32,7 +32,8 @@
 ## DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
 ## LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
 ## OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
-## ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.##
+## ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+##
 """Run a GUI Client.
 
 A GUI client allows easy access to cameras thier settings and their
@@ -90,6 +91,7 @@ from CameraNetwork import global_settings as gs
 from CameraNetwork.export import exportToShdom
 from CameraNetwork.image_utils import calcSunMask
 from CameraNetwork.image_utils import calcSunshaderMask
+from CameraNetwork.image_utils import projectECEFThread
 from CameraNetwork.mdp import MDP
 from CameraNetwork.radiosonde import load_radiosonde
 from CameraNetwork.sunphotometer import calcSunphometerCoords
@@ -121,7 +123,8 @@ ROI_length = 6000
 EPIPOLAR_N = 200
 EPIPOLAR_length = 10000
 MAP_ZSCALE = 1
-ECEF_GRID_RESOLUTION = 40
+ECEF_VIS_GRID_RESOLUTION = 10
+ECEF_GRID_RESOLUTION = 50
 
 
 ################################################################################
@@ -341,7 +344,7 @@ class Map3dModel(Atom):
         #
         # Calculate the collective clouds weight.
         #
-        weights = np.array(grid_scores).prod(axis=0)**(1/len(grid_scores))
+        weights = np.array(grid_scores).prod(axis=0)
 
         #
         # voxels that are not seen (outside the fov/sun_mask) by at least two cameras
@@ -349,6 +352,8 @@ class Map3dModel(Atom):
         #
         grid_masks = np.array(grid_masks).sum(axis=0)
         weights[grid_masks<2] = 0
+        nzi = weights > 0
+        weights[nzi] = weights[nzi]**(1/grid_masks[nzi])
 
         #
         # Calculate color consistency as described in the article
@@ -371,8 +376,8 @@ class Map3dModel(Atom):
         y_min, y_max = Y.min(), Y.max()
         z_min, z_max = Z.min(), Z.max()
         Y, X, Z = np.meshgrid(
-            np.linspace(y_min, y_max, ECEF_GRID_RESOLUTION),
             np.linspace(x_min, x_max, ECEF_GRID_RESOLUTION),
+            np.linspace(y_min, y_max, ECEF_GRID_RESOLUTION),
             np.linspace(-z_max, -z_min, ECEF_GRID_RESOLUTION),
         )
         clouds_score = weights.reshape(*X.shape)
@@ -621,8 +626,16 @@ class ArrayModel(Atom):
         return Epipolar_coords
 
     def _default_GRID_coords(self):
-        GRID_coords = self.projectECEF(self.main_model.GRID_ECEF, filter_fov=False)
+        GRID_coords = self.projectECEF(
+            self.main_model.GRID_VIS_ECEF,
+            filter_fov=False
+        )
         return GRID_coords
+
+    def _default_grid_2D(self):
+        self._updateGrid2D(None)
+
+        return None
 
     def calcLOS(self, x, y):
         """Create set of points in space.
@@ -846,28 +859,33 @@ class ArrayModel(Atom):
 
         self.Epipolar_coords = self.projectECEF(self.arrays_model.LOS_ECEF)
 
-    @observe('main_model.GRID_ECEF')
+    @observe('main_model.GRID_VIS_ECEF')
     def _updateGRID(self, change):
         """Project the reconstruction GRID points to camera coords."""
 
-        self.GRID_coords = self.projectECEF(self.main_model.GRID_ECEF, filter_fov=False)
+        self.GRID_coords = self.projectECEF(
+            self.main_model.GRID_VIS_ECEF,
+            filter_fov=False
+        )
 
-    @observe('GRID_coords')
+    @observe('main_model.GRID_ECEF')
     def _updateGrid2D(self, change):
         """Update the projection of the Grid onto the image."""
 
-        xs, ys, _ = self.GRID_coords
-        grid_2D = np.array((ys, xs)).T.astype(np.int)
-
+        print("Updating the GRID_ECEF")
         #
-        # Map points outside the fov to 0, 0.
+        # Calculate masks.
         #
-        h, w = self.cloud_weights.shape
-        grid_2D[grid_2D<0] = 0
-        grid_2D[grid_2D[:, 0]>=h] = 0
-        grid_2D[grid_2D[:, 1]>=w] = 0
-
-        self.grid_2D = grid_2D
+        thread = Thread(
+            target=projectECEFThread,
+            args=(
+                self,
+                self.main_model.GRID_ECEF,
+                self.cloud_weights.shape,
+            )
+        )
+        thread.daemon = True
+        thread.start()
 
 
 class ArraysModel(Atom):
@@ -1119,13 +1137,15 @@ class MainModel(Atom):
     # Reconstruction Grid parameters.
     # Note:
     # There are two grids used:
-    # - GRID_ECEF: Used for visualization on the camera array.
+    # - GRID_VIS_ECEF: Used for visualization on the camera array.
+    # - GRID_ECEF: Used for the visual hull algorithm.
     # - GRID_NED: The grid exported for reconstruction.
     #
     delx = Float(250)
     dely = Float(250)
     delz = Float(200)
     TOG = Float(6000)
+    GRID_VIS_ECEF = Tuple()
     GRID_ECEF = Tuple()
     GRID_NED = Tuple()
     grid_mode = Str("Manual")
@@ -1179,6 +1199,12 @@ class MainModel(Atom):
 
         self.updateGRID(None)
         return self.GRID_ECEF
+
+    def _default_GRID_VIS_ECEF(self):
+        """Initialize the reconstruction grid."""
+
+        self.updateGRID(None)
+        return self.GRID_VIS_ECEF
 
     ############################################################################
     # GUI communication.
@@ -1454,8 +1480,20 @@ class MainModel(Atom):
         )
 
         #
-        # GRID_ECEF is just for visualization of the grid on the
+        # GRID_VIS_ECEF is just for visualization of the grid on the
         # image arrays.
+        #
+        X, Y, Z = np.meshgrid(
+            np.linspace(s_pts[0], e_pts[0], ECEF_VIS_GRID_RESOLUTION),
+            np.linspace(s_pts[1], e_pts[1], ECEF_VIS_GRID_RESOLUTION),
+            np.linspace(s_pts[2], e_pts[2], ECEF_VIS_GRID_RESOLUTION),
+        )
+
+        self.GRID_VIS_ECEF = pymap3d.ned2ecef(
+            X, Y, Z, self.latitude, self.longitude, self.altitude)
+
+        #
+        # GRID_ECEF is used for space curving.
         #
         X, Y, Z = np.meshgrid(
             np.linspace(s_pts[0], e_pts[0], ECEF_GRID_RESOLUTION),

@@ -421,6 +421,41 @@ def calcSunshaderMask(
     deferred_call(setattr, array_model, 'sunshader_mask', sunshader_mask)
 
 
+def projectECEFThread(
+    array_model,
+    GRID_ECEF,
+    weights_shape
+    ):
+    """Project the ECEF grid on the camera axis.
+
+    Args:
+        img_array (array): Image (float HDR).
+        GRID_ECEF (array): Grid to project.
+        weights_shape (tuple): Shape of the camera image.
+    """
+
+    from enaml.application import deferred_call
+
+    xs, ys, _ = array_model.projectECEF(
+        GRID_ECEF,
+        filter_fov=False
+    )
+    grid_2D = np.array((ys, xs)).T.astype(np.int)
+
+    #
+    # Map points outside the fov to 0, 0.
+    #
+    h, w = weights_shape
+    grid_2D[grid_2D<0] = 0
+    grid_2D[grid_2D[:, 0]>=h] = 0
+    grid_2D[grid_2D[:, 1]>=w] = 0
+
+    #
+    # Send the results back to the GUI thread.
+    #
+    deferred_call(setattr, array_model, 'grid_2D', grid_2D)
+
+
 def gaussian(center_x, center_y, height=1., width_x=0.25, width_y=0.25):
     """Returns a gaussian function with the given parameters"""
 
