@@ -633,6 +633,8 @@ class ArrayModel(Atom):
         return GRID_coords
 
     def _default_grid_2D(self):
+        print("Creating default grid 2D")
+
         self._updateGrid2D(None)
 
         return None
@@ -873,6 +875,7 @@ class ArrayModel(Atom):
         """Update the projection of the Grid onto the image."""
 
         print("Updating the GRID_ECEF")
+
         #
         # Calculate masks.
         #
@@ -985,6 +988,12 @@ class ArraysModel(Atom):
         #
         array_model.img_array = img_array
         array_model.img_data = img_data
+
+        #
+        # Note:
+        # Here I check grid_2D to init the thread that creates it.
+        #
+        _ = array_model.grid_2D
 
         if new_array_model:
             temp_dict = self.array_items.copy()
