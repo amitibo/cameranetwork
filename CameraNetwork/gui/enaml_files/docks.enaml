@@ -266,17 +266,21 @@ enamldef LoggerView(DockItem):
         constraints = [
             vbox(
                 log_field,
-                hbox(spacer, clear)
+                hbox(spacer, traceback_cb, clear_btn)
             )
         ]
 
         MultilineField: log_field:
             name = 'line-collector'
-            text << logger.text
+            text << logger.traceback_text if traceback_cb.checked else logger.log_text
             font = '9pt Courier'
             read_only = True
 
-        PushButton: clear:
+        CheckBox: traceback_cb:
+            tool_tip = "Show exception traceback"
+            text = 'Traceback'
+
+        PushButton: clear_btn:
             text = 'Clear'
             clicked ::
                 logger.clear()

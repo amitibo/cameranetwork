@@ -163,18 +163,23 @@ def open_settings(main_view, main_model, server_model):
 class LoggerModel(Atom):
     """Model of the Exception logger."""
 
-    text = Str()
+    log_text = Str()
+    traceback_text = Str()
 
     def log(self, server_id, msg):
         """Add a log message."""
 
-        self.text = self.text + "Server {} raised an error:\n" \
-            "=========================\n{}".format(server_id, msg)
+        header = "Server {} raised an error".format(server_id)
+        header = "{}\n{}\n".format(header, "=" * len(header))
+        self.log_text = "{}\n{}".format(header, self.log_text)
+
+        self.traceback_text = "{}\n{}\n{}".format(header, msg, self.traceback_text)
 
     def clear(self):
         """Clear all messages."""
 
-        self.text = ""
+        self.log_text = ""
+        self.traceback_text = ""
 
 
 class Map3dModel(Atom):
@@ -961,6 +966,7 @@ class ArraysModel(Atom):
         #
         # Create the array model which handles the array view on the display.
         #
+        logging.info("Creating new iterm for server {}".format(server_id))
         server_keys = self.array_items.keys()
         if server_id in server_keys:
             #
@@ -1890,6 +1896,7 @@ class Controller(Atom):
 
         view_index = sorted(server_keys).index(new_server_id)
 
+        logging.info("Adding new view of server {}".format(new_server_id))
         array_view = ArrayView(
             array_model=change["value"][new_server_id],
             arrays_model=self.arrays,
