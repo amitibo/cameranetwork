@@ -109,7 +109,7 @@ enamldef CaptureDialog(Dialog): capture_dialog:
             PushButton: get_pb:
                 text = 'Capture'
                 clicked ::
-                    main_model.clear_map()
+                    main_model.create_map()
                     main_model.broadcast_message(
                         gs.MSG_TYPE_ARRAY,
                         kwds=dict(

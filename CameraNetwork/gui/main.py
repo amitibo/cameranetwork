@@ -71,6 +71,7 @@ import json
 import logging
 import math
 from mayavi.modules.surface import Surface
+from mayavi.modules.vectors import Vectors
 from mayavi.tools.mlab_scene_model import MlabSceneModel
 from mayavi.tools.figure import clf
 import os
@@ -195,12 +196,14 @@ class Map3dModel(Atom):
     #
     cameras_ROIs = Dict()
     grid_cube = Typed(Surface)
+    LOS_vectors = Typed(Vectors)
     clouds_dict = Dict()
 
     #
     # Flags for controlling the map details.
     #
     show_ROIs = Bool(False)
+    show_LOS = Bool(False)
     show_grid = Bool(False)
 
     latitude = Float(32.775776)
@@ -464,12 +467,23 @@ class Map3dModel(Atom):
             x=x, y=y, z=-z
         )
 
+    def create(self):
+        """Initialize the map scene and its default elements."""
+
+        #
+        # First clear the scene.
+        #
+        self.cameras_ROIs = dict()
+        clf(figure=self.map_scene.mayavi_scene)
+
+        self.draw_map()
+        self.draw_grid()
+
     def draw_map(self):
         """Clear the map view and draw elevation map."""
 
         mayavi_scene = self.map_scene.mayavi_scene
-        self.cameras_ROIs = dict()
-        clf(figure=mayavi_scene)
+
         X, Y, Z, Z_mask = convertMapData(
             self.map_coords[0],
             self.map_coords[1],
@@ -519,6 +533,59 @@ class Map3dModel(Atom):
 
         for roi_mesh in self.cameras_ROIs.values():
             roi_mesh.visible = change["value"]
+
+    @observe("show_LOS")
+    def _showLOS(self, change):
+        """Show/Hide the camera's LOS visualization."""
+
+        if self.LOS_vectors is None:
+            return
+
+        self.LOS_vectors.visible = change["value"]
+
+    def updateLOS(self, los_ecef):
+        """Show/Hide the camera's LOS visualization."""
+
+        #
+        # Get the LOS in ECEF coords.
+        #
+        LOS_ECEF = self.main_model.arrays.LOS_ECEF
+        if LOS_ECEF == ():
+            return
+
+        #
+        # Convert ECEF points to NED centered at center of the 3D map.
+        #
+        X, Y, Z = pymap3d.ecef2ned(
+            los_ecef[0], los_ecef[1], los_ecef[2],
+            self.latitude, self.longitude, self.altitude)
+
+        #
+        # Convert the points to NEU.
+        #
+        neu_pts = np.array([X.flatten(), Y.flatten(), -Z.flatten()]).T
+        y, x, z = neu_pts[0]
+        v, u, w = neu_pts[-1] - neu_pts[0]
+
+        if self.LOS_vectors is None:
+            #
+            # Draw the LOS for the first time.
+            #
+            mlab = self.map_scene.mlab
+            self.LOS_vectors = mlab.pipeline.vectors(
+                mlab.pipeline.vector_scatter(x, y, z, u, v, w)
+            )
+            self.LOS_vectors.glyph.glyph.clamping = False
+            self.LOS_vectors.glyph.glyph_source.glyph_source.glyph_type = 'dash'
+        else:
+            #
+            # Update the LOS.
+            #
+            self.LOS_vectors.mlab_source.set(
+                x=x, y=y, z=z, u=u, v=v, w=w
+            )
+
+            self.LOS_vectors.visible = self.show_LOS
 
 
 class TimesModel(Atom):
@@ -1528,19 +1595,13 @@ class MainModel(Atom):
 
         self.map3d.updateROImesh(server_id, pts, shape)
 
-    def clear_map(self):
-        #
-        # TODO:
-        # Just remove cameras and not the map/grid.
-        #
-        self.draw_map()
-        self.draw_grid()
+    def create_map(self):
+        self.map3d.create()
 
-    def draw_map(self):
-        self.map3d.draw_map()
+    @observe("arrays.LOS_ECEF")
+    def _updateLOS(self, change):
 
-    def draw_grid(self):
-        self.map3d.draw_grid()
+        self.map3d.updateLOS(self.arrays.LOS_ECEF)
 
     def new_array(self, server_id, matfile, img_data):
         """Handle a new array."""

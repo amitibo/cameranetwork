@@ -301,6 +301,7 @@ enamldef MapperView(DockItem):
                 hbox(
                     grid_cb,
                     ROIs_cb,
+                    LOS_cb,
                     spacer,
                     clouds_pb
                 ),
@@ -320,6 +321,11 @@ enamldef MapperView(DockItem):
             tool_tip = "Show the camera ROIs"
             checked := map3d.show_ROIs
             text = "Show ROIs"
+
+        CheckBox: LOS_cb:
+            tool_tip = "Show the camera LOS"
+            checked := map3d.show_LOS
+            text = "Show LOS"
 
         PushButton: clouds_pb:
             text = 'Show Clouds'
@@ -424,7 +430,7 @@ enamldef TimesView(DockItem):
         PushButton: seek_pb:
             text = 'Seek'
             clicked ::
-                main.clear_map()
+                main.create_map()
                 index = times.img_index
                 main.broadcast_message(
                     gs.MSG_TYPE_SEEK,
