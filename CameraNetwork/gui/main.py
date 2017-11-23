@@ -198,6 +198,7 @@ class Map3dModel(Atom):
     grid_cube = Typed(Surface)
     LOS_vectors = Typed(Vectors)
     clouds_dict = Dict()
+    beta_dict = Dict()
 
     #
     # Flags for controlling the map details.
@@ -205,6 +206,7 @@ class Map3dModel(Atom):
     show_ROIs = Bool(False)
     show_LOS = Bool(False)
     show_grid = Bool(False)
+    show_beta = Bool(False)
 
     latitude = Float(32.775776)
     longitude = Float(35.024963)
@@ -408,6 +410,55 @@ class Map3dModel(Atom):
             outline=outline
         )
 
+    def load_beta(self, beta_path):
+        """Draw the reconstructed 3D beta."""
+
+        if self.beta_dict is not None:
+            for k, beta_item in self.beta_dict.items():
+                try:
+                    beta_item.remove()
+                except Exception as e:
+                    warnings.warn(
+                        "Failure to remove {} from pipline (probably just the order of removal).".format(k)
+                    )
+
+        #
+        # Load the reconstructed beta.
+        #
+        with open(beta_path, 'rb') as f:
+            beta = cPickle.load(f).astype(np.float32)
+
+        #
+        # Load the reconstructed beta.
+        #
+        grid = sio.loadmat(os.path.join(os.path.dirname(beta_path), "grid.mat"))
+        xgrid, ygrid, zgrid = grid["X"].flatten(), grid["Y"].flatten(), -grid["Z"].flatten()[::-1]
+
+        X, Y, Z = np.meshgrid(xgrid, ygrid, zgrid, indexing='ij')
+
+        #
+        # Draw beta.
+        #
+        mlab = self.map_scene.mlab
+
+        src = mlab.pipeline.scalar_field(X, Y, Z, np.transpose(beta, (1, 0, 2)))
+        #src = mlab.pipeline.scalar_field(X, Y, Z, beta)
+        src.update_image_data = True
+
+        ipw_x = mlab.pipeline.image_plane_widget(src, plane_orientation='x_axes')
+        ipw_z = mlab.pipeline.image_plane_widget(src, plane_orientation='z_axes')
+
+        outline = mlab.outline(color=(0.0, 0.0, 0.0))
+
+        self.beta_dict = dict(
+            src=src,
+            ipw_x=ipw_x,
+            ipw_z=ipw_z,
+            outline=outline
+        )
+
+        self.show_beta = True
+
     def draw_grid(self):
         """Draw the reconstruction grid/cube on the map."""
 
@@ -586,6 +637,22 @@ class Map3dModel(Atom):
             )
 
             self.LOS_vectors.visible = self.show_LOS
+
+    @observe("show_beta")
+    def _showBeta(self, change):
+        """Show/Hide the Beta reconstruction."""
+
+        if self.beta_dict is None:
+            return
+
+        if self.beta_dict is not None:
+            for k, beta_item in self.beta_dict.items():
+                try:
+                    beta_item.visible = change["value"]
+                except Exception as e:
+                    warnings.warn(
+                        "Failure to hide/show {}.".format(k)
+                    )
 
 
 class TimesModel(Atom):

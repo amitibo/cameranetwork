@@ -466,18 +466,6 @@ def calcSunMask(img_shape, sun_alt, sun_az, radius=0.25):
     """Calculate a mask for the sun.
 
     The sun pixels are weighted by a gaussian.
-
-    Args:
-        img_array (array): Image (float HDR).
-        grabcut_threshold (float): Threshold used to set the seed for the
-            background.
-        values_range (float): This value is used for normalizing the image.
-            It is an empirical number that works for HDR images captured
-            during the day.
-
-    Note:
-        The algorithm uses some "Magic" numbers that might need to be
-        adapted to different lighting levels.
     """
 
     sun_r = (np.pi/2 - sun_alt) / (np.pi/2)
@@ -488,7 +476,10 @@ def calcSunMask(img_shape, sun_alt, sun_az, radius=0.25):
         np.linspace(-1, 1, img_shape[1]),
         np.linspace(-1, 1, img_shape[0])
     )
-    sun_mask = 1- gaussian(sun_x, sun_y, width_x=radius, width_y=radius)(X, Y)
+    gau = gaussian(sun_x, sun_y, width_x=radius, width_y=radius)(X, Y)
+    gau /= gau.max()
+
+    sun_mask = 1 - gau
 
     return sun_mask
 

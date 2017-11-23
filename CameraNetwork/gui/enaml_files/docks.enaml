@@ -302,8 +302,10 @@ enamldef MapperView(DockItem):
                     grid_cb,
                     ROIs_cb,
                     LOS_cb,
+                    beta_cb,
                     spacer,
-                    clouds_pb
+                    clouds_pb,
+                    beta_pb
                 ),
             ),
         ]
@@ -331,6 +333,18 @@ enamldef MapperView(DockItem):
             text = 'Show Clouds'
             clicked ::
                 map3d.draw_clouds_grid()
+
+        CheckBox: beta_cb:
+            tool_tip = "Show the 3D Beta"
+            checked := map3d.show_beta
+            text = "Show Beta"
+
+        PushButton: beta_pb:
+            text = 'Load Beta'
+            clicked ::
+                path = FileDialogEx.get_open_file_name()
+                if path:
+                    map3d.load_beta(path)
 
 
 ################################################################################
