@@ -39,6 +39,7 @@ This script sets the camera position in all image data files according to the
 current camera positions as stored in the camera settings file.
 """
 from __future__ import division
+import argparse
 import CameraNetwork.global_settings as gs
 from CameraNetwork.utils import load_camera_data
 import cPickle
@@ -47,7 +48,7 @@ import time
 import traceback
 
 
-def main():
+def main(day):
     #
     # Load the current camera location.
     #
@@ -62,7 +63,12 @@ def main():
     # Collect all images data files.
     #
     data_files = []
-    for root, dirs, files in os.walk(gs.CAPTURE_PATH):
+
+    base_path = gs.CAPTURE_PATH
+    if day is not None:
+        base_path = os.path.join(base_path, day)
+
+    for root, dirs, files in os.walk(base_path):
         for file in files:
             if file.endswith(".pkl"):
                 data_files.append(os.path.join(root, file))
@@ -93,5 +99,11 @@ def main():
 
 
 if __name__ == "__main__":
-    gs.initPaths()
-    main()
+    parser = argparse.ArgumentParser(description='Correct the camera location in image data files.')
+    parser.add_argument('--local_path', type=str, default=None, help='If set, the camera will work in local and offline mode, using the given path as home.')
+    parser.add_argument('--day', type=str, default=None, help='Limit the corretion to a specific day.')
+
+    args = parser.parse_args()
+
+    gs.initPaths(args.local_path)
+    main(args.day)

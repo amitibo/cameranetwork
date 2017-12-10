@@ -232,7 +232,7 @@ def sampleData(
     ch_index,
     time_index,
     camera_df,
-    cam_id=camera_id,
+    camera_id,
     resolution=301,
     overlay_angles=True):
     """Samples almucantar values of some camera at specific time and color channel.
@@ -245,7 +245,7 @@ def sampleData(
         ch_index (int): Color channel to process (in order [R, G, B])
         time_index (int): Time index for the spm dataframes.
         camera_df (DataFrame): DataFrames of images captured for the specific day.
-        cam_id (str): The camera to read from.
+        camera_id (str): The camera to read from.
         resoluiton (int): The resolution in which to sample the image.
         overlay_angles (boolean): Overlay almucantar angles on the image.
 
@@ -285,7 +285,7 @@ def sampleData(
     t = spm_dfs[ch_index].index[time_index]
     closest_time = findClosestImageTime(camera_df, t, hdr='2')
     img, img_data = camera_client.seek(
-        server_id=cam_id,
+        server_id=camera_id,
         seek_time=closest_time,
         hdr_index=-1,
         jpeg=False,
