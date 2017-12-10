@@ -1,12 +1,12 @@
 ##
 ## Copyright (C) 2017, Amit Aides, all rights reserved.
-## 
+##
 ## This file is part of Camera Network
 ## (see https://bitbucket.org/amitibo/cameranetwork_git).
-## 
+##
 ## Redistribution and use in source and binary forms, with or without modification,
 ## are permitted provided that the following conditions are met:
-## 
+##
 ## 1)  The software is provided under the terms of this license strictly for
 ##     academic, non-commercial, not-for-profit purposes.
 ## 2)  Redistributions of source code must retain the above copyright notice, this
@@ -22,7 +22,7 @@
 ##     limited to academic journal and conference publications, technical reports and
 ##     manuals, must cite the following works:
 ##     Dmitry Veikherman, Amit Aides, Yoav Y. Schechner and Aviad Levis, "Clouds in The Cloud" Proc. ACCV, pp. 659-674 (2014).
-## 
+##
 ## THIS SOFTWARE IS PROVIDED BY THE AUTHOR "AS IS" AND ANY EXPRESS OR IMPLIED
 ## WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
 ## MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO
@@ -43,6 +43,7 @@ import os
 import pandas as pd
 
 WAVELENGTHS = ['0.4405', '0.5000', '0.6744']
+SUNPHOTOMETER_WAVELENGTHS = (0.4405, 0.5000, 0.6744)
 
 
 def calcAlmucantarPrinciplePlanes(
@@ -207,21 +208,105 @@ def sampleImage(img, img_data, almucantar_angles=None, principleplane_angles=Non
            principalplane_samples, principleplane_angles, PrincipalPlane_coords
 
 
-def sampleData(spm_df, t, camera_df, cam_id='102', resolution=301):
-    """Sample almucantar rgb values of some camera at specific time."""
+#def sampleData(spm_df, t, camera_df, cam_id='102', resolution=301):
+    #"""Sample almucantar rgb values of some camera at specific time."""
 
-    angles, values = readSunPhotoMeter(spm_df, t)
+    #angles, values = readSunPhotoMeter(spm_df, t)
+    #closest_time = findClosestImageTime(camera_df, t, hdr='2')
+    #img, img_data = cams.seek(cam_id, closest_time, -1, resolution)
+    #almucantar_samples, almucantar_angles, almucantar_coords, \
+           #_, _, _ = sampleImage(img, img_data, almucantar_angles=angles)
+    ##
+    ## Visualize the sampling positions
+    ##
+    #for x, y in zip(almucantar_coords[0], almucantar_coords[1]):
+        #cv2.circle(img, (int(x), int(y)), 2, (255, 255, 0))
+
+    #return angles, values, almucantar_samples, img, closest_time
+
+
+def sampleData(
+    camera_client,
+    spm_dfs,
+    QEs,
+    ch_index,
+    time_index,
+    camera_df,
+    cam_id=camera_id,
+    resolution=301,
+    overlay_angles=True):
+    """Samples almucantar values of some camera at specific time and color channel.
+
+    Args:
+        camera_client (camera client object): Client to access the camera servers.
+        spm_dfs (list of DataFrames): Sunphotometer readings (one for each visible
+            in the order BGR).
+        QEs (list of DataFrames): Quantum Efficiency graphs of the camera in RGB order.
+        ch_index (int): Color channel to process (in order [R, G, B])
+        time_index (int): Time index for the spm dataframes.
+        camera_df (DataFrame): DataFrames of images captured for the specific day.
+        cam_id (str): The camera to read from.
+        resoluiton (int): The resolution in which to sample the image.
+        overlay_angles (boolean): Overlay almucantar angles on the image.
+
+    Returns:
+        angles, values, almucantar_samples, img, closest_time: Almacuntar angles,
+            sunphotometer values, image values measured at the spm angles, etc.
+
+    Note:
+        This function is supposed to be used from a notebook (it uses the camera
+        clinet object).
+    """
+
+    #
+    # Read the SunPhotometer values at specific time.
+    #
+    angles_blue, values_blue = readSunPhotoMeter(spm_dfs[0], spm_dfs[0].index[time_index])
+    angles_green, values_green = readSunPhotoMeter(spm_dfs[1], spm_dfs[1].index[time_index])
+    angles_red, values_red = readSunPhotoMeter(spm_dfs[2], spm_dfs[2].index[time_index])
+
+    #
+    # Join all datasets. This is important as not all datasets are sampled
+    # at all angles. Therefore I use dropna() at the end.
+    # Note:
+    # The sun-photometer Dataframe is created in the order BGR to allow for the integration
+    # along the visual spectrum.
+    #
+    blue_df = pd.DataFrame(data={SUNPHOTOMETER_WAVELENGTHS[0]: values_blue}, index=angles_blue)
+    green_df = pd.DataFrame(data={SUNPHOTOMETER_WAVELENGTHS[1]: values_green}, index=angles_green)
+    red_df = pd.DataFrame(data={SUNPHOTOMETER_WAVELENGTHS[2]: values_red}, index=angles_red)
+    SPM_df = pd.concat((blue_df, green_df, red_df), axis=1).dropna()
+
+    angles, values = integrate_QE_SP(SPM_df, QEs[ch_index])
+
+    #
+    # Get the closest image time.
+    #
+    t = spm_dfs[ch_index].index[time_index]
     closest_time = findClosestImageTime(camera_df, t, hdr='2')
-    img, img_data = cams.seek(cam_id, closest_time, -1, resolution)
+    img, img_data = camera_client.seek(
+        server_id=cam_id,
+        seek_time=closest_time,
+        hdr_index=-1,
+        jpeg=False,
+        resolution=resolution,
+        correct_radiometric=False
+    )
+    img = img[0]
+    img_data = img_data[0]
+
     almucantar_samples, almucantar_angles, almucantar_coords, \
            _, _, _ = sampleImage(img, img_data, almucantar_angles=angles)
-    #
-    # Visualize the sampling positions
-    #
-    for x, y in zip(almucantar_coords[0], almucantar_coords[1]):
-        cv2.circle(img, (int(x), int(y)), 2, (255, 255, 0))
 
-    return angles, values, almucantar_samples, img, closest_time
+    #
+    # Visualize the sampling positions on the image.
+    #
+    if overlay_angles:
+        import cv2
+        for x, y in zip(almucantar_coords[0], almucantar_coords[1]):
+            cv2.circle(img, (int(x), int(y)), 2, (255, 255, 0))
+
+    return angles, values, almucantar_samples, img, closest_time, img_data
 
 
 def readSunPhotoMeter(df, timestamp, sun_angles=5):
@@ -275,3 +360,53 @@ def calcSunphometerCoords(img_data, resolution):
     return Almucantar_coords.T.tolist(), PrincipalPlane_coords.T.tolist()
 
 
+def integrate_QE_SP(SPM_df, QE):
+    """Caclulate the argument:
+        \int_{\lambda} \mathrm{QE}_{\lambda} \, \lambda \, L^{\mathrm{S-P}}_{\lambda} \, d{\lambda}
+
+    This integral is calculated for each almacuntar angle (for specfic day time).
+
+    Args:
+        SPM_df (pandas dataframe): Dataframe of Sun Photometer readings, arranged
+            in BGR order.
+        QE (pandas Dataframe): Dataframe of Quantum Efficieny of a specific channel.
+
+    Returns:
+        Integration of the Sun Photometer radiances (per SP almacuntar angle)
+        scaled by the Quantum Efficiency of the specific channel.
+    """
+
+    from scipy.interpolate import InterpolatedUnivariateSpline
+
+    #
+    # Limits and density of the integraion.
+    #
+    start, end = 0.4, 0.7
+    dlambda = 0.005
+    xspl = np.linspace(start, end, int((end - start) / dlambda))
+
+    interp = []
+    for angle, row, in SPM_df.iterrows():
+        #
+        # Interpolate the sun photometer values along the wavelengths axis.
+        #
+        sp_vals = row.values
+        isp = InterpolatedUnivariateSpline(SUNPHOTOMETER_WAVELENGTHS, sp_vals, k=2)
+        sp_ipol = isp(xspl)
+
+        #
+        # Interpolate the Quantum Efficiencies along the wavelenghts axis
+        # Note:
+        # The QE wavelengths are given in nm, and values are given in 100 percent.
+        # So I scale these by 1/1000 and 1/100 respectively.
+        #
+        QEp = InterpolatedUnivariateSpline(QE["wavelength"].values/1000, QE["QE"]/100)
+        QE_ipol = QEp(xspl)
+
+        #
+        # Integrate the value:
+        # \int_{\lambda} \mathrm{QE}_{\lambda} \, \lambda \, L^{\mathrm{S-P}}_{\lambda} \, d{\lambda}
+        #
+        interp.append(np.trapz(QE_ipol * xspl * sp_ipol, xspl))
+
+    return SPM_df.index.values, interp
