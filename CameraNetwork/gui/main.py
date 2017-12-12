@@ -280,7 +280,8 @@ class Map3dModel(Atom):
     def draw_clouds_grid(
         self,
         use_color_consistency=True,
-        color_consistency_sigma=50):
+        color_consistency_sigma=50,
+        cloud_threshold=None):
         """Draw the space curving cloud grid."""
 
         if self.main_model.GRID_NED == ():
@@ -402,6 +403,10 @@ class Map3dModel(Atom):
 
         ipw_x = mlab.pipeline.image_plane_widget(src, plane_orientation='x_axes')
         ipw_z = mlab.pipeline.image_plane_widget(src, plane_orientation='z_axes')
+        if cloud_threshold is None:
+            isosurface = mlab.pipeline.iso_surface(src)
+        else:
+            isosurface = mlab.pipeline.iso_surface(src, contours=[cloud_threshold])
 
         outline = mlab.outline(color=(0.0, 0.0, 0.0))
 
@@ -409,8 +414,11 @@ class Map3dModel(Atom):
             src=src,
             ipw_x=ipw_x,
             ipw_z=ipw_z,
+            isosurface=isosurface,
             outline=outline
         )
+
+        self.main_model.space_carve_mask = (clouds_score, cloud_threshold)
 
     def load_beta(self, beta_path):
         """Draw the reconstructed 3D beta."""
@@ -1324,6 +1332,11 @@ class MainModel(Atom):
     grid_length = Float(12000)
 
     #
+    # Spave Carving mask.
+    #
+    space_carve_mask = Tuple()
+
+    #
     # Global (broadcast) capture settings.
     #
     capture_settings = Dict(default=gs.CAPTURE_SETTINGS)
@@ -1749,6 +1762,12 @@ class MainModel(Atom):
                 ),
             do_compression=True
         )
+
+        #
+        # Save the space carving result.
+        #
+        with open(os.path.join(base_path, "space_carve.pkl"), "bw") as f:
+            cPickle.dump(self.space_carve_mask, f)
 
         #
         # Match array_models and array_views.
