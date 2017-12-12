@@ -174,12 +174,60 @@ enamldef ArraysSettingsDialog(Dialog): array_dialog:
                 checked := arrays_model.show_masks
 
             Label:
-                text = 'Sunmask Radius'
+                text = 'Global Sunmask Radius'
             FloatField: sunmask_val:
                 minimum = 0.05
                 maximum = 0.25
                 tool_tip = "Set the global sunmask gaussian radius."
                 value := arrays_model.sun_mask_radius
+
+            Label:
+                text = 'Global Clouds Threshold'
+            FloatField: clouds_val:
+                minimum = 0.0
+                maximum = 1.
+                tool_tip = "Set the global cloud weights threshold."
+                value := arrays_model.cloud_weight_threshold
+
+            Label:
+                text = 'Global Sunshader Grabcut'
+            FloatField: grabcut_val:
+                tool_tip = "Set the global sunshader grabcut threshold."
+                value := arrays_model.grabcut_threshold
+
+
+#
+# Cloud space carving settings dialog.
+#
+enamldef SpaceCarvingSettingsDialog(Dialog): space_carve_dialog:
+    title = "Space Carving Settings"
+    attr map3d
+    modality = 'non_modal'
+
+    Container:
+        VGroup:
+            Form:
+                Label: sigma_lbl:
+                    text = 'Sigma'
+                FloatField: sigma_fld:
+                    tool_tip = "Control the color consistency sigma."
+                    minimum = 0.01
+                    maximum = 1000.
+                    value = 50.
+
+                Label: cosistency_lbl:
+                    text = "Use Color"
+                CheckBox: cosistency_cb:
+                    tool_tip = "Use color consistency."
+                    checked = True
+
+            PushButton: update_pb:
+                text = 'Update'
+                clicked ::
+                    map3d.draw_clouds_grid(
+                        use_color_consistency=cosistency_cb.checked,
+                        color_consistency_sigma=sigma_fld.value
+                    )
 
 
 #

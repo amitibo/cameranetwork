@@ -208,9 +208,9 @@ class Map3dModel(Atom):
     show_grid = Bool(False)
     show_beta = Bool(False)
 
-    latitude = Float(32.775776)
-    longitude = Float(35.024963)
-    altitude = Int(229)
+    latitude = Float(gs.DEFAULT_GRID_LATITUDE)
+    longitude = Float(gs.DEFAULT_GRID_LONGITUDE)
+    altitude = Int(gs.DEFAULT_GRID_ALTITUDE)
 
     def _default_map_scene(self):
         """Draw the default map scene."""
@@ -277,7 +277,10 @@ class Map3dModel(Atom):
         #
         self.map_scene.mlab.text3d(x, y, z+50, server_id, color=(0, 0, 0), scale=500.)
 
-    def draw_clouds_grid(self, use_color_consistency=True):
+    def draw_clouds_grid(
+        self,
+        use_color_consistency=True,
+        color_consistency_sigma=50):
         """Draw the space curving cloud grid."""
 
         if self.main_model.GRID_NED == ():
@@ -368,9 +371,8 @@ class Map3dModel(Atom):
         #
         # Calculate color consistency as described in the article
         #
-        sigma=50
         var_rgb = np.dstack(cloud_rgb).var(axis=2).sum(axis=1)
-        color_consistency = np.exp(-var_rgb/sigma)
+        color_consistency = np.exp(-var_rgb/color_consistency_sigma)
 
         #
         # Take into account both the clouds weights and photo consistency.
@@ -994,6 +996,14 @@ class ArrayModel(Atom):
     def _update_global_sunmask(self, change):
         self.sun_mask_radius = self.arrays_model.sun_mask_radius
 
+    @observe("arrays_model.cloud_weight_threshold")
+    def _update_global_cloud_weight_threshold(self, change):
+        self.cloud_weight_threshold = self.arrays_model.cloud_weight_threshold
+
+    @observe("arrays_model.grabcut_threshold")
+    def _update_global_grabcut_threshold(self, change):
+        self.grabcut_threshold = self.arrays_model.grabcut_threshold
+
     @observe('arrays_model.LOS_ECEF')
     def _updateEpipolar(self, change):
         """Project the LOS points (mouse click position) to camera."""
@@ -1056,6 +1066,16 @@ class ArraysModel(Atom):
     # Global sun mask.
     #
     sun_mask_radius = Float(0.1)
+
+    #
+    # Global cloud weight threshold.
+    #
+    cloud_weight_threshold = Float(0.5)
+
+    #
+    # Global grabcut threshold.
+    #
+    grabcut_threshold = Float(0.1)
 
     #
     # The 'mouse click' Line Of Site points in ECEF coords.
@@ -1276,11 +1296,13 @@ class MainModel(Atom):
 
     #
     # Reconstruction parameters
-    # The default values are the Technion lidar position
+    # The default values are the Technion lidar position, but at
+    # altitude zero. The reason is that SHDOM cannot handle cameras
+    # at negative altitude.
     #
-    latitude = Float(32.775776)
-    longitude = Float(35.024963)
-    altitude = Int(229)
+    latitude = Float(gs.DEFAULT_GRID_LATITUDE)
+    longitude = Float(gs.DEFAULT_GRID_LONGITUDE)
+    altitude = Int(gs.DEFAULT_GRID_ALTITUDE)
 
     #
     # Reconstruction Grid parameters.

@@ -18,7 +18,8 @@ from .popups import ImageDataPopup
 from .server_pages import (MainControlsPage, ImageControlPage, SeekControlPage,
     SunshaderControlPage, SprinklerControlPage, IntrinsicControlPage,
     ExtrinsicControlPage, RadiometricControlPage)
-from .settings import ArraySettingsDialog, ArraysSettingsDialog, CaptureDialog
+from .settings import (ArraySettingsDialog, ArraysSettingsDialog, CaptureDialog,
+    SpaceCarvingSettingsDialog)
 
 
 ################################################################################
@@ -290,7 +291,7 @@ enamldef LoggerView(DockItem):
 # Mapper
 # Shows a map of haifa with visualization of the cameras.
 #
-enamldef MapperView(DockItem):
+enamldef MapperView(DockItem): mapper_view:
 
     attr map3d
 
@@ -330,9 +331,11 @@ enamldef MapperView(DockItem):
             text = "Show LOS"
 
         PushButton: clouds_pb:
-            text = 'Show Clouds'
+            text = 'Space Carving'
             clicked ::
-                map3d.draw_clouds_grid()
+                SpaceCarvingSettingsDialog(
+                    map3d=mapper_view.map3d,
+                    ).show()
 
         CheckBox: beta_cb:
             tool_tip = "Show the 3D Beta"
