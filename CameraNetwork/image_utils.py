@@ -108,6 +108,91 @@ def RGB2raw(R, G, B):
     return raw
 
 
+def str2array(string):
+    """
+    Convert a string of numbers to a numpy array.
+    """
+
+    return np.fromstring(string.strip(), sep=' ')
+
+
+def load_ocam_model(calib_path):
+    """
+    Read the OCamCalib calibration data from a text file.
+    """
+
+    ocam_model = obj()
+
+    with open(calib_path, 'r') as f:
+        lines = f.readlines()
+
+        ocam_model.pol = np.poly1d(str2array(lines[2])[:0:-1])
+        ocam_model.invpol = np.poly1d(str2array(lines[6])[:0:-1])
+        ocam_model.center = str2array(lines[10])
+        ocam_model.affine = str2array(lines[14])
+        ocam_model.img_shape = str2array(lines[18])
+
+    return ocam_model
+
+
+def cam2world(points2D, ocam_model):
+    """
+    Convert y, x camera positions to a x,y,z directions on the unit hemisphere.
+
+    Parameters
+    ----------
+    points2D - [n, 2] array
+
+    """
+
+    points2D.shape = (-1, 2)
+
+    xc = ocam_model.center[0]
+    yc = ocam_model.center[1]
+    c = ocam_model.affine[0]
+    d = ocam_model.affine[1]
+    e = ocam_model.affine[2]
+
+    A = np.array(((c, e), (d, 1)))
+
+    points25D = points2D - np.array(((xc, yc),))
+    points25D = np.dot(points25D, np.linalg.inv(A).T)
+
+    r = np.linalg.norm(points25D, axis=1).reshape(-1, 1)
+    zp  = ocam_model.pol(r)
+
+    points3D = np.hstack((points25D, zp))
+    points3D = points3D / np.linalg.norm(points3D, axis=1).reshape(-1, 1)
+
+    return points3D
+
+
+def world2cam(points3D, ocam_model):
+    """
+    Convert x,y,z directions on the unit hemisphere to y, x camera positions.
+    """
+
+    points3D.shape = (-1, 3)
+
+    xc = ocam_model.center[0]
+    yc = ocam_model.center[1]
+    c = ocam_model.affine[0]
+    d = ocam_model.affine[1]
+    e = ocam_model.affine[2]
+
+    A = np.array(((c, e), (d, 1)))
+
+    norm = np.linalg.norm(points3D[:, :2], axis=1)
+    norm[norm == 0] = np.finfo(norm.dtype).eps
+    thetas = np.arctan(points3D[:,2]/norm)
+    rho = ocam_model.invpol(thetas)
+
+    points2D = points3D[:, :2]/norm.reshape((-1, 1))*rho.reshape((-1, 1))
+    points2D = np.dot(points2D, A) + np.array(((xc, yc),))
+
+    return points2D
+
+
 class FisheyeProxy(object):
     """Fisheye proxy class
 
