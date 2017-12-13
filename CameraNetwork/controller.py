@@ -325,10 +325,23 @@ class Controller(object):
         #
         # Try to load calibration data.
         #
-        if os.path.exists(gs.INTRINSIC_SETTINGS_PATH):
+        self._fe = None
+        ocam_path = os.path.join(calibration_path, "ocamcalib.pkl")
+        if os.path.exists(ocam_path):
+            #
+            # Found an ocamcalib model load it.
+            #
+            logging.info("Loading an ocamcalib model from:".format(ocam_path))
+            with open(ocam_path, "rb") as f:
+                self._fe = cPickle.load(f)
+        elif os.path.exists(gs.INTRINSIC_SETTINGS_PATH):
+            #
+            # Found an opencv2 fisheye model.
+            #
             self._fe = fisheye.load_model(
                 gs.INTRINSIC_SETTINGS_PATH, calib_img_shape=(1200, 1600))
 
+        if self._fe is not None:
             #
             # Creating the normalization object.
             #
