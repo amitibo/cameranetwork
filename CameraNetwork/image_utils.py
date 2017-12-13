@@ -130,7 +130,7 @@ def load_ocam_model(calib_path):
         ocam_model.invpol = np.poly1d(str2array(lines[6])[:0:-1])
         ocam_model.center = str2array(lines[10])
         ocam_model.affine = str2array(lines[14])
-        ocam_model.img_shape = str2array(lines[18])
+        ocam_model.img_shape = tuple(str2array(lines[18]).astype(np.int))
 
     return ocam_model
 
@@ -217,11 +217,41 @@ class FisheyeProxy(object):
         """Project 3D points on the 2D image"""
 
         if self._ocamcalib_flag:
-            YXmap = world2cam(XYZ, self._model)
+            XYZ_ = np.empty_like(XYZ)
+            XYZ_[:, 0] = XYZ[:, 1]
+            XYZ_[:, 1] = XYZ[:, 0]
+            XYZ_[:, 2] = -XYZ[:, 2]
+            YXmap = world2cam(XYZ_, self._model)
         else:
             YXmap = self._model.projectPoints(XYZ)[..., ::-1]
 
         return YXmap
+
+
+    def undistortDirections(self, distorted):
+        """Undistorts 2D points using fisheye model.
+
+        Args:
+            distorted (array): nx2 array of distorted image coords (x, y).
+
+        Retruns:
+            Phi, Theta (array): Phi and Theta undistorted directions.
+        """
+
+        if self._ocamcalib_flag:
+            #
+            # Note:
+            # mask is not used in the code that calls this function so I don't
+            # implement it here in this code.
+            #
+            points3D = cam2world(distorted[:, ::-1], self._model)
+            phi = np.arctan2(points3D[:, 1], points3D[:, 0])
+            theta = np.arccos(-points3D[:, 2])
+            mask = None
+        else:
+            phi, theta, mask = self._model.undistortDirections(distorted)
+
+        return phi, theta, mask
 
 
 class Normalization(object):
