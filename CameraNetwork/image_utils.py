@@ -40,6 +40,7 @@ from CameraNetwork.utils import obj
 import cv2
 import logging
 import numpy as np
+import pymap3d
 
 
 def calcHDR(img_arrays, img_exposures, low_limit=20, high_limit=230):
@@ -599,4 +600,173 @@ def calcSunMask(img_shape, sun_alt, sun_az, radius=0.25):
     return sun_mask
 
 
+def projectGrid(
+    array_model,
+    grid_3D,
+    weights_shape
+    ):
+    """Project the ECEF grid on the camera axis.
 
+    Args:
+        img_array (array): Image (float HDR).
+        grid_3D (array): Grid to project.
+        weights_shape (tuple): Shape of the camera image.
+    """
+
+    xs, ys, _ = array_model.projectECEF(
+        grid_3D,
+        filter_fov=False
+    )
+    grid_2D = np.array((ys, xs)).T.astype(np.int)
+
+    #
+    # Map points outside the fov to 0, 0.
+    #
+    h, w = weights_shape
+    grid_2D[grid_2D<0] = 0
+    grid_2D[grid_2D[:, 0]>=h] = 0
+    grid_2D[grid_2D[:, 1]>=w] = 0
+
+    #
+    # Send the results back to the GUI thread.
+    #
+    return grid_2D
+
+
+def calcVisualHull(
+    callback,
+    main_model,
+    use_color_consistency,
+    color_consistency_sigma,
+    cloud_threshold,
+    perturbations=10):
+    """Calculate the space carving cloud grid."""
+
+    from enaml.application import deferred_call
+    from tqdm import trange
+
+    #
+    # Match array_models and array_views.
+    #
+    grid_scores = []
+    grid_masks = []
+    cloud_rgb = []
+    for array_view in main_model.arrays.array_views.values():
+        if not array_view.export_flag.checked:
+            logging.info(
+                "Space Carving: Camera {} ignored.".format(array_view.server_id)
+            )
+            continue
+
+        logging.info(
+            "Space Carving: Processing camera {}.".format(array_view.server_id)
+        )
+
+        #
+        # Collect cloud weights from participating cameras.
+        #
+        server_id = array_view.server_id
+        array_model = main_model.arrays.array_items[server_id]
+
+        #
+        # Get the masks.
+        #
+        manual_mask = array_view.image_widget.mask
+        joint_mask = (manual_mask * array_model.sunshader_mask).astype(np.uint8)
+
+        #
+        # Get the masked grid scores for the specific camera.
+        #
+        mask_inds = joint_mask == 1
+        grid_score = np.ones_like(array_model.cloud_weights)
+        grid_score[mask_inds] = array_model.cloud_weights[mask_inds]
+        weights_shape = array_model.cloud_weights.shape
+
+        grid_scores_tmp = []
+        grid_masks_tmp = []
+        cloud_rgb_tmp = []
+
+        for _ in trange(perturbations):
+            X, Y, Z = np.meshgrid(*main_model.GRID_NED)
+            X = X + main_model.delx*np.random.random(size=X.shape)
+            Y = Y + main_model.dely*np.random.random(size=Y.shape)
+            Z = Z - main_model.delz*np.random.random(size=Z.shape)
+            grid_3D = pymap3d.ned2ecef(
+                X, Y, Z,
+                main_model.latitude,
+                main_model.longitude,
+                main_model.altitude
+            )
+
+            grid_2D = projectGrid(array_model, grid_3D, weights_shape)
+
+            grid_scores_tmp.append(
+                grid_score[
+                    grid_2D[:, 0],
+                    grid_2D[:, 1]
+                ]
+            )
+            grid_masks_tmp.append(
+                joint_mask[
+                    grid_2D[:, 0],
+                    grid_2D[:, 1]
+                ]
+            )
+
+            #
+            # Collect RGB values at grid points.
+            #
+            cloud_rgb_tmp.append(
+                array_model.img_array[
+                    grid_2D[:, 0],
+                    grid_2D[:, 1],
+                    ...
+                ]
+            )
+
+        grid_scores.append(np.mean(grid_scores_tmp, axis=0))
+        grid_masks.append(np.mean(grid_masks_tmp, axis=0))
+        cloud_rgb.append(np.mean(cloud_rgb_tmp, axis=0))
+
+    if len(grid_scores) == 0:
+        #
+        # No participating cameras.
+        #
+        return
+
+    #
+    # Calculate the collective clouds weight.
+    #
+    weights = np.array(grid_scores).prod(axis=0)
+
+    #
+    # voxels that are not seen (outside the fov/sun_mask) by at least two cameras
+    # are zeroed.
+    #
+    grid_masks = np.array(grid_masks).sum(axis=0)
+    weights[grid_masks<2] = 0
+    nzi = weights > 0
+    weights[nzi] = weights[nzi]**(1/grid_masks[nzi])
+
+    #
+    # Calculate color consistency as described in the article
+    #
+    std_rgb = np.dstack(cloud_rgb).std(axis=2).mean(axis=1)
+    mean_rgb = np.dstack(cloud_rgb).mean(axis=2).mean(axis=1)
+    color_consistency = np.exp(-(std_rgb/mean_rgb)/color_consistency_sigma)
+
+    #
+    # Take into account both the clouds weights and photo consistency.
+    #
+    if use_color_consistency:
+        weights = color_consistency * weights
+
+    #
+    # Hack to get the ECEF grid in NED coords.
+    #
+    X, _, _ = np.meshgrid(*main_model.GRID_NED)
+
+    clouds_score = weights.reshape(*X.shape)
+    clouds_score = clouds_score[..., ::-1]
+
+    deferred_call(callback, clouds_score, cloud_threshold)

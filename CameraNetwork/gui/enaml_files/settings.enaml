@@ -217,7 +217,7 @@ enamldef SpaceCarvingSettingsDialog(Dialog): space_carve_dialog:
                     text = "Use Color"
                 CheckBox: cosistency_cb:
                     tool_tip = "Use color consistency."
-                    checked = True
+                    checked = False
 
                 Label: sigma_lbl:
                     text = 'Sigma'
@@ -235,15 +235,23 @@ enamldef SpaceCarvingSettingsDialog(Dialog): space_carve_dialog:
                     tool_tip = "Set the cloud threshold (for isosurface and beta mask)."
                     minimum = 0.01
                     maximum = 1000.
-                    value = 1.
+                    value = .1
+
+                Label: pert_lbl:
+                    text = 'Perturbations'
+                IntField: pert_fld:
+                    minimum = 0
+                    maximum = 100
+                    value = 10
 
             PushButton: update_pb:
                 text = 'Update'
                 clicked ::
-                    map3d.draw_clouds_grid(
+                    map3d.do_space_carving(
                         use_color_consistency=cosistency_cb.checked,
                         color_consistency_sigma=sigma_fld.value,
-                        cloud_threshold=threshod_fld.value
+                        cloud_threshold=threshod_fld.value,
+                        perturbations=pert_fld.value
                     )
 
 

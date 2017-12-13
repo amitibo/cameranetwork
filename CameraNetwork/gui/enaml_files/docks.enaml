@@ -438,7 +438,7 @@ enamldef TimesView(DockItem):
 
         CheckBox: correct_radiometric_cb:
                 tool_tip = "Whether to apply radiometric correction."
-                checked = True
+                checked = False
                 text = "Apply radiometric correction"
 
         CheckBox: ignore_date_extrinsics_cb:

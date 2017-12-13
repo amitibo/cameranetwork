@@ -93,6 +93,7 @@ from CameraNetwork.export import exportToShdom
 from CameraNetwork.image_utils import calcSunMask
 from CameraNetwork.image_utils import calcSunshaderMask
 from CameraNetwork.image_utils import projectECEFThread
+from CameraNetwork.image_utils import calcVisualHull
 from CameraNetwork.mdp import MDP
 from CameraNetwork.radiosonde import load_radiosonde
 from CameraNetwork.sunphotometer import calcSunCoords
@@ -277,15 +278,32 @@ class Map3dModel(Atom):
         #
         self.map_scene.mlab.text3d(x, y, z+50, server_id, color=(0, 0, 0), scale=500.)
 
+    def do_space_carving(
+        self,
+        use_color_consistency,
+        color_consistency_sigma,
+        cloud_threshold,
+        perturbations):
+
+        thread = Thread(
+            target=calcVisualHull,
+            args=(
+                self.draw_clouds_grid,
+                self.main_model,
+                use_color_consistency,
+                color_consistency_sigma,
+                cloud_threshold,
+                perturbations
+            )
+        )
+        thread.daemon = True
+        thread.start()
+
     def draw_clouds_grid(
         self,
-        use_color_consistency=True,
-        color_consistency_sigma=5,
+        clouds_score,
         cloud_threshold=None):
         """Draw the space curving cloud grid."""
-
-        if self.main_model.GRID_NED == ():
-            return
 
         if self.clouds_dict is not None:
             for k, cloud_item in self.clouds_dict.items():
@@ -295,101 +313,10 @@ class Map3dModel(Atom):
                     warnings.warn("Failure to remove {} from pipline (probably just the order of removal).".format(k))
 
         #
-        # Match array_models and array_views.
-        #
-        grid_scores = []
-        grid_masks = []
-        cloud_rgb = []
-        for array_view in self.main_model.arrays.array_views.values():
-            if not array_view.export_flag.checked:
-                logging.info(
-                    "Reconstruction: Camera {} ignored.".format(array_view.server_id)
-                )
-                continue
-
-            #
-            # Collect cloud weights from participating cameras.
-            #
-            server_id = array_view.server_id
-            array_model = self.main_model.arrays.array_items[server_id]
-
-            #
-            # Get the masks.
-            #
-            manual_mask = array_view.image_widget.mask
-            joint_mask = (manual_mask * array_model.sunshader_mask).astype(np.uint8)
-
-            #
-            # Get the masked grid scores for the specific camera.
-            #
-            mask_inds = joint_mask == 1
-            grid_score = np.ones_like(array_model.cloud_weights)
-            grid_score[mask_inds] = array_model.cloud_weights[mask_inds]
-            grid_scores.append(
-                grid_score[
-                    array_model.grid_2D[:, 0],
-                    array_model.grid_2D[:, 1]
-                ]
-            )
-            grid_masks.append(
-                joint_mask[
-                    array_model.grid_2D[:, 0],
-                    array_model.grid_2D[:, 1]
-                ]
-            )
-
-            #
-            # Collect RGB values at grid points.
-            #
-            cloud_rgb.append(
-                array_model.img_array[
-                    array_model.grid_2D[:, 0],
-                    array_model.grid_2D[:, 1],
-                    ...
-                ]
-            )
-
-        if len(grid_scores) == 0:
-            #
-            # No participating cameras.
-            #
-            return
-
-        #
-        # Calculate the collective clouds weight.
-        #
-        weights = np.array(grid_scores).prod(axis=0)
-
-        #
-        # voxels that are not seen (outside the fov/sun_mask) by at least two cameras
-        # are zeroed.
-        #
-        grid_masks = np.array(grid_masks).sum(axis=0)
-        weights[grid_masks<2] = 0
-        nzi = weights > 0
-        weights[nzi] = weights[nzi]**(1/grid_masks[nzi])
-
-        #
-        # Calculate color consistency as described in the article
-        #
-        std_rgb = np.dstack(cloud_rgb).std(axis=2).mean(axis=1)
-        mean_rgb = np.dstack(cloud_rgb).mean(axis=2).mean(axis=1)
-        color_consistency = np.exp(-(std_rgb/mean_rgb)/color_consistency_sigma)
-
-        #
-        # Take into account both the clouds weights and photo consistency.
-        #
-        if use_color_consistency:
-            weights = color_consistency * weights
-
-        #
         # Hack to get the ECEF grid in NED coords.
         #
         Y, X, Z = np.meshgrid(*self.main_model.GRID_NED)
         Z = -Z[..., ::-1]
-
-        clouds_score = weights.reshape(*X.shape)
-        clouds_score = clouds_score[..., ::-1]
 
         mlab = self.map_scene.mlab
 
@@ -1335,9 +1262,9 @@ class MainModel(Atom):
     # - GRID_ECEF: Used for the visual hull algorithm.
     # - GRID_NED: The grid exported for reconstruction.
     #
-    delx = Float(250)
-    dely = Float(250)
-    delz = Float(200)
+    delx = Float(150)
+    dely = Float(150)
+    delz = Float(100)
     TOG = Float(6000)
     GRID_VIS_ECEF = Tuple()
     GRID_ECEF = Tuple()
