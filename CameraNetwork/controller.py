@@ -327,10 +327,13 @@ class Controller(object):
         #
         self._fe = None
         ocam_path = os.path.join(calibration_path, "ocamcalib.pkl")
+        print("Searching for ocam path: {}".format(ocam_path))
+        logging.info("Will search for ocamcalib in path: ".format(ocam_path))
         if os.path.exists(ocam_path):
             #
             # Found an ocamcalib model load it.
             #
+            print("Found ocam path: {}".format(ocam_path))
             logging.info("Loading an ocamcalib model from:".format(ocam_path))
             with open(ocam_path, "rb") as f:
                 self._fe = cPickle.load(f)
@@ -338,6 +341,7 @@ class Controller(object):
             #
             # Found an opencv2 fisheye model.
             #
+            logging.info("Loading a standard opencv fisheye model")
             self._fe = fisheye.load_model(
                 gs.INTRINSIC_SETTINGS_PATH, calib_img_shape=(1200, 1600))
 
