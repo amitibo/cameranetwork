@@ -126,7 +126,6 @@ EPIPOLAR_N = 200
 EPIPOLAR_length = 10000
 MAP_ZSCALE = 1
 ECEF_VIS_GRID_RESOLUTION = 10
-ECEF_GRID_RESOLUTION = 50
 
 
 ################################################################################
@@ -386,15 +385,9 @@ class Map3dModel(Atom):
         #
         # Hack to get the ECEF grid in NED coords.
         #
-        X, Y, Z = self.main_model.GRID_NED
-        x_min, x_max = X.min(), X.max()
-        y_min, y_max = Y.min(), Y.max()
-        z_min, z_max = Z.min(), Z.max()
-        Y, X, Z = np.meshgrid(
-            np.linspace(x_min, x_max, ECEF_GRID_RESOLUTION),
-            np.linspace(y_min, y_max, ECEF_GRID_RESOLUTION),
-            np.linspace(-z_max, -z_min, ECEF_GRID_RESOLUTION),
-        )
+        Y, X, Z = np.meshgrid(*self.main_model.GRID_NED)
+        Z = -Z[..., ::-1]
+
         clouds_score = weights.reshape(*X.shape)
         clouds_score = clouds_score[..., ::-1]
 
@@ -600,6 +593,8 @@ class Map3dModel(Atom):
     @observe("show_LOS")
     def _showLOS(self, change):
         """Show/Hide the camera's LOS visualization."""
+
+        logging.debug("Updating visibility of LOS vectors.")
 
         if self.LOS_vectors is None:
             logging.debug("No LOS vectors. showLOS ignored.")
@@ -1699,12 +1694,7 @@ class MainModel(Atom):
         #
         # GRID_ECEF is used for space curving.
         #
-        X, Y, Z = np.meshgrid(
-            np.linspace(s_pts[0], e_pts[0], ECEF_GRID_RESOLUTION),
-            np.linspace(s_pts[1], e_pts[1], ECEF_GRID_RESOLUTION),
-            np.linspace(s_pts[2], e_pts[2], ECEF_GRID_RESOLUTION),
-        )
-
+        X, Y, Z = np.meshgrid(*self.GRID_NED)
         self.GRID_ECEF = pymap3d.ned2ecef(
             X, Y, Z, self.latitude, self.longitude, self.altitude)
 
@@ -1787,8 +1777,17 @@ class MainModel(Atom):
         #
         # Save the space carving result.
         #
-        with open(os.path.join(base_path, "space_carve.pkl"), "wb") as f:
-            cPickle.dump(self.space_carve_mask, f)
+        if self.space_carve_mask:
+            clouds_score, cloud_threshold = self.space_carve_mask
+
+            #
+            # There is a need to transform the X, Y coords
+            # for SHDOM.
+            #
+            clouds_score = np.transpose(clouds_score, (1, 0, 2))
+
+            with open(os.path.join(base_path, "space_carve.pkl"), "wb") as f:
+                cPickle.dump((clouds_score, cloud_threshold), f)
 
         #
         # Match array_models and array_views.
