@@ -34,9 +34,9 @@ enamldef MyDockArea(DockArea):
 
     layout = HSplitLayout(
         VSplitLayout(
-            TabLayout('arrays', 'times'),
+            'times',
             HSplitLayout(
-                'servers', TabLayout('logger', 'map')
+                TabLayout('arrays', 'servers'), TabLayout('logger', 'map')
             )
         ),
     )

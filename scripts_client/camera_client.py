@@ -1,12 +1,12 @@
 ##
 ## Copyright (C) 2017, Amit Aides, all rights reserved.
-## 
+##
 ## This file is part of Camera Network
 ## (see https://bitbucket.org/amitibo/cameranetwork_git).
-## 
+##
 ## Redistribution and use in source and binary forms, with or without modification,
 ## are permitted provided that the following conditions are met:
-## 
+##
 ## 1)  The software is provided under the terms of this license strictly for
 ##     academic, non-commercial, not-for-profit purposes.
 ## 2)  Redistributions of source code must retain the above copyright notice, this
@@ -22,7 +22,7 @@
 ##     limited to academic journal and conference publications, technical reports and
 ##     manuals, must cite the following works:
 ##     Dmitry Veikherman, Amit Aides, Yoav Y. Schechner and Aviad Levis, "Clouds in The Cloud" Proc. ACCV, pp. 659-674 (2014).
-## 
+##
 ## THIS SOFTWARE IS PROVIDED BY THE AUTHOR "AS IS" AND ANY EXPRESS OR IMPLIED
 ## WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
 ## MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO
@@ -57,7 +57,7 @@ import CameraNetwork.global_settings as gs
 from CameraNetwork.gui.main import startGUI
 
 
-def main(local_mode):
+def main(local_mode, log_level):
     """Main doc"""
 
     gs.initPaths()
@@ -67,6 +67,7 @@ def main(local_mode):
     #
     CameraNetwork.initialize_logger(
         log_path='client_logs',
+        log_level=log_level
     )
 
     startGUI(local_mode)
@@ -75,6 +76,7 @@ def main(local_mode):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Start the camera client application')
     parser.add_argument('--local', action='store_true', help='Run in local mode.')
+    parser.add_argument('--log_level', default='INFO', help='Set the log level (possible values: info, debug, ...)')
     args = parser.parse_args()
 
-    main(args.local)
+    main(args.local, args.log_level)

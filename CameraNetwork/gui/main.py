@@ -602,6 +602,7 @@ class Map3dModel(Atom):
         """Show/Hide the camera's LOS visualization."""
 
         if self.LOS_vectors is None:
+            logging.debug("No LOS vectors. showLOS ignored.")
             return
 
         self.LOS_vectors.visible = change["value"]
@@ -614,6 +615,7 @@ class Map3dModel(Atom):
         #
         LOS_ECEF = self.main_model.arrays.LOS_ECEF
         if LOS_ECEF == ():
+            logging.debug("No LOS ECEF. Not updating the LOS.")
             return
 
         #
@@ -631,6 +633,8 @@ class Map3dModel(Atom):
         v, u, w = neu_pts[-1] - neu_pts[0]
 
         if self.LOS_vectors is None:
+            logging.debug("Creating the LOS vectors.")
+
             #
             # Draw the LOS for the first time.
             #
@@ -641,6 +645,8 @@ class Map3dModel(Atom):
             self.LOS_vectors.glyph.glyph.clamping = False
             self.LOS_vectors.glyph.glyph_source.glyph_source.glyph_type = 'dash'
         else:
+            logging.debug("Updating the LOS vectors.")
+
             #
             # Update the LOS.
             #
@@ -804,6 +810,8 @@ class ArrayModel(Atom):
         Returns:
              Returns the LOS points in ECEF coords.
         """
+
+        logging.info("Calculating LOS.")
 
         #
         # Center the click coords around image center.
@@ -1715,6 +1723,7 @@ class MainModel(Atom):
     @observe("arrays.LOS_ECEF")
     def _updateLOS(self, change):
 
+        logging.debug("Arrays LOS updated. Will update the map.")
         self.map3d.updateLOS(self.arrays.LOS_ECEF)
 
     def new_array(self, server_id, matfile, img_data):
@@ -1778,7 +1787,7 @@ class MainModel(Atom):
         #
         # Save the space carving result.
         #
-        with open(os.path.join(base_path, "space_carve.pkl"), "bw") as f:
+        with open(os.path.join(base_path, "space_carve.pkl"), "wb") as f:
             cPickle.dump(self.space_carve_mask, f)
 
         #
