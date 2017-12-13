@@ -173,6 +173,12 @@ enamldef ArraysSettingsDialog(Dialog): array_dialog:
                 tool_tip = "Show the camera Masks"
                 checked := arrays_model.show_masks
 
+            Label: sun_lbl:
+                text = "Show Sun"
+            CheckBox: sun_cb:
+                tool_tip = "Show the sun position"
+                checked := arrays_model.show_sun
+
             Label:
                 text = 'Global Sunmask Radius'
             FloatField: sunmask_val:
@@ -219,8 +225,8 @@ enamldef SpaceCarvingSettingsDialog(Dialog): space_carve_dialog:
                 FloatField: sigma_fld:
                     tool_tip = "Control the color consistency sigma."
                     minimum = 0.01
-                    maximum = 10000.
-                    value = 50.
+                    maximum = 100.
+                    value = 5.
                     visible << cosistency_cb.checked
 
                 Label: threshold_lbl:

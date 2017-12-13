@@ -80,6 +80,9 @@ class ProxyImageAnalysis(ProxyControl):
     def set_Epipolar_coords(self, epipolar_coords):
         raise NotImplementedError
 
+    def set_Sun_coords(self, sun_coords):
+        raise NotImplementedError
+
     def set_GRID_coords(self, grid_coords):
         raise NotImplementedError
 
@@ -96,6 +99,9 @@ class ProxyImageAnalysis(ProxyControl):
         raise NotImplementedError
 
     def set_show_ROI(self, show):
+        raise NotImplementedError
+
+    def set_show_sun(self, show):
         raise NotImplementedError
 
     def set_gamma(self, apply):
@@ -159,6 +165,7 @@ class ImageAnalysis(Control):
     #
     Almucantar_coords = d_(List(default=[]))
     PrincipalPlane_coords = d_(List(default=[]))
+    Sun_coords = d_(List(default=[]))
     Epipolar_coords = d_(Tuple(default=()))
     GRID_coords = d_(Tuple(default=()))
 
@@ -170,6 +177,7 @@ class ImageAnalysis(Control):
     show_grid = d_(Bool(False))
     show_mask = d_(Bool(False))
     show_ROI = d_(Bool(False))
+    show_sun = d_(Bool(False))
     show_almucantar = Bool(False)
     show_principalplane = Bool(False)
 
@@ -207,8 +215,8 @@ class ImageAnalysis(Control):
     #--------------------------------------------------------------------------
     @observe('img_array', 'server_id', 'Almucantar_coords', 'PrincipalPlane_coords',
              'show_almucantar', 'show_principalplane', 'show_ROI', 'show_mask',
-             'show_grid', 'gamma', 'intensity', 'Epipolar_coords', "GRID_coords",
-             'ROI_state', 'mask_ROI_state')
+             'show_grid', 'show_sun', 'gamma', 'intensity', 'Epipolar_coords',
+             "GRID_coords", 'ROI_state', 'mask_ROI_state')
     def _update_proxy(self, change):
         """ Update the proxy widget when the Widget data changes.
 
@@ -247,6 +255,11 @@ class QtImageAnalysis(QtControl, ProxyImageAnalysis):
     # obstacles.
     #
     mask_ROI = Instance(pg.PolyLineROI)
+
+    #
+    # Sun - Mark the expected position of the sun (Calculated from time data.)
+    #
+    Sun = Instance(pg.ScatterPlotItem)
 
     #
     # Signals to notify the main model of modifications
@@ -331,6 +344,20 @@ class QtImageAnalysis(QtControl, ProxyImageAnalysis):
         self.principalplane_scatter.setVisible(False)
 
         self.plot_area.addItem(self.principalplane_scatter)
+
+    def initSun(self, Sun_coords):
+        """Initialize the drawing of the Sun"""
+
+        self.Sun = pg.ScatterPlotItem(
+            size=5, pen=pg.mkPen(None), brush=pg.mkBrush(255, 255, 0, 120)
+        )
+        self.Sun.addPoints(
+            pos=np.array(Sun_coords)
+        )
+        self.Sun.setZValue(98)
+        self.Sun.setVisible(False)
+
+        self.plot_area.addItem(self.Sun)
 
     def initROIs(self, img_shape):
         """Initialize the ROI markers"""
@@ -426,6 +453,7 @@ class QtImageAnalysis(QtControl, ProxyImageAnalysis):
         self.set_img_array(d.img_array)
         self.set_Almucantar_coords(d.Almucantar_coords)
         self.set_PrincipalPlane_coords(d.PrincipalPlane_coords)
+        self.set_Sun_coords(d.Sun_coords)
         self.set_Epipolar_coords(d.Epipolar_coords)
         self.set_GRID_coords(d.GRID_coords)
         self.set_show_almucantar(d.show_almucantar)
@@ -433,6 +461,7 @@ class QtImageAnalysis(QtControl, ProxyImageAnalysis):
         self.set_show_grid(d.show_grid)
         self.set_show_mask(d.show_mask)
         self.set_show_ROI(d.show_ROI)
+        self.set_show_sun(d.show_sun)
         self.set_gamma(d.gamma)
         self.set_intensity(d.intensity)
         self.set_ROI_state(d.ROI_state)
@@ -486,6 +515,17 @@ class QtImageAnalysis(QtControl, ProxyImageAnalysis):
             pos=np.array(Epipolar_coords).T
         )
 
+    def set_Sun_coords(self, Sun_coords):
+        """Update the Sun coords."""
+
+        if self.Sun is None:
+            self.initSun(Sun_coords)
+            return
+
+        self.Sun.setData(
+            pos=np.array(Sun_coords).T
+        )
+
     def set_GRID_coords(self, GRID_coords):
         """Update the grid coords."""
 
@@ -531,6 +571,11 @@ class QtImageAnalysis(QtControl, ProxyImageAnalysis):
         """Control the visibility of the ROI widget."""
 
         self.ROI.setVisible(show)
+
+    def set_show_sun(self, show):
+        """Control the visibility of the Sun widget."""
+
+        self.Sun.setVisible(show)
 
     def set_gamma(self, apply_flag):
         """Apply Gamma correction."""

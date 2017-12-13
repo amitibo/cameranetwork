@@ -360,6 +360,34 @@ def calcSunphometerCoords(img_data, resolution):
     return Almucantar_coords.T.tolist(), PrincipalPlane_coords.T.tolist()
 
 
+def calcSunCoords(img_data, resolution):
+    """Calculate the Sun coords for a specifica datetime."""
+
+    # Create an Sun/observer at camera position
+    #
+    observer = ephem.Observer()
+    observer.lat, observer.long, observer.date = \
+        str(img_data.latitude), str(img_data.longitude), img_data.capture_time
+
+    sun = ephem.Sun(observer)
+
+    #
+    # Calculate sun angles.
+    #
+    sun_az = np.array([sun.az])
+    sun_alts = np.array([sun.alt])
+
+    #
+    # Convert sun angles to image coords.
+    #
+    sun_radius = (np.pi/2 - sun_alts)/(np.pi/2)
+    sun_x = (sun_radius * np.sin(sun_az) + 1) * resolution / 2
+    sun_y = (sun_radius * np.cos(sun_az) + 1) * resolution / 2
+    Sun_coords = np.array((sun_x, sun_y))
+
+    return Sun_coords.T.tolist()
+
+
 def integrate_QE_SP(SPM_df, QE):
     """Caclulate the argument:
         \int_{\lambda} \mathrm{QE}_{\lambda} \, \lambda \, L^{\mathrm{S-P}}_{\lambda} \, d{\lambda}

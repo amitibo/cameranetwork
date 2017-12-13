@@ -95,6 +95,7 @@ from CameraNetwork.image_utils import calcSunshaderMask
 from CameraNetwork.image_utils import projectECEFThread
 from CameraNetwork.mdp import MDP
 from CameraNetwork.radiosonde import load_radiosonde
+from CameraNetwork.sunphotometer import calcSunCoords
 from CameraNetwork.sunphotometer import calcSunphometerCoords
 from CameraNetwork.utils import buff2dict
 from CameraNetwork.utils import DataObj
@@ -280,7 +281,7 @@ class Map3dModel(Atom):
     def draw_clouds_grid(
         self,
         use_color_consistency=True,
-        color_consistency_sigma=50,
+        color_consistency_sigma=5,
         cloud_threshold=None):
         """Draw the space curving cloud grid."""
 
@@ -372,8 +373,9 @@ class Map3dModel(Atom):
         #
         # Calculate color consistency as described in the article
         #
-        var_rgb = np.dstack(cloud_rgb).var(axis=2).sum(axis=1)
-        color_consistency = np.exp(-var_rgb/color_consistency_sigma)
+        std_rgb = np.dstack(cloud_rgb).std(axis=2).mean(axis=1)
+        mean_rgb = np.dstack(cloud_rgb).mean(axis=2).mean(axis=1)
+        color_consistency = np.exp(-(std_rgb/mean_rgb)/color_consistency_sigma)
 
         #
         # Take into account both the clouds weights and photo consistency.
@@ -408,14 +410,14 @@ class Map3dModel(Atom):
         else:
             isosurface = mlab.pipeline.iso_surface(src, contours=[cloud_threshold])
 
-        outline = mlab.outline(color=(0.0, 0.0, 0.0))
+        #outline = mlab.outline(color=(0.0, 0.0, 0.0))
 
         self.clouds_dict = dict(
             src=src,
             ipw_x=ipw_x,
             ipw_z=ipw_z,
             isosurface=isosurface,
-            outline=outline
+            #outline=outline
         )
 
         self.main_model.space_carve_mask = (clouds_score, cloud_threshold)
@@ -751,6 +753,7 @@ class ArrayModel(Atom):
     #
     Almucantar_coords = List(default=[])
     PrincipalPlane_coords = List(default=[])
+    Sun_coords = List(default=[])
 
     #
     # ROIs state.
@@ -979,6 +982,14 @@ class ArrayModel(Atom):
         self.PrincipalPlane_coords = pp_coords
 
         #
+        # Update the position of the Sun
+        #
+        sun_coords = \
+            calcSunCoords(self.img_data, resolution=self.resolution)
+
+        self.Sun_coords = sun_coords
+
+        #
         # Update the sun mask.
         #
         self._update_sunmask(None)
@@ -1069,6 +1080,7 @@ class ArraysModel(Atom):
     show_ROIs = Bool(True)
     show_grid = Bool(False)
     show_masks = Bool(False)
+    show_sun = Bool(False)
 
     #
     # Global sun mask.
