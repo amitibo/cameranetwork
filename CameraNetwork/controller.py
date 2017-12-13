@@ -978,7 +978,7 @@ class Controller(object):
         #
         measured_postions = \
             positions_df[['pos_x', 'pos_y']].as_matrix()
-        phi, theta, mask = self._fe.undistortDirections(
+        phi, theta, mask = self._normalization._fisheye_model.undistortDirections(
             measured_postions)
 
         measured_directions = np.array(
