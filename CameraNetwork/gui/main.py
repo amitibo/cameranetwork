@@ -122,7 +122,7 @@ matplotlib.use('Qt4Agg')
 from matplotlib.figure import Figure
 
 
-ROI_length = 6000
+ROI_length = 12000
 EPIPOLAR_N = 200
 EPIPOLAR_length = 10000
 MAP_ZSCALE = 1
@@ -1265,7 +1265,7 @@ class MainModel(Atom):
     delx = Float(150)
     dely = Float(150)
     delz = Float(100)
-    TOG = Float(6000)
+    TOG = Float(12000)
     GRID_VIS_ECEF = Tuple()
     GRID_ECEF = Tuple()
     GRID_NED = Tuple()
