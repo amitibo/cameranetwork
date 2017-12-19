@@ -459,6 +459,11 @@ class Map3dModel(Atom):
         self.cameras_ROIs = dict()
         clf(figure=self.map_scene.mayavi_scene)
 
+        #
+        # Reset the LOS vectors.
+        #
+        self.LOS_vectors = None
+
         self.draw_map()
         self.draw_grid()
 
