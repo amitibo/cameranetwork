@@ -361,32 +361,49 @@ class Map3dModel(Atom):
             beta = cPickle.load(f).astype(np.float32)
 
         #
-        # Load the reconstructed beta.
-        #
-        grid = sio.loadmat(os.path.join(os.path.dirname(beta_path), "grid.mat"))
-        xgrid, ygrid, zgrid = grid["X"].flatten(), grid["Y"].flatten(), -grid["Z"].flatten()[::-1]
-
-        X, Y, Z = np.meshgrid(xgrid, ygrid, zgrid, indexing='ij')
-
-        #
         # Draw beta.
         #
         mlab = self.map_scene.mlab
 
-        src = mlab.pipeline.scalar_field(X, Y, Z, np.transpose(beta, (1, 0, 2)))
-        #src = mlab.pipeline.scalar_field(X, Y, Z, beta)
-        src.update_image_data = True
+        #
+        # Load the reconstructed beta.
+        #
+        if os.path.exists(os.path.join(os.path.dirname(beta_path), "grid.pkl")):
+            #
+            # Load the new form of the grid.
+            #
+            grid_path = os.path.join(os.path.dirname(beta_path), "grid.pkl")
+            with open(grid_path, "rb") as f:
+                X, Y, Z = cPickle.load(f)
 
-        ipw_x = mlab.pipeline.image_plane_widget(src, plane_orientation='x_axes')
-        ipw_z = mlab.pipeline.image_plane_widget(src, plane_orientation='z_axes')
+            src = tvtk.RectilinearGrid()
+            src.point_data.scalars = np.transpose(beta.filled(0), (2, 0, 1)).ravel()
+            src.point_data.scalars.name = 'scalars'
+            src.dimensions = beta.shape
+            src.x_coordinates = X[:, 0, 0] * 1000
+            src.y_coordinates = Y[0, :, 0] * 1000
+            src.z_coordinates = Z[0, 0, :] * 1000
 
-        outline = mlab.outline(color=(0.0, 0.0, 0.0))
+        elif os.path.exists(os.path.join(os.path.dirname(beta_path), "grid.mat")):
+            #
+            # Load older form of grid.
+            #
+            grid_path = os.path.join(os.path.dirname(beta_path), "grid.mat")
+            grid = sio.loadmat(os.path.join(os.path.dirname(beta_path), "grid.mat"))
+            xgrid, ygrid, zgrid = grid["X"].flatten(), grid["Y"].flatten(), -grid["Z"].flatten()[::-1]
+            X, Y, Z = np.meshgrid(xgrid, ygrid, zgrid, indexing='ij')
+
+            src = mlab.pipeline.scalar_field(X, Y, Z, np.transpose(beta, (1, 0, 2)))
+
+        else:
+            warnings.warn("No grid found for displaying beta.")
+            return
+
+        iso = mlab.pipeline.iso_surface(src, color=(1, 1, 1))
 
         self.beta_dict = dict(
             src=src,
-            ipw_x=ipw_x,
-            ipw_z=ipw_z,
-            outline=outline
+            iso=iso,
         )
 
         self.show_beta = True
