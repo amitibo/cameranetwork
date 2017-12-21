@@ -161,6 +161,38 @@ def open_settings(main_view, main_model, server_model):
 
 
 ################################################################################
+# Threads.
+################################################################################
+def createMapProjection(map_coords, lat0, lon0, alt0, draw_callback):
+    """Run the conversion on a separate thread."""
+
+    cache_path = "map_coords.pkl"
+    map_file_name = r'haifa_map_tmp.jpg'
+
+    if os.path.exists(cache_path):
+        with open(cache_path, "rb") as f:
+            X, Y, Z = cPickle.load(f)
+    else:
+        X, Y, Z, Z_mask, map_texture = convertMapData(
+            map_coords[0],
+            map_coords[1],
+            map_coords[2],
+            map_coords[3],
+            lat0=lat0,
+            lon0=lon0,
+            alt0=alt0,
+        )
+
+        map_array = np.rot90(map_texture, k=1).astype(np.uint8)
+        cv2.imwrite(map_file_name, cv2.cvtColor(map_array, cv2.COLOR_RGB2BGR))
+
+        with open(cache_path, "wb") as f:
+            cPickle.dump((X, Y, Z), f)
+
+    deferred_call(draw_callback, X, Y, Z, map_file_name)
+
+
+################################################################################
 # Sub models.
 ################################################################################
 class LoggerModel(Atom):
@@ -396,7 +428,10 @@ class Map3dModel(Atom):
         """Draw the reconstruction grid/cube on the map."""
 
         if self.main_model.GRID_NED == ():
+            logging.debug("GRID NED not available. Will skip grid drawing.")
             return
+
+        logging.debug("Drawing the 3D Grid.")
 
         X, Y, Z = self.main_model.GRID_NED
         x_min, x_max = X.min(), X.max()
@@ -454,9 +489,12 @@ class Map3dModel(Atom):
     def create(self):
         """Initialize the map scene and its default elements."""
 
+        logging.debug("Creating the 3D map view.")
+
         #
         # First clear the scene.
         #
+        logging.debug("Clearing 3D view.")
         self.cameras_ROIs = dict()
         clf(figure=self.map_scene.mayavi_scene)
 
@@ -471,24 +509,29 @@ class Map3dModel(Atom):
     def draw_map(self):
         """Clear the map view and draw elevation map."""
 
-        mayavi_scene = self.map_scene.mayavi_scene
+        logging.debug("Threading the map projection.")
 
-        X, Y, Z, Z_mask, map_texture = convertMapData(
-            self.map_coords[0],
-            self.map_coords[1],
-            self.map_coords[2],
-            self.map_coords[3],
-            lat0=self.latitude,
-            lon0=self.longitude,
-            alt0=self.altitude,
+        thread = Thread(
+            target=createMapProjection,
+            args=(
+                self.map_coords,
+                self.latitude,
+                self.longitude,
+                self.altitude,
+                self._draw_map_callback
+            )
         )
+        thread.daemon = True
+        thread.start()
 
-        tmp_filename = r'haifa_map_tmp.jpg'
-        map_array = np.rot90(map_texture, k=1).astype(np.uint8)
-        cv2.imwrite(tmp_filename, cv2.cvtColor(map_array, cv2.COLOR_RGB2BGR))
+    def _draw_map_callback(self, X, Y, Z, map_file_name):
 
-        img = tvtk.JPEGReader(file_name=tmp_filename)
+        logging.debug("Draw map called.")
+
+        img = tvtk.JPEGReader(file_name=map_file_name)
         texture = tvtk.Texture(input_connection=img.output_port, interpolate=1)
+
+        mayavi_scene = self.map_scene.mayavi_scene
 
         s = self.map_scene.mlab.surf(Y, X, MAP_ZSCALE * Z, figure=mayavi_scene, color=(1.,1.,1.))
         s.actor.actor.mapper.scalar_visibility = False
@@ -594,7 +637,7 @@ class Map3dModel(Atom):
                 x=x, y=y, z=z, u=u, v=v, w=w
             )
 
-            self.LOS_vectors.visible = self.show_LOS
+        self.LOS_vectors.visible = self.show_LOS
 
     @observe("show_beta")
     def _showBeta(self, change):
@@ -1091,7 +1134,7 @@ class ArraysModel(Atom):
         #
         # Create the array model which handles the array view on the display.
         #
-        logging.info("Creating new iterm for server {}".format(server_id))
+        logging.info("Creating new item for server {}".format(server_id))
         server_keys = self.array_items.keys()
         if server_id in server_keys:
             #
