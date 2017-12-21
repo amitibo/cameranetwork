@@ -84,6 +84,7 @@ import subprocess
 import time
 from threading import Thread
 import traceback
+from tvtk.api import tvtk
 import warnings
 from zmq.eventloop import ioloop
 
@@ -472,16 +473,28 @@ class Map3dModel(Atom):
 
         mayavi_scene = self.map_scene.mayavi_scene
 
-        X, Y, Z, Z_mask = convertMapData(
+        X, Y, Z, Z_mask, map_texture = convertMapData(
             self.map_coords[0],
             self.map_coords[1],
             self.map_coords[2],
+            self.map_coords[3],
             lat0=self.latitude,
             lon0=self.longitude,
             alt0=self.altitude,
         )
 
-        self.map_scene.mlab.surf(Y, X, MAP_ZSCALE * Z, figure=mayavi_scene, mask=Z_mask)
+        tmp_filename = r'haifa_map_tmp.jpg'
+        map_array = np.rot90(map_texture, k=1).astype(np.uint8)
+        cv2.imwrite(tmp_filename, cv2.cvtColor(map_array, cv2.COLOR_RGB2BGR))
+
+        img = tvtk.JPEGReader(file_name=tmp_filename)
+        texture = tvtk.Texture(input_connection=img.output_port, interpolate=1)
+
+        s = self.map_scene.mlab.surf(Y, X, MAP_ZSCALE * Z, figure=mayavi_scene, color=(1.,1.,1.))
+        s.actor.actor.mapper.scalar_visibility = False
+        s.actor.enable_texture = True
+        s.actor.tcoord_generator_mode = 'plane'
+        s.actor.actor.texture = texture
 
     def updateROImesh(self, server_id, pts, shape):
         """Update the 3D visualization of the camera ROI."""
