@@ -1,12 +1,12 @@
 ##
 ## Copyright (C) 2017, Amit Aides, all rights reserved.
-## 
+##
 ## This file is part of Camera Network
 ## (see https://bitbucket.org/amitibo/cameranetwork_git).
-## 
+##
 ## Redistribution and use in source and binary forms, with or without modification,
 ## are permitted provided that the following conditions are met:
-## 
+##
 ## 1)  The software is provided under the terms of this license strictly for
 ##     academic, non-commercial, not-for-profit purposes.
 ## 2)  Redistributions of source code must retain the above copyright notice, this
@@ -22,7 +22,7 @@
 ##     limited to academic journal and conference publications, technical reports and
 ##     manuals, must cite the following works:
 ##     Dmitry Veikherman, Amit Aides, Yoav Y. Schechner and Aviad Levis, "Clouds in The Cloud" Proc. ACCV, pp. 659-674 (2014).
-## 
+##
 ## THIS SOFTWARE IS PROVIDED BY THE AUTHOR "AS IS" AND ANY EXPRESS OR IMPLIED
 ## WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
 ## MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO
@@ -45,13 +45,20 @@ def loadMapData():
 
     path1 = r"..\data\reconstructions\N32E034.hgt"
     path2 = r"..\data\reconstructions\N32E035.hgt"
+    path3 = r"..\data\reconstructions\haifa_map.jpg"
+
     with open(path1) as hgt_data:
         hgt1 = np.fromfile(hgt_data, np.dtype('>i2')).reshape((1201, 1201))[:1200, :1200]
     with open(path2) as hgt_data:
         hgt2 = np.fromfile(hgt_data, np.dtype('>i2')).reshape((1201, 1201))[:1200, :1200]
     hgt = np.hstack((hgt1, hgt2)).astype(np.float32)
     lon, lat = np.meshgrid(np.linspace(34, 36, 2400, endpoint=False), np.linspace(32, 33, 1200, endpoint=False)[::-1])
-    return lat[100:400, 1100:1400], lon[100:400, 1100:1400], hgt[100:400, 1100:1400]
+
+    map_texture = cv2.cvtColor(cv2.imread(path3), cv2.COLOR_BGR2RGB)
+
+    return \
+           lat[100:400, 1100:1400], lon[100:400, 1100:1400], \
+           hgt[100:400, 1100:1400], map_texture[100:400, 1100:1400, ...]
 
 
 def calcSeaMask(hgt_array):
@@ -74,7 +81,7 @@ def calcSeaMask(hgt_array):
     return mask < 255
 
 
-def convertMapData(lat, lon, hgt, lat0=32.775776, lon0=35.024963, alt0=229):
+def convertMapData(lat, lon, hgt, map_texture, lat0=32.775776, lon0=35.024963, alt0=229):
     """Convert lat/lon/height data to grid data."""
 
     n, e, d = pymap3d.geodetic2ned(
@@ -88,6 +95,10 @@ def convertMapData(lat, lon, hgt, lat0=32.775776, lon0=35.024963, alt0=229):
     X, Y = np.meshgrid(xi, yi)
 
     Z = ml.griddata(y.flatten(), x.flatten(), z.flatten(), yi, xi, interp='linear')
+    R = ml.griddata(y.flatten(), x.flatten(), map_texture[..., 0].flatten(), yi, xi, interp='linear')
+    G = ml.griddata(y.flatten(), x.flatten(), map_texture[..., 1].flatten(), yi, xi, interp='linear')
+    B = ml.griddata(y.flatten(), x.flatten(), map_texture[..., 2].flatten(), yi, xi, interp='linear')
+
     Z_mask = calcSeaMask(Z)
 
-    return X, Y, Z, Z_mask
+    return X, Y, Z, Z_mask, np.dstack((R, G, B))
