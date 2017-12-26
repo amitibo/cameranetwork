@@ -1313,7 +1313,7 @@ class Controller(object):
             raise ValueError("Seeked time not available - seek_time: {}}".format(
                 original_seek_time))
 
-        seek_time = df.iloc[np.argmin(dts)].name[0]
+        seek_time = df.xs(checked_hdr, level='hdr').index[np.argmin(dts)]
 
         #
         # Either get a specific hdr index or all exposures.
