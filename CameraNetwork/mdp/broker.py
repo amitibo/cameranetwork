@@ -63,6 +63,7 @@ import logging
 from MDP import *
 import os
 import time
+import traceback
 from util import split_address
 import zmq
 from zmq.eventloop.zmqstream import ZMQStream
@@ -601,18 +602,25 @@ class MDPBroker(object):
 
         rp, msg = split_address(msg)
 
-        #
-        # Dispatch on first frame after path
-        #
-        t = msg.pop(0)
-        if t.startswith(b'MDPW'):
-            logging.debug('Recieved message from worker {}'.format(rp))
-            self.on_worker(t, rp, msg)
-        elif t.startswith(b'MDPC'):
-            logging.debug('Recieved message from client {}'.format(rp))
-            self.on_client(t, rp, msg)
-        else:
-            logging.error('Broker unknown Protocol: "{}"'.format(t))
+        try:
+            #
+            # Dispatch on first frame after path
+            #
+            t = msg.pop(0)
+            if t.startswith(b'MDPW'):
+                logging.debug('Recieved message from worker {}'.format(rp))
+                self.on_worker(t, rp, msg)
+            elif t.startswith(b'MDPC'):
+                logging.debug('Recieved message from client {}'.format(rp))
+                self.on_client(t, rp, msg)
+            else:
+                logging.error('Broker unknown Protocol: "{}"'.format(t))
+        except:
+            logging.error(
+                "An error occured while trying to process message: rp: {}, msg: {}\n{}".format(
+                    rp, msg, traceback.format_exc()
+                )
+            )
 
 
 class WorkerRep(object):
