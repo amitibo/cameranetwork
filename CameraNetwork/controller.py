@@ -1262,7 +1262,8 @@ class Controller(object):
         jpeg,
         camera_settings,
         correct_radiometric=True,
-        ignore_date_extrinsic=False
+        ignore_date_extrinsic=False,
+        timedelta_threshold=60
         ):
         """Seek an image array.
 
@@ -1282,12 +1283,14 @@ class Controller(object):
                 fix the measurements.
             ignore_date_extrinsic (bool, optional): Ignore the extrinsic calibration
                 settings in the image folder (if exists).
+            timedelta_threshold (int, optional): Allow for time delta between
+                seeked time to returned index (in seconds).
         """
 
         logging.debug("Seeking time: {} and hdr: {}".format(seek_time, hdr_index))
 
         #
-        # Seek the array/settings.
+        # Convert the seeked time to Timestamp type.
         #
         original_seek_time = seek_time
         if type(seek_time) == str:
@@ -1300,6 +1303,21 @@ class Controller(object):
             raise ValueError("Cannot translate seek_time: {}}".format(
                 original_seek_time))
 
+        #
+        # Get the closest time index.
+        #
+        checked_hdr = '0' if hdr_index < 0 else hdr_index
+        dts = np.abs(df.xs(checked_hdr, level='hdr').index.to_pydatetime() - seek_time)
+
+        if not (dts < timedelta(seconds=timedelta_threshold)).any():
+            raise ValueError("Seeked time not available - seek_time: {}}".format(
+                original_seek_time))
+
+        seek_time = df.iloc[np.argmin(dts)].name[0]
+
+        #
+        # Either get a specific hdr index or all exposures.
+        #
         if hdr_index < 0:
             mat_paths = df["path"].loc[seek_time].values.flatten()
         else:

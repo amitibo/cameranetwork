@@ -930,7 +930,8 @@ class Server(MDPWorker):
             jpeg=False,
             resolution=gs.DEFAULT_NORMALIZATION_SIZE,
             correct_radiometric=True,
-            ignore_date_extrinsic=False
+            ignore_date_extrinsic=False,
+            timedelta_threshold=60
             ):
         """Seek for a previously captured (loop) array.
 
@@ -947,6 +948,8 @@ class Server(MDPWorker):
                 fix the measurements.
             ignore_date_extrinsic (bool, optional): Ignore the extrinsic calibration
                 settings in the image folder (if exists).
+            timedelta_threshold (int, optional): Allow for time delta between
+                seeked time to returned index (in seconds).
 
         Return:
             Compressed mat file in the form of a string.
@@ -969,7 +972,8 @@ class Server(MDPWorker):
             jpeg,
             self.camera_settings,
             correct_radiometric=correct_radiometric,
-            ignore_date_extrinsic=ignore_date_extrinsic
+            ignore_date_extrinsic=ignore_date_extrinsic,
+            timedelta_threshold=timedelta_threshold
         )
 
         #
