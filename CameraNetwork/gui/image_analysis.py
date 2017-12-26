@@ -216,7 +216,7 @@ class ImageAnalysis(Control):
     @observe('img_array', 'server_id', 'Almucantar_coords', 'PrincipalPlane_coords',
              'show_almucantar', 'show_principalplane', 'show_ROI', 'show_mask',
              'show_grid', 'show_sun', 'gamma', 'intensity', 'Epipolar_coords',
-             "GRID_coords", 'ROI_state', 'mask_ROI_state')
+             "GRID_coords", 'ROI_state', 'mask_ROI_state', 'Sun_coords')
     def _update_proxy(self, change):
         """ Update the proxy widget when the Widget data changes.
 
@@ -519,11 +519,13 @@ class QtImageAnalysis(QtControl, ProxyImageAnalysis):
         """Update the Sun coords."""
 
         if self.Sun is None:
+            logging.debug("Initializing the sun position: {}.".format(np.array(Sun_coords)))
             self.initSun(Sun_coords)
             return
 
+        logging.debug("Updating the sun position: {}.".format(np.array(Sun_coords)))
         self.Sun.setData(
-            pos=np.array(Sun_coords).T
+            pos=np.array(Sun_coords)
         )
 
     def set_GRID_coords(self, GRID_coords):
