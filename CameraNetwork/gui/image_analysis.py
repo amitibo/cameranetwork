@@ -369,7 +369,11 @@ class QtImageAnalysis(QtControl, ProxyImageAnalysis):
         xs = img_shape[0] * (1 + 0.9 * np.cos(angles)) / 2
         ys = img_shape[1] * (1 + 0.9 * np.sin(angles)) / 2
         mask_positions = np.vstack((xs, ys)).T
-        self.mask_ROI = pg.PolyLineROI(mask_positions, closed=True)
+        self.mask_ROI = pg.PolyLineROI(
+            mask_positions,
+            closed=True,
+            pen=dict(color=(255, 0, 0), width=2)
+        )
         self.mask_ROI.setVisible(False)
 
         self.plot_area.vb.addItem(self.mask_ROI)

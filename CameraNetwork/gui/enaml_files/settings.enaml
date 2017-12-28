@@ -16,46 +16,65 @@ enamldef ArraySettingsDialog(Dialog): arrays_dialog:
     modality = 'non_modal'
 
     Container:
-        Form:
-            Label:
-                text = "Show Almucantar"
-            CheckBox: almucantar:
-                tool_tip = "Show the Almucantar"
-                checked := image_widget.show_almucantar
+        GroupBox:
+            title = "Sunphotometer"
+            Form:
+                Label:
+                    text = "Show Almucantar"
+                CheckBox: almucantar:
+                    tool_tip = "Show the Almucantar"
+                    checked := image_widget.show_almucantar
 
-            Label:
-                text = "Show PrincipalPlane"
-            CheckBox: principal:
-                tool_tip = "Show the PrincipalPlane"
-                checked := image_widget.show_principalplane
+                Label:
+                    text = "Show PrincipalPlane"
+                CheckBox: principal:
+                    tool_tip = "Show the PrincipalPlane"
+                    checked := image_widget.show_principalplane
 
-            Label:
-                text = 'Sunshader Grabcut'
-            FloatField: grabcut_val:
-                tool_tip = "Sunshader grabcut threshold."
-                value := array_model.grabcut_threshold
+        GroupBox:
+            title = "Sunshader"
+            Form:
+                Label:
+                    text = 'Sunshader Grabcut'
+                FloatField: grabcut_val:
+                    tool_tip = "Sunshader grabcut threshold."
+                    value := array_model.grabcut_threshold
 
-            Label:
-                text = 'Sunshader Dilate'
-            IntField: dilate_val:
-                tool_tip = "Morpholical Dilation size."
-                value := array_model.dilate_size
+                Label:
+                    text = 'Sunshader Dilate'
+                IntField: dilate_val:
+                    tool_tip = "Morpholical Dilation size."
+                    value := array_model.dilate_size
 
-            Label:
-                text = 'Sunmask Radius'
-            FloatField: sunmask_val:
-                minimum = 0.05
-                maximum = 0.25
-                tool_tip = "Sun mask gaussian radius."
-                value := array_model.sun_mask_radius
+        GroupBox:
+            title = "Sun Weighting"
+            Form:
+                Label:
+                    text = 'Sunmask Radius'
+                FloatField: sunmask_val:
+                    minimum = 0.05
+                    maximum = 0.25
+                    tool_tip = "Sun mask gaussian radius."
+                    value := array_model.sun_mask_radius
 
-            Label:
-                text = 'Clouds Threshold'
-            FloatField: clouds_val:
-                minimum = 0.0
-                maximum = 1.
-                tool_tip = "Cloud weights threshold."
-                value := array_model.cloud_weight_threshold
+        GroupBox:
+            title = "Space Carving"
+            Form:
+                Label:
+                    text = 'Clouds Threshold'
+                FloatField: clouds_val:
+                    minimum = 0.0
+                    maximum = 1.
+                    tool_tip = "Cloud weights threshold."
+                    value := array_model.cloud_weight_threshold
+
+                Label:
+                    text = 'Clouds Dilate'
+                IntField: clouds_dilate_val:
+                    tool_tip = "Dilation/Maximum filter size."
+                    value := array_model.clouds_dilate_size
+                    minimum = 0
+                    maximum = 20
 
 
 #
@@ -133,73 +152,98 @@ enamldef ArraysSettingsDialog(Dialog): array_dialog:
     modality = 'non_modal'
 
     Container:
-        Form:
-            Label: type_lbl:
-                text = 'View Type'
-            ComboBox: type_combo:
-                tool_tip = "Type of displayed image."
-                items = ['Image', 'Mask', 'Sun Mask', 'Cloud Weights']
-                selected_item >> arrays_model.image_type
+        GroupBox:
+            title = "View Settings"
+            Form:
+                Label: type_lbl:
+                    text = 'View Type'
+                ComboBox: type_combo:
+                    tool_tip = "Type of displayed image."
+                    items = ['Image', 'Mask', 'Sun Mask', 'Cloud Weights']
+                    selected_item >> arrays_model.image_type
 
-            Label: intensity_lbl:
-                text = 'Intensity Level'
-            FloatField: intensity_txt:
-                tool_tip = "Control the intensity of the displayed image."
-                minimum = 0.01
-                maximum = 1000.
-                value := arrays_model.intensity
+                Label: intensity_lbl:
+                    text = 'Intensity Level'
+                FloatField: intensity_txt:
+                    tool_tip = "Control the intensity of the displayed image."
+                    minimum = 0.01
+                    maximum = 1000.
+                    value := arrays_model.intensity
 
-            Label: gamma_lbl:
-                text = 'Gamma Correction'
-            CheckBox: gamma_cb:
-                tool_tip = "Apply Gamma correction to the Image"
-                checked := arrays_model.gamma
+                Label: gamma_lbl:
+                    text = 'Gamma Correction'
+                CheckBox: gamma_cb:
+                    tool_tip = "Apply Gamma correction to the Image"
+                    checked := arrays_model.gamma
 
-            Label: grid_lbl:
-                text = "Show Grid"
-            CheckBox: grid_cb:
-                tool_tip = "Show the reconstrction grid"
-                checked := arrays_model.show_grid
+        GroupBox:
+            title = "Widgets"
+            Form:
+                Label: grid_lbl:
+                    text = "Show Grid"
+                CheckBox: grid_cb:
+                    tool_tip = "Show the reconstrction grid"
+                    checked := arrays_model.show_grid
 
-            Label: rois_lbl:
-                text = "Show ROIs"
-            CheckBox: ROIs_cb:
-                tool_tip = "Show the camera ROIs"
-                checked := arrays_model.show_ROIs
+                Label: rois_lbl:
+                    text = "Show ROIs"
+                CheckBox: ROIs_cb:
+                    tool_tip = "Show the camera ROIs"
+                    checked := arrays_model.show_ROIs
 
-            Label: masks_lbl:
-                text = "Show Masks"
-            CheckBox: masks_cb:
-                tool_tip = "Show the camera Masks"
-                checked := arrays_model.show_masks
+                Label: masks_lbl:
+                    text = "Show Masks"
+                CheckBox: masks_cb:
+                    tool_tip = "Show the camera Masks"
+                    checked := arrays_model.show_masks
 
-            Label: sun_lbl:
-                text = "Show Sun"
-            CheckBox: sun_cb:
-                tool_tip = "Show the sun position"
-                checked := arrays_model.show_sun
+                Label: sun_lbl:
+                    text = "Show Sun"
+                CheckBox: sun_cb:
+                    tool_tip = "Show the sun position"
+                    checked := arrays_model.show_sun
 
-            Label:
-                text = 'Global Sunmask Radius'
-            FloatField: sunmask_val:
-                minimum = 0.05
-                maximum = 0.25
-                tool_tip = "Set the global sunmask gaussian radius."
-                value := arrays_model.sun_mask_radius
+        GroupBox:
+            title = "Sun shader"
+            Form:
+                Label:
+                    text = 'Global Sunmask Radius'
+                FloatField: sunmask_val:
+                    minimum = 0.05
+                    maximum = 0.25
+                    tool_tip = "Set the global sunmask gaussian radius."
+                    value := arrays_model.sun_mask_radius
 
-            Label:
-                text = 'Global Clouds Threshold'
-            FloatField: clouds_val:
-                minimum = 0.0
-                maximum = 1.
-                tool_tip = "Set the global cloud weights threshold."
-                value := arrays_model.cloud_weight_threshold
+                Label:
+                    text = 'Glob Sunshader Grabcut'
+                FloatField: grabcut_val:
+                    tool_tip = "Set the global sunshader grabcut threshold."
+                    value := arrays_model.grabcut_threshold
 
-            Label:
-                text = 'Global Sunshader Grabcut'
-            FloatField: grabcut_val:
-                tool_tip = "Set the global sunshader grabcut threshold."
-                value := arrays_model.grabcut_threshold
+                Label:
+                    text = 'Global Sunshader Dilate'
+                IntField: dilate_val:
+                    tool_tip = "Set the global sunshader dilation size."
+                    value := arrays_model.dilate_size
+
+        GroupBox:
+            title = "Space Carving"
+            Form:
+                Label:
+                    text = 'Global Clouds Threshold'
+                FloatField: clouds_val:
+                    minimum = 0.0
+                    maximum = 1.
+                    tool_tip = "Set the global cloud weights threshold."
+                    value := arrays_model.cloud_weight_threshold
+
+                Label:
+                    text = 'Global Clouds Dilate'
+                IntField: clouds_dilate_val:
+                    tool_tip = "Set the global dilation/daximum filter size."
+                    value := arrays_model.clouds_dilate_size
+                    minimum = 0
+                    maximum = 20
 
 
 #

@@ -79,6 +79,7 @@ import pkg_resources
 import pymap3d
 import random
 import scipy.io as sio
+from scipy.ndimage import filters
 import StringIO
 import subprocess
 import time
@@ -723,6 +724,7 @@ class ArrayModel(Atom):
 
     img_data = Typed(DataObj, kwargs={})
     img_array = Typed(np.ndarray)
+    manual_mask = Typed(np.ndarray)
     sunshader_mask = Typed(np.ndarray)
     cloud_weights = Typed(np.ndarray)
     grid_2D = Typed(np.ndarray)
@@ -777,7 +779,8 @@ class ArrayModel(Atom):
     #
     # Clouds scoring threshold.
     #
-    cloud_weight_threshold = Float(0.5)
+    cloud_weight_threshold = Float(0.8)
+    clouds_dilate_size = Int(9)
 
     def _default_Epipolar_coords(self):
         Epipolar_coords = self.projectECEF(self.arrays_model.LOS_ECEF)
@@ -901,7 +904,7 @@ class ArrayModel(Atom):
         else:
             return xs, ys, cosPSI>0
 
-    @observe("img_array", "cloud_weight_threshold")
+    @observe("img_array", "cloud_weight_threshold", "clouds_dilate_size")
     def _update_cloud_weights(self, change):
 
         if change["value"] is None:
@@ -923,6 +926,33 @@ class ArrayModel(Atom):
         # Limit cloud_weights to 1.
         #
         cloud_weights[cloud_weights>1] = 1
+
+        #
+        # Apply maximum (dilate) filter.
+        #
+        if self.clouds_dilate_size > 0:
+            #
+            # I use the joint mask as not to dilate masked regions.
+            #
+            if self.manual_mask is None or self.sunshader_mask is None:
+                joint_mask = np.ones_like(cloud_weights).astype(np.uint8)
+            else:
+                joint_mask = \
+                    (self.manual_mask * self.sunshader_mask).astype(np.uint8)
+
+            #
+            # Get the masked grid scores for the specific camera.
+            #
+            mask_inds = joint_mask == 1
+            masked_cloud_weights = np.zeros_like(cloud_weights)
+            masked_cloud_weights[mask_inds] = cloud_weights[mask_inds]
+
+            cloud_weights = filters.maximum_filter(
+                masked_cloud_weights,
+                size=self.clouds_dilate_size
+            )
+            cloud_weights[~mask_inds] = 0
+
         self.cloud_weights = cloud_weights
 
     @observe("img_array", "grabcut_threshold", "dilate_size")
@@ -1031,6 +1061,14 @@ class ArrayModel(Atom):
     def _update_global_grabcut_threshold(self, change):
         self.grabcut_threshold = self.arrays_model.grabcut_threshold
 
+    @observe("arrays_model.dilate_size")
+    def _update_global_dilate_size(self, change):
+        self.dilate_size = self.arrays_model.dilate_size
+
+    @observe("arrays_model.clouds_dilate_size")
+    def _update_global_clouds_dilate_size(self, change):
+        self.clouds_dilate_size = self.arrays_model.clouds_dilate_size
+
     @observe('arrays_model.LOS_ECEF')
     def _updateEpipolar(self, change):
         """Project the LOS points (mouse click position) to camera."""
@@ -1096,14 +1134,16 @@ class ArraysModel(Atom):
     sun_mask_radius = Float(0.1)
 
     #
-    # Global cloud weight threshold.
-    #
-    cloud_weight_threshold = Float(0.5)
-
-    #
     # Global grabcut threshold.
     #
     grabcut_threshold = Float(0.1)
+    dilate_size = Int(7)
+
+    #
+    # Global cloud weight threshold.
+    #
+    cloud_weight_threshold = Float(0.8)
+    clouds_dilate_size = Int(9)
 
     #
     # The 'mouse click' Line Of Site points in ECEF coords.

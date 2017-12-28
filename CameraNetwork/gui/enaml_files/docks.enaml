@@ -127,11 +127,17 @@ enamldef ArrayView(FlowItem): array_view:
 
         ImageAnalysis: image_widget:
             arrays_model = array_model.arrays_model
+
             #
             # Server data
             #
             server_id = array_view.server_id
             img_array << array_model.displayed_array
+
+            #
+            # Update the server mask
+            #
+            mask >> array_model.manual_mask
 
             #
             # Widgest coords
