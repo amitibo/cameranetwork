@@ -643,7 +643,7 @@ def calcVisualHull(
     """Calculate the space carving cloud grid."""
 
     from enaml.application import deferred_call
-    from tqdm import trange
+    from joblib import Parallel, delayed
 
     #
     # Match array_models and array_views.
@@ -651,82 +651,27 @@ def calcVisualHull(
     grid_scores = []
     grid_masks = []
     cloud_rgb = []
+
+    #
+    # Filter non exported views.
+    #
+    exported_views = []
     for array_view in main_model.arrays.array_views.values():
         if not array_view.export_flag.checked:
             logging.info(
                 "Space Carving: Camera {} ignored.".format(array_view.server_id)
             )
             continue
+        exported_views.append(array_view)
 
-        logging.info(
-            "Space Carving: Processing camera {}.".format(array_view.server_id)
-        )
-
-        #
-        # Collect cloud weights from participating cameras.
-        #
-        server_id = array_view.server_id
-        array_model = main_model.arrays.array_items[server_id]
-
-        #
-        # Get the masks.
-        #
-        manual_mask = array_view.image_widget.mask
-        joint_mask = (manual_mask * array_model.sunshader_mask).astype(np.uint8)
-
-        #
-        # Get the masked grid scores for the specific camera.
-        #
-        mask_inds = joint_mask == 1
-        grid_score = np.ones_like(array_model.cloud_weights)
-        grid_score[mask_inds] = array_model.cloud_weights[mask_inds]
-        weights_shape = array_model.cloud_weights.shape
-
-        grid_scores_tmp = []
-        grid_masks_tmp = []
-        cloud_rgb_tmp = []
-
-        for _ in trange(perturbations):
-            X, Y, Z = np.meshgrid(*main_model.GRID_NED)
-            X = X + main_model.delx*np.random.random(size=X.shape)
-            Y = Y + main_model.dely*np.random.random(size=Y.shape)
-            Z = Z - main_model.delz*np.random.random(size=Z.shape)
-            grid_3D = pymap3d.ned2ecef(
-                X, Y, Z,
-                main_model.latitude,
-                main_model.longitude,
-                main_model.altitude
-            )
-
-            grid_2D = projectGrid(array_model, grid_3D, weights_shape)
-
-            grid_scores_tmp.append(
-                grid_score[
-                    grid_2D[:, 0],
-                    grid_2D[:, 1]
-                ]
-            )
-            grid_masks_tmp.append(
-                joint_mask[
-                    grid_2D[:, 0],
-                    grid_2D[:, 1]
-                ]
-            )
-
-            #
-            # Collect RGB values at grid points.
-            #
-            cloud_rgb_tmp.append(
-                array_model.img_array[
-                    grid_2D[:, 0],
-                    grid_2D[:, 1],
-                    ...
-                ]
-            )
-
-        grid_scores.append(np.mean(grid_scores_tmp, axis=0))
-        grid_masks.append(np.mean(grid_masks_tmp, axis=0))
-        cloud_rgb.append(np.mean(cloud_rgb_tmp, axis=0))
+    #
+    # Run the space carving on all view using joblib.
+    #
+    results = Parallel(n_jobs=-1)(
+        delayed(space_carve_view)(array_view, main_model, perturbations)
+        for array_view in exported_views
+    )
+    grid_scores, grid_masks, cloud_rgb = list(zip(*results))
 
     if len(grid_scores) == 0:
         #
@@ -770,3 +715,77 @@ def calcVisualHull(
     clouds_score = clouds_score[..., ::-1]
 
     deferred_call(callback, clouds_score, cloud_threshold)
+
+
+def space_carve_view(array_view, main_model, perturbations):
+    """Do the space carving of a view on a separate process."""
+
+    logging.info(
+        "Space Carving: Processing camera {}.".format(array_view.server_id)
+    )
+
+    #
+    # Collect cloud weights from participating cameras.
+    #
+    server_id = array_view.server_id
+    array_model = main_model.arrays.array_items[server_id]
+
+    #
+    # Get the masks.
+    #
+    manual_mask = array_view.image_widget.mask
+    joint_mask = (manual_mask * array_model.sunshader_mask).astype(np.uint8)
+
+    #
+    # Get the masked grid scores for the specific camera.
+    #
+    mask_inds = joint_mask == 1
+    grid_score = np.ones_like(array_model.cloud_weights)
+    grid_score[mask_inds] = array_model.cloud_weights[mask_inds]
+    weights_shape = array_model.cloud_weights.shape
+
+    grid_scores_tmp = []
+    grid_masks_tmp = []
+    cloud_rgb_tmp = []
+
+    for _ in range(perturbations):
+        X, Y, Z = np.meshgrid(*main_model.GRID_NED)
+        X = X + main_model.delx*np.random.random(size=X.shape)
+        Y = Y + main_model.dely*np.random.random(size=Y.shape)
+        Z = Z - main_model.delz*np.random.random(size=Z.shape)
+        grid_3D = pymap3d.ned2ecef(
+            X, Y, Z,
+            main_model.latitude,
+            main_model.longitude,
+            main_model.altitude
+        )
+
+        grid_2D = projectGrid(array_model, grid_3D, weights_shape)
+
+        grid_scores_tmp.append(
+            grid_score[
+                grid_2D[:, 0],
+                grid_2D[:, 1]
+            ]
+        )
+        grid_masks_tmp.append(
+            joint_mask[
+                grid_2D[:, 0],
+                grid_2D[:, 1]
+            ]
+        )
+
+        #
+        # Collect RGB values at grid points.
+        #
+        cloud_rgb_tmp.append(
+            array_model.img_array[
+                grid_2D[:, 0],
+                grid_2D[:, 1],
+                ...
+            ]
+        )
+
+    return np.mean(grid_scores_tmp, axis=0), \
+           np.mean(grid_masks_tmp, axis=0), \
+           np.mean(cloud_rgb_tmp, axis=0)

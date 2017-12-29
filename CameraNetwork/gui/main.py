@@ -241,6 +241,7 @@ class Map3dModel(Atom):
     show_ROIs = Bool(False)
     show_LOS = Bool(False)
     show_grid = Bool(False)
+    show_space_carving = Bool(False)
     show_beta = Bool(False)
 
     latitude = Float(gs.DEFAULT_GRID_LATITUDE)
@@ -357,24 +358,30 @@ class Map3dModel(Atom):
         src = mlab.pipeline.scalar_field(X, Y, Z, clouds_score)
         src.update_image_data = True
 
-        ipw_x = mlab.pipeline.image_plane_widget(src, plane_orientation='x_axes')
-        ipw_z = mlab.pipeline.image_plane_widget(src, plane_orientation='z_axes')
         if cloud_threshold is None:
             isosurface = mlab.pipeline.iso_surface(src)
         else:
-            isosurface = mlab.pipeline.iso_surface(src, contours=[cloud_threshold])
+            isosurface = mlab.pipeline.iso_surface(
+                src,
+                contours=[cloud_threshold],
+                color=(1, 0, 0)
+            )
 
+        #ipw_x = mlab.pipeline.image_plane_widget(src, plane_orientation='x_axes')
+        #ipw_z = mlab.pipeline.image_plane_widget(src, plane_orientation='z_axes')
         #outline = mlab.outline(color=(0.0, 0.0, 0.0))
 
         self.clouds_dict = dict(
             src=src,
-            ipw_x=ipw_x,
-            ipw_z=ipw_z,
             isosurface=isosurface,
+            #ipw_x=ipw_x,
+            #ipw_z=ipw_z,
             #outline=outline
         )
 
         self.main_model.space_carve_mask = (clouds_score, cloud_threshold)
+
+        self.show_space_carving = True
 
     def load_beta(self, beta_path):
         """Draw the reconstructed 3D beta."""
@@ -664,14 +671,28 @@ class Map3dModel(Atom):
         if self.beta_dict is None:
             return
 
-        if self.beta_dict is not None:
-            for k, beta_item in self.beta_dict.items():
-                try:
-                    beta_item.visible = change["value"]
-                except Exception as e:
-                    warnings.warn(
-                        "Failure to hide/show {}.".format(k)
-                    )
+        for k, beta_item in self.beta_dict.items():
+            try:
+                beta_item.visible = change["value"]
+            except Exception as e:
+                warnings.warn(
+                    "Failure to hide/show {}.".format(k)
+                )
+
+    @observe("show_space_carving")
+    def _showSpaceCarve(self, change):
+        """Show/Hide the space carve reconstruction."""
+
+        if self.clouds_dict is None:
+            return
+
+        for k, clouds_item in self.clouds_dict.items():
+            try:
+                clouds_item.visible = change["value"]
+            except Exception as e:
+                warnings.warn(
+                    "Failure to hide/show {}.".format(k)
+                )
 
 
 class TimesModel(Atom):

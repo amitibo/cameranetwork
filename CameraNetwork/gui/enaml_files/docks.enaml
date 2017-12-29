@@ -311,10 +311,11 @@ enamldef MapperView(DockItem): mapper_view:
                     grid_cb,
                     ROIs_cb,
                     LOS_cb,
-                    beta_cb,
                     spacer,
                     clouds_pb,
-                    beta_pb
+                    clouds_cb,
+                    beta_pb,
+                    beta_cb,
                 ),
             ),
         ]
@@ -345,10 +346,10 @@ enamldef MapperView(DockItem): mapper_view:
                     map3d=mapper_view.map3d,
                     ).show()
 
-        CheckBox: beta_cb:
-            tool_tip = "Show the 3D Beta"
-            checked := map3d.show_beta
-            text = "Show Beta"
+        CheckBox: clouds_cb:
+            tool_tip = "Show the 3D space carving."
+            checked := map3d.show_space_carving
+            text = "Show Space Carving"
 
         PushButton: beta_pb:
             text = 'Load Beta'
@@ -356,6 +357,11 @@ enamldef MapperView(DockItem): mapper_view:
                 path = FileDialogEx.get_open_file_name()
                 if path:
                     map3d.load_beta(path)
+
+        CheckBox: beta_cb:
+            tool_tip = "Show the 3D Beta"
+            checked := map3d.show_beta
+            text = "Show Beta"
 
 
 ################################################################################
