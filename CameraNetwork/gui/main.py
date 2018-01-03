@@ -95,7 +95,7 @@ from CameraNetwork.export import exportToShdom
 from CameraNetwork.image_utils import calcSunMask
 from CameraNetwork.image_utils import calcSunshaderMask
 from CameraNetwork.image_utils import projectECEFThread
-from CameraNetwork.image_utils import calcVisualHull
+from CameraNetwork.image_utils import VisualHull
 from CameraNetwork.mdp import MDP
 from CameraNetwork.radiosonde import load_radiosonde
 from CameraNetwork.sunphotometer import calcSunCoords
@@ -103,6 +103,7 @@ from CameraNetwork.sunphotometer import calcSunphometerCoords
 from CameraNetwork.utils import buff2dict
 from CameraNetwork.utils import DataObj
 from CameraNetwork.utils import extractImgArray
+from CameraNetwork.utils import IOLoop
 from CameraNetwork.utils import sun_direction
 from CameraNetwork.visualization import (convertMapData, loadMapData)
 
@@ -320,19 +321,20 @@ class Map3dModel(Atom):
         cloud_threshold,
         perturbations):
 
-        thread = Thread(
-            target=calcVisualHull,
-            args=(
-                self.draw_clouds_grid,
-                self.main_model,
-                use_color_consistency,
-                color_consistency_sigma,
-                cloud_threshold,
-                perturbations
-            )
+        visual_hull = VisualHull()
+
+        #
+        # Use the tornado ioloop to calculate the visual hull using an executor.
+        #
+        IOLoop.current().spawn_callback(
+            visual_hull.calc_visual_hull,
+            result_callback=self.draw_clouds_grid,
+            main_model=self.main_model,
+            use_color_consistency=use_color_consistency,
+            color_consistency_sigma=color_consistency_sigma,
+            cloud_threshold=cloud_threshold,
+            perturbations=perturbations
         )
-        thread.daemon = True
-        thread.start()
 
     def draw_clouds_grid(
         self,
