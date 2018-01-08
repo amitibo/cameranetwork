@@ -488,11 +488,11 @@ enamldef ExtrinsicControlPage(Page):
                 clicked ::
                     root_object().main_model.send_message(
                         server_model_,
-                        gs.MSG_TYPE_DAYS,
+                        gs.MSG_TYPE_SUN_DAYS,
                     )
 
             ObjectCombo: query_day:
-                items << server_model_.days_list
+                items << server_model_.sun_days_list
 
             Label:
                 text = 'Residual Threshold:'

@@ -894,6 +894,22 @@ class Server(MDPWorker):
         raise gen.Return(((), dict(days_list=days)))
 
     @gen.coroutine
+    def handle_sun_days(self):
+        """Check for available sun position days.
+
+        Returns:
+            The list of days for which there is sun position data.
+        """
+
+        days_paths = sorted(glob.glob(os.path.join(gs.SUN_POSITIONS_PATH, "*.csv")))
+        days = [os.path.split(p)[1][:-4] for p in days_paths]
+
+        #
+        # Send reply on next ioloop cycle.
+        #
+        raise gen.Return(((), dict(days_list=days)))
+
+    @gen.coroutine
     def handle_query(self, query_date, force=False):
         """Seek for a previously captured (loop) array.
 
