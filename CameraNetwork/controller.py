@@ -1037,14 +1037,20 @@ class Controller(object):
             #
             # Save a copy in the calibration day.
             #
-            np.save(
-                os.path.join(
-                    gs.CAPTURE_PATH,
-                    date,
-                    gs.EXTRINSIC_SETTINGS_FILENAME
-                    ),
-                R
-            )
+            calibration_day_path = os.path.join(gs.CAPTURE_PATH, date)
+            if os.path.exists(calibration_day_path):
+                np.save(
+                    os.path.join(
+                        calibration_day_path,
+                        gs.EXTRINSIC_SETTINGS_FILENAME
+                        ),
+                    R
+                )
+            else:
+                logging.warn(
+                    "Cannot save extrinsic data in capture day (missing?)."
+                )
+
         #
         # Send back the analysis.
         #
