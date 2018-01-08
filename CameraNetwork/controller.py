@@ -966,9 +966,15 @@ class Controller(object):
         #
         # Update the calibration data.
         #
-        self.loadCameraCalibration(
-            capture_date=datetime.strptime(date, "%Y_%m_%d")
-        )
+        try:
+            self.loadCameraCalibration(
+                capture_date=datetime.strptime(date, "%Y_%m_%d")
+            )
+        except:
+            logging.warn(
+                "Failed loading calibration for extrinsic date {}\n{}".format(
+                date, traceback.format_exc())
+            )
 
         #
         # Load sun measurments.
