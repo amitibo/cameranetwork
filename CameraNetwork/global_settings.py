@@ -135,7 +135,7 @@ PI_PW = 'raspberry'
 ODROID_USER = 'odroid'
 ODROID_PW = 'odroid'
 
-IDENTITY_FILE = os.path.join(os.path.expanduser('~'), 'cameranetwork.pem')
+IDENTITY_FILE = os.path.join(os.path.expanduser('~'), 'AdiKP2.pem') #  changed from 'cameranetwork.pem' - Adi
 
 #
 # Dropbox folder
