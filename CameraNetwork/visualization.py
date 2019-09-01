@@ -43,9 +43,10 @@ import pymap3d
 def loadMapData():
     """Load height data for map visualization."""
 
-    path1 = r"..\data\reconstructions\N32E034.hgt"
-    path2 = r"..\data\reconstructions\N32E035.hgt"
-    path3 = r"..\data\reconstructions\haifa_map.jpg"
+    relpath =  os.path.dirname(os.path.realpath(__file__))
+    path1 = os.path.abspath(os.path.join(relpath , r"..\data\reconstructions\N32E034.hgt"))
+    path2 = os.path.abspath(os.path.join(relpath , r"..\data\reconstructions\N32E035.hgt"))
+    path3 = os.path.abspath(os.path.join(relpath , r"..\data\reconstructions\haifa_map.jpg"))
 
     with open(path1) as hgt_data:
         hgt1 = np.fromfile(hgt_data, np.dtype('>i2')).reshape((1201, 1201))[:1200, :1200]
