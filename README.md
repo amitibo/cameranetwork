@@ -3,7 +3,7 @@ CameraNetwork
 
 Code for running and analyzing the Camera Network
 
-~~Latest version can be downloaded from [bitbucket]~(http://bitbucket.org/amitibo/CameraNetwork_git).
+~~Latest version can be downloaded from [bitbucket](http://bitbucket.org/amitibo/CameraNetwork_git).~~
 
 Documentation
 -------------
@@ -11,11 +11,28 @@ Documentation
 Documentation is provided using [sphinx](http://www.sphinx-doc.org/).
 To compile the documentation:
 
-```sh
- cd docs
- sphinx-apidoc -f -o source ..\CameraNetwork // For Windows
- sphinx-apidoc -f -o source/ ../CameraNetwork // For Linux
+Navigate to document folder `cd docs` then
+Generate source files. \n
+  Windows:
+ ```sh
+ sphinx-apidoc -f -o source ..\CameraNetwork
+ ```
+  Linux:
+  ```sh
+ sphinx-apidoc -f -o source/ ../CameraNetwork
+ ```
+ Create html/pdf document
+  For html version:
+ ```sh
  make html
+ ```
+  For PDF:
+  First run:
+  ```sh
+  sudo apt-get install texlive-latex-recommended texlive-fonts-recommended texlive-latex-extra latexmk texlive-luatex texlive-xetex
+  ```
+  then
+```sh
  make latexpdf
 ```
 
