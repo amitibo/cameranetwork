@@ -11,23 +11,18 @@ Documentation
 Documentation is provided using [sphinx](http://www.sphinx-doc.org/).
 To compile the documentation:
 
-Navigate to document folder `cd docs` then
-Generate source files. \n
-  Windows:
+Navigate to document folder `cd docs`,<br />
+then generate source files - <br />
+Windows:
  ```sh
- sphinx-apidoc -f -o source ..\CameraNetwork
+     sphinx-apidoc -f -o source ..\CameraNetwork
  ```
-  Linux:
+ Linux:
   ```sh
- sphinx-apidoc -f -o source/ ../CameraNetwork
+    sphinx-apidoc -f -o source/ ../CameraNetwork
  ```
- Create html/pdf document
-  For html version:
- ```sh
- make html
- ```
-  For PDF:
-  First run:
+ Finally, Create html document `make html` <br />
+ or, for PDF, first run:
   ```sh
   sudo apt-get install texlive-latex-recommended texlive-fonts-recommended texlive-latex-extra latexmk texlive-luatex texlive-xetex
   ```
