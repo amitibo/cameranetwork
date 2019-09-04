@@ -168,7 +168,7 @@ Installation - NEW
     pip install mayavi
 #. Clone, navigate to and install traits-enaml::
 
-    git clone https://github.com/enthought/traits-enaml.git
+    git clone https://github.com/enthought/traits-enaml.git --branch update-data-frame-table
     cd traits-enaml
     python setup.py install
 
