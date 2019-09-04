@@ -182,6 +182,6 @@ Installation - NEW
 
     ..    note::
 
-        without ``--user`` it installs the scripts for all users (Windows: C:\ProgramData\Anaconda2\Scripts)
+        without --user it installs the scripts for all users (Windows: C:\ProgramData\Anaconda2\Scripts)
 
 
