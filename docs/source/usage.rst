@@ -39,7 +39,11 @@ Proxy
 =====
 To connect to the proxy
 -------------------------
-    sudo ssh -i <path_to_key> ubuntu@<proxy_ip>
+``sudo ssh -i <path_to_key> ubuntu@<proxy_ip>``
+
+.. note:: 
+    ``sudo chmod 400 <path_to_private_key>``
+    if encounter permission error
 
 .. note::
     *<path_to_key>* is the path and name of the proxy's private key
