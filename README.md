@@ -10,6 +10,7 @@ Documentation
 
 Documentation is provided using [sphinx](http://www.sphinx-doc.org/).
 To compile the documentation:
+`pip install -U Sphinx`
 
 Navigate to document folder `cd docs`,<br />
 then generate source files - <br />
