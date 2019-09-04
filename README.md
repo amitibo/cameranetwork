@@ -9,8 +9,8 @@ Documentation
 -------------
 
 Documentation is provided using [sphinx](http://www.sphinx-doc.org/).
-To compile the documentation:
-`pip install -U Sphinx`
+To compile the documentation:<br />
+Make sure Sphinx is installed `pip install -U Sphinx`
 
 Navigate to document folder `cd docs`,<br />
 then generate source files - <br />
@@ -23,7 +23,7 @@ Windows:
     sphinx-apidoc -f -o source/ ../CameraNetwork
  ```
  Finally, Create html document `make html` <br />
- or, for PDF, first run:
+ or, for PDF:
   ```sh
   sudo apt-get install texlive-latex-recommended texlive-fonts-recommended texlive-latex-extra latexmk texlive-luatex texlive-xetex
   ```
