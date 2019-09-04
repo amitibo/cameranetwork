@@ -30,8 +30,10 @@ forward to install the ``CameraNetwork`` pacakge and its prerequisites on other 
 on the RaspberrPi.
 
 In the following we detail the procedure of installing the required prerequisites and main pacakge. Note that
-once the package is installed on one compture, it is much more time effective to create an image of the Odroid
+once the package is installed on one computer, it is much more time effective to create an image of the Odroid
 memory card and duplicate it as needed.
+``TODO Add instructions how to create and install Odroid Image``
+
 
 Prerequisites
 -------------
