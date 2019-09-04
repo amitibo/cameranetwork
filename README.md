@@ -31,6 +31,7 @@ Windows:
 ```sh
  make latexpdf
 ```
+To view the docs navigate to `/docs/build/latex/CameraNetwork.pdf` or run `/docs/build/html/index.html`
 
 Author
 ------
