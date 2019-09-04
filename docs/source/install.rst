@@ -43,7 +43,7 @@ commands. Copy paste these to a commandline::
     > sudo pip install paramiko
     > sudo pip install cython
     > sudo pip install pyzmq --install-option="--zmq=bundled"
-    > sudo pip install tornado
+    > sudo pip install tornado==4.5.3
     > sudo pip install futures
     > sudo apt-get install python-numpy python-scipy python-matplotlib
     > sudo pip install beautifulsoup4
@@ -146,3 +146,42 @@ Install the ``CameraNetwork`` package::
     > git clone https://amitibo@bitbucket.org/amitibo/cameranetwork_git.git cameranetwork
     > cd cameranetwork
     > python setup.py develop --user
+
+
+
+Installation - NEW
+=====================
+#. Install conda. Tested on conda 4.7.11
+#. Clone the cameranetwork package::
+
+    git clone https://github.com/Addalin/cameranetwork.git
+#. Navigate to it::
+
+    cd cameranetwork
+#. Install additional modules::
+
+    pip install ephem
+    conda install -c anaconda pil
+    conda install -c anaconda enaml
+    conda install -c anaconda traits pyqtgraph pyopengl
+    conda install -c anaconda vtk
+    pip install mayavi
+#. Clone, navigate to and install traits-enaml::
+
+    git clone https://github.com/enthought/traits-enaml.git
+    cd traits-enaml
+    python setup.py install
+
+#. Install the cameranetwork package
+    #. Navigate back to cameranetwork::
+
+        cd ..
+    #. Install the cameranetwork package::
+
+        python setup.py develop --user
+
+    ..    note::
+
+        without ``--user`` it installs the scripts for all users (Windows: C:\ProgramData\Anaconda2\Scripts)
+
+
