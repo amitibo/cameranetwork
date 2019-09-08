@@ -38,15 +38,22 @@ import cv2
 import matplotlib.mlab as ml
 import numpy as np
 import pymap3d
-
+import os
+import platform
 
 def loadMapData():
     """Load height data for map visualization."""
 
+# TODO more rebust linux / windows solution + remove absolute path
     relpath =  os.path.dirname(os.path.realpath(__file__))
-    path1 = os.path.abspath(os.path.join(relpath , r"..\data\reconstructions\N32E034.hgt"))
-    path2 = os.path.abspath(os.path.join(relpath , r"..\data\reconstructions\N32E035.hgt"))
-    path3 = os.path.abspath(os.path.join(relpath , r"..\data\reconstructions\haifa_map.jpg"))
+    if platform.system()=='Windows':
+        path1 = os.path.abspath(os.path.join(relpath , r"..\data\reconstructions\N32E034.hgt"))
+        path2 = os.path.abspath(os.path.join(relpath , r"..\data\reconstructions\N32E035.hgt"))
+        path3 = os.path.abspath(os.path.join(relpath , r"..\data\reconstructions\haifa_map.jpg"))
+    if platform.system()=='Linux':
+        path1 = os.path.abspath(os.path.join(relpath, r"../data/reconstructions/N32E034.hgt"))
+        path2 = os.path.abspath(os.path.join(relpath, r"../data/reconstructions/N32E035.hgt"))
+        path3 = os.path.abspath(os.path.join(relpath, r"../data/reconstructions/haifa_map.jpg"))
 
     with open(path1) as hgt_data:
         hgt1 = np.fromfile(hgt_data, np.dtype('>i2')).reshape((1201, 1201))[:1200, :1200]

@@ -1,8 +1,10 @@
-.. highlight:: sh
+.. highlight::sh
 
 ************
 Installation
 ************
+
+.. contents:: Table of Contents
 
 Introduction
 ============
@@ -30,10 +32,8 @@ forward to install the ``CameraNetwork`` pacakge and its prerequisites on other 
 on the RaspberrPi.
 
 In the following we detail the procedure of installing the required prerequisites and main pacakge. Note that
-once the package is installed on one computer, it is much more time effective to create an image of the Odroid
+once the package is installed on one compture, it is much more time effective to create an image of the Odroid
 memory card and duplicate it as needed.
-``TODO Add instructions how to create and install Odroid Image``
-
 
 Prerequisites
 -------------
@@ -45,7 +45,7 @@ commands. Copy paste these to a commandline::
     > sudo pip install paramiko
     > sudo pip install cython
     > sudo pip install pyzmq --install-option="--zmq=bundled"
-    > sudo pip install tornado
+    > sudo pip install tornado==4.5.3
     > sudo pip install futures
     > sudo apt-get install python-numpy python-scipy python-matplotlib
     > sudo pip install beautifulsoup4
@@ -148,3 +148,40 @@ Install the ``CameraNetwork`` package::
     > git clone https://amitibo@bitbucket.org/amitibo/cameranetwork_git.git cameranetwork
     > cd cameranetwork
     > python setup.py develop --user
+
+
+
+Installation - NEW
+=====================
+#. Install conda. Tested on conda 4.7.11
+#. Clone the cameranetwork package::
+
+    git clone https://github.com/Addalin/cameranetwork.git
+#. Navigate to it::
+
+    cd cameranetwork
+#. Install additional modules::
+
+    pip install ephem
+    conda install -c anaconda pil
+    conda install -c anaconda enaml
+    conda install -c anaconda traits pyqtgraph pyopengl
+    conda install -c anaconda vtk
+    pip install mayavi
+#. Clone, navigate to and install traits-enaml::
+
+    git clone https://github.com/enthought/traits-enaml.git --branch update-data-frame-table
+    cd traits-enaml
+    python setup.py install
+
+#. Install the cameranetwork package
+    #. Navigate back to cameranetwork::
+
+        cd ..
+    #. Install the cameranetwork package::
+
+        python setup.py develop --user
+
+    ..    note::
+
+        without --user it installs the scripts for all users (Windows: C:\ProgramData\Anaconda2\Scripts)
