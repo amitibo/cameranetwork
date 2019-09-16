@@ -33,10 +33,12 @@
 ## LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
 ## OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 ## ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.##
+
 """
 Utilities used in the process of calibration.
 """
 
+from __future__ import print_function
 from __future__ import division
 from CameraNetwork.image_utils import raw2RGB, RGB2raw
 import cPickle
@@ -56,19 +58,19 @@ __all__ = (
 READY_REPLY = 'READY'
 
 
-class Gimbal( object ):
+class Gimbal(object):
     """Calibration Gimbal
 
-    This class encapsulates the use of the Caliration Gimbal. During
+    This class encapsulates the use of the Calibration Gimbal. During
     vignetting calibration, a camera is connected to the gimbal and placed
-    infront of a light source. The Gimbal rotates the camera in all directions.
+    in front of a light source. The Gimbal rotates the camera in all directions.
     This way the spatial response of the camera (vignetting) is captured.
 
     Args:
         com (str, optional): The serial port of the Arduino that controls the
             gimbal.
         baudrate (int, optional): Baud rate of serial port.
-        timeout (int, optional): timeout for tryingto connect to the Arduino.
+        timeout (int, optional): timeout for trying to connect to the Arduino.
 
     Note:
         To use this class, one needs to first install the gimbal.ino file
@@ -80,7 +82,7 @@ class Gimbal( object ):
     def __init__(self, com='COM13', baudrate=9600, timeout=20):
 
         import serial
-        self._port = serial.Serial(com, baudrate=baudrate, timeout = timeout)
+        self._port = serial.Serial(com, baudrate=baudrate, timeout=timeout)
 
         #
         # Wait for the motor to finish the reset move
@@ -95,11 +97,10 @@ class Gimbal( object ):
         # Finalize the serial port.
         #
         try:
-            print self._port.read(size=1000)
+            print(self._port.read(size=1000))
             self._port.close()
         except:
             pass
-
 
     def _waitReady(self):
         """Wait for a ready reply from the arduino
@@ -115,7 +116,6 @@ class Gimbal( object ):
         """
 
         self._finalize()
-
 
     def _checkEcho(self, cmd):
         """Check the answer echo validity.
@@ -140,11 +140,10 @@ class Gimbal( object ):
 
         """
 
-        self._port.write( cmd )
+        self._port.write(cmd)
 
-        self._checkEcho( cmd )
+        self._checkEcho(cmd)
         #self._waitReady()
-
 
     def flush(self):
         """Empty the input & output buffers
@@ -161,7 +160,7 @@ class Gimbal( object ):
         """
 
         cmd = 'z\n'
-        self._sendCmd( cmd )
+        self._sendCmd(cmd)
 
     def move(self, x, y):
         """Move to x, y position
@@ -186,7 +185,7 @@ class Gimbal( object ):
         y_str = ('0000' + str(y))[-4:]
         cmd = 'm'+x_str+y_str+'\n'
 
-        self._sendCmd( cmd )
+        self._sendCmd(cmd)
 
 
 class GimbalCamera(object):
@@ -232,7 +231,7 @@ def meanColor(c):
     Returns:
         Mean of non zero values in c.
     """
-    nnz_total = (c>0).sum()
+    nnz_total = (c > 0).sum()
     if nnz_total == 0:
         return 0
 
@@ -259,7 +258,7 @@ def findSpot(img, threshold=5):
     # Calculate a spot mask.
     #
     kernel = np.ones((3, 3),np.uint8)
-    mask = (img>threshold)
+    mask = (img > threshold)
     mask = cv2.dilate(mask.astype(np.uint8), kernel)
     mask = cv2.erode(mask.astype(np.uint8), kernel, iterations=2)
 
@@ -349,7 +348,7 @@ class VignettingCalibration():
         self._calcRatio()
 
     def _calcRatio(self):
-        """Calc the vignnetting ratios in each pixel of the image."""
+        """Calc the vignetting ratios in each pixel of the image."""
 
         #
         # The models were learnt for RGB (600x800) images therefore
@@ -420,7 +419,7 @@ class VignettingCalibration():
                 pass
 
         #
-        # Arrange the mesurements as a list of colors
+        # Arrange the measurements as a list of colors
         #
         measurements = zip(*measurements)
 
@@ -455,7 +454,7 @@ class VignettingCalibration():
             #
             x, y, vals = zip(*data)
             measurements.append(
-                [(i/2, j/2, k[color_index]) for i, j, k in zip(x, y, vals)  if i is not None]
+                [(i/2, j/2, k[color_index]) for i, j, k in zip(x, y, vals) if i is not None]
             )
 
         vc = VignettingCalibration(*args, **kwds)
