@@ -34,7 +34,8 @@ Installation - Client
 
     cd cameranetwork
 
-#. Create conda virtual environment from `client_env.yml`
+#. Create conda virtual environment from client_venv.yml_.
+.. _client_venv.yml: https://github.com/Addalin/cameranetwork/blob/master/client_venv.yml
 
     ::
 
