@@ -38,7 +38,7 @@ Installation - Client
 
     ::
 
-        conda env create -f client_env.yml
+        conda env create -f client_venv.yml
 
     .. note::
 
