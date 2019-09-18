@@ -3,7 +3,7 @@ CameraNetwork
 
 Code for running and analyzing the Camera Network
 
-~~Latest version can be downloaded from [bitbucket](http://bitbucket.org/amitibo/CameraNetwork_git).~~
+Latest version can be downloaded from [github](https://github.com/Addalin/cameranetwork.git).
 
 [Installation Instructions](docs/source/install.rst)
 
