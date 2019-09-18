@@ -11,6 +11,8 @@ Code for running and analyzing the Camera Network
 
 Documentation
 -------------
+[![Documentation Status](https://readthedocs.org/projects/camera-network/badge/?version=latest)](https://camera-network.readthedocs.io/en/latest/?badge=latest)
+
 
 Documentation is provided using [sphinx](http://www.sphinx-doc.org/).
 To compile the documentation:<br />
