@@ -40,7 +40,7 @@ Installation - Client
 
         conda env create -f client_venv.yml
 
-    .. notes::
+    .. Notes::
 
         Before run, edit client_venv.yml:
         The first line of sets the new environment's name
@@ -227,8 +227,6 @@ Shubi reference
     pip install pymap3d
     conda install enaml pillow traits pyqtgraph pyopengl vtk mayavi opencv
 
-#. Install traits-enaml
-
 #. Install additional modules::
 
     pip install ephem
@@ -237,11 +235,16 @@ Shubi reference
     conda install -c anaconda traits pyqtgraph pyopengl
     conda install -c anaconda vtk
     pip install mayavi
-#. Clone, navigate to and install traits-enaml::
+
+#. Install traits-enaml::
 
     git clone https://github.com/enthought/traits-enaml.git --branch update-data-frame-table
     cd traits-enaml
     python setup.py install
+    cd..
+    
+
+
 
 #. Install the cameranetwork package
     #. Navigate back to cameranetwork::

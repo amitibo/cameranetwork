@@ -1,0 +1,2 @@
+2019-09-20 16:53:37,372 [MainThread  ] [DEBUG]  Proxy parameters:
+{u'tunnel_port': 20000, u'autossh_monitor_port': 10000, u'ip': u'3.123.49.101', u'proxy_port': 1980, u'client_port': 1981, u'hb_port': 1985, u'user': u'ubuntu'}
