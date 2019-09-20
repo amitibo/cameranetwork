@@ -40,10 +40,13 @@ Installation - Client
 
         conda env create -f client_venv.yml
 
-    .. note::
+    .. notes::
 
-        The first line of the yml file sets the new environment's name
-
+        Before run, edit client_venv.yml:
+        The first line of sets the new environment's name
+        The last line sets the environment prefix
+        Make sure the prefix folder and the environment share the same name 
+        
 #. Activate the environment::
 
     conda activate <venv_name>
