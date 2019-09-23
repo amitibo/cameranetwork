@@ -40,7 +40,7 @@ Installation - Client
 
         conda env create -f client_venv.yml
 
-    .. Notes::
+    .. Note::
 
         Before run, edit client_venv.yml:
         The first line of sets the new environment's name
