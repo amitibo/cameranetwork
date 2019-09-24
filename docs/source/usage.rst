@@ -53,10 +53,10 @@ Serial connection
 -----------------
 On the Client's PC, from cameranetwork folder:
 
-#. ``bash scripts/listusb.sh`` to list all connected usb devices and to find the relevant one.
+``bash scripts/listusb.sh`` to list all connected usb devices and to find the relevant one.
 Should be /dev/tty/USB0 (replace '0' with relevant number)
 
-#. Follow `driver installation instructions by Odroid<https://wiki.odroid.com/accessory/development/usb_uart_kit>`_.
+#. Follow `driver installation instructions by Odroid <https://wiki.odroid.com/accessory/development/usb_uart_kit>`_.
 
 #. Linux: Run ``sudo minicom`` in Client PC's terminal. Windows: Use Teraterm.
 
