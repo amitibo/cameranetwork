@@ -53,7 +53,6 @@ import subprocess as sbp
 def main(base_path, debug_mode=False, local_proxy=False):
     camera_paths = sorted(glob(os.path.join(base_path, '*')))
     camera_paths = filter(lambda p: os.path.isdir(p), camera_paths)
-    print(camera_paths) # added for debug
 
     #
     # Start the proxy.
@@ -76,10 +75,8 @@ def main(base_path, debug_mode=False, local_proxy=False):
         servers.append(sbp.Popen(['python'] +
                                  ['../scripts/start_server.py','--local_path', path] +
                                  (["--local_proxy"] if local_proxy else [])))
-    print(servers) # added for debug
 
     for server in servers:
-        #print('pid:'+server.pid)  # added for debug
         server.wait()
 
 
