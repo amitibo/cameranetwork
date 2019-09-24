@@ -1,4 +1,4 @@
-name: cameranetwork_client
+name: cn_client
 channels:
   - conda-forge
   - defaults
@@ -168,5 +168,3 @@ dependencies:
     - pymap3d==1.8.1
     - pyzmq==18.1.0
     - git+git://github.com/enthought/traits-enaml.git@update-data-frame-table
-prefix: C:/ProgramData/Anaconda2/envs/cameranetwork_client
-

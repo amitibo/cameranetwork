@@ -34,18 +34,16 @@ Installation - Client
 
     cd cameranetwork
 
-#. Create conda virtual environment from client_venv.yml
+#. Create conda virtual environment from *cn_client_ubuntu18.yml*
 
     ::
 
-        conda env create -f client_venv.yml
+        conda env create -f cn_client_ubuntu18.yml
 
     .. Note::
 
-        Before run, edit client_venv.yml:
-        The first line of sets the new environment's name
-        The last line sets the environment prefix
-        Make sure the prefix folder and the environment share the same name 
+        The first line of sets the new environment's name (currently *cn_client*)
+
         
 #. Activate the environment::
 
@@ -71,12 +69,12 @@ Installing the Server
 =====================
 
 The server software is run on an `Odroid U3 <http://www.hardkernel.com/main/products/prdt_info.php?g_code=g138745696275>`_
-as at the time of selection it offered a unique balance between capabilites and cost. Nonetheless it should be straight
-forward to install the ``CameraNetwork`` pacakge and its prerequisites on other platforms like newer Oroids and even
+as at the time of selection it offered a unique balance between capabilities and cost. Nonetheless it should be straight
+forward to install the ``CameraNetwork`` package and its prerequisites on other platforms like newer Oroids and even
 on the RaspberrPi.
 
-In the following we detail the procedure of installing the required prerequisites and main pacakge. Note that
-once the package is installed on one compture, it is much more time effective to create an image of the Odroid
+In the following we detail the procedure of installing the required prerequisites and main package. Note that
+once the package is installed on one computer, it is much more time effective to create an image of the Odroid
 memory card and duplicate it as needed.
 
 

@@ -37,11 +37,28 @@ then according to the point with least sunlight (as shown in the graph)
 determines the sunshader optimal angel.
 
 
+Sprinkler
+---------
+
+.. image:: images/gui_sprinkler.png
+
+The Sprinkle tab and corresponding button allows to manually activate the sprinkler system
+in order to clean the camera len dome. Period Refers to activation time in seconds.
+
 Camera (server)
 ===============
 There are options to connect to the camera
 
-#. Via Serial connection
+Serial connection
+-----------------
+On the Client's PC, from cameranetwork folder:
+#. ``bash scripts/listusb.sh`` to list all connected usb devices and to find the relevant one.
+Should be /dev/tty/USB0 (replace '0' with relevant number)
+#. Follow `driver installation instructions by Odroid<https://wiki.odroid.com/accessory/development/usb_uart_kit>`_.
+#. Linux: Run ``sudo minicom`` in Client PC's terminal.
+#. Windows: Use Teraterm.
+#. Enter odroid username
+#. Enter odroid password
 
 #. Via SSH
 
@@ -56,7 +73,7 @@ To connect to the proxy
 
 .. note:: 
     ``sudo chmod 400 <path_to_private_key>``
-    if encounter permission error
+    if permission error is encountered.
 
 .. note::
     *<path_to_key>* is the path and name of the proxy's private key

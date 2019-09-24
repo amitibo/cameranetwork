@@ -72,9 +72,16 @@ except:
     # Support also python 2.7
     #
     from concurrent import futures
+
 import glob
 import json
-import Image
+
+try:
+    from PIL import Image
+except:
+    # In case of old version
+    import Image
+
 import logging
 import numpy as np
 import os
