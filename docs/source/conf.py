@@ -76,7 +76,7 @@ sys.path.insert(0, os.path.abspath('../../../../.local/lib/python2.7/site-packag
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
-    'sphinx.ext.numfig',
+#     'sphinx.ext.numfig', # Commented so that readthedocs will work
     'sphinx.ext.autodoc',
     'sphinx.ext.intersphinx',
     'sphinx.ext.todo',
