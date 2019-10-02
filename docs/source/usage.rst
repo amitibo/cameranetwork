@@ -108,4 +108,6 @@ Useful commands
 - Press ctrl+a then ctrl+d to detach the *start_proxy.py* from the terminal
 - ``screen -ls`` to see detached processes. then``screen -r <name>`` to bring it back.
 - ``sudo netstat -a -nlp -o | grep 198`` to see status of relevant ports
-
+- `adding ssh key to ssh-agent <https://help.github.com/en/articles/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent#adding-your-ssh-key-to-the-ssh-agent>`_.
+- `How to use scp to transfer files <https://linuxize.com/post/how-to-use-scp-command-to-securely-transfer-files/>`_.
+  For example to retrieve proxy log from proxy to client: ``scp ubuntu@3.123.49.101:/home/ubuntu/proxy_logs/cameralog_190929_092735_proxy.txt /home/shubi/Desktop/log``
