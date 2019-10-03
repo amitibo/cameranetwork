@@ -464,9 +464,7 @@ class Controller(object):
                     data.index = data.index.time
                     angles.append(data['sunshader_angle'])
 
-                self.sunshader_angles_df = pd.concat(
-                    angles, axis=1
-                ).mean(axis=1).to_frame(name='angle')
+                self.sunshader_angles_df = pd.concat(angles, axis=1, sort=True).mean(axis=1).to_frame(name='angle')
             else:
                 self.sunshader_angles_df = pd.DataFrame(dict(angle=[]))
 

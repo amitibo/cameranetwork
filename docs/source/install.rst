@@ -6,7 +6,7 @@ Installation
 
 .. contents:: Table of Contents
 
-Introduction
+Installation
 ============
 
 The ``CameraNetwork`` system is made of three logical parts:
@@ -25,7 +25,7 @@ The ``CameraNetwork`` is implemented completely in `Python <http://www.python.or
 
 
 Installation - Client
-=====================
+---------------------
 #. Install conda. Tested on conda 4.7.11
 #. Clone the cameranetwork package::
 
@@ -89,8 +89,8 @@ Installation - Client
     python scripts_client/camera_client.py
 
 
-Installing the Server
-=====================
+Installation - Server
+---------------------
 
 The server software is run on an `Odroid U3 <http://www.hardkernel.com/main/products/prdt_info.php?g_code=g138745696275>`_
 as at the time of selection it offered a unique balance between capabilities and cost. Nonetheless it should be straight
@@ -102,16 +102,34 @@ once the package is installed on one computer, it is much more time effective to
 memory card and duplicate it as needed.
 
 
+Installation - Proxy
+--------------------
 
-Others
-======
-Circuit Board connections
--------------------------
+Currently the code assumes that the proxy server is run on an ec2 instance.
+Installation on the proxy follows the same steps of installation on the
+client.
+
+To run the proxy program, do::
+
+    start_proxy.py
+
+Installation - Calibration Station
+----------------------------------
+
+
+Camera setup
+------------
+
+Arduino connections
+`````````````````````````
+
 Savox SunShader Servo pins:
 
 #. Brown (Gnd) = Gnd
 #. Red (5V) = 5V
 #. Orange (Signal) = PIN NUM
+
+
 
 Installation - Old Reference
 ============================
@@ -197,16 +215,6 @@ Run the camera setup script to setup the camera environment.
 
 You will be asked for a camera id. Enter a unique camera id number.
 
-Installing the Proxy
-====================
-
-Currently the code assumes that the proxy server is run on an ec2 instance.
-Installation on the proxy follows the same steps of installation on the
-client.
-
-To run the proxy program, do:
-
-    > start_proxy.py
 
 
 Installing the Client
@@ -279,12 +287,3 @@ Shubi reference
     ..    note::
 
         without --user it installs the scripts for all users (Windows: C:\ProgramData\Anaconda2\Scripts)
-
-
-
-Circuit Board connections
-=========================
-Savox SunShader Servo:
-#. Brown (Gnd) = Gnd
-#. Red (5V) = 5V
-#. Orange (Signal) = PIN NUM

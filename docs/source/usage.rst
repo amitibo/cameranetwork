@@ -111,3 +111,34 @@ Useful commands
 - `adding ssh key to ssh-agent <https://help.github.com/en/articles/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent#adding-your-ssh-key-to-the-ssh-agent>`_.
 - `How to use scp to transfer files <https://linuxize.com/post/how-to-use-scp-command-to-securely-transfer-files/>`_.
   For example to retrieve proxy log from proxy to client: ``scp ubuntu@3.123.49.101:/home/ubuntu/proxy_logs/cameralog_190929_092735_proxy.txt /home/shubi/Desktop/log``
+- gparted for microsd / eMMC partitioning & direct copying.
+- ``sudo dd if=/dev/sdb of=~/xu4_lab.img status=progress`` to create an image of odroid
+- `etcher <https://www.balena.io/etcher/>`_ to flash image onto the SD card
+
+
+Analyzing Results
+=================
+On Client PC::
+
+    cd /cameranetwork/scripts_client
+    python start_local.py <path_to_experiment_data>
+
+.. note::
+
+    - Make sure to activate environment beforehand: ``conda activate cn_client``
+    - -l flag is used for local proxy (instead of real proxy server)
+    - -d flag is for opening gui separately.
+
+workflow + data structure:
+
+#. Run ``python start_local.py -d /home/shubi/Desktop/experiment_23_09_2019`` in the background
+where `experiment_date` is a folder containing `cam_ID` folder for each camera involved.
+Each `cam_ID` consists of
+
+    #. `captured_images` folder which stores inside a folder with images(.jpg, .mat & .pkl versions) and database.pkl for each day that the camera recorded.
+    #. `dark_images` folder
+    #. `sun_positions` folder, containing a folder with .csv containing the positions of the sun (and moon!) with format: timestamp, object, pos_x, pos_y, sunshader_angle, row each 6 minutes for sun and every 1 minute for moon.
+    #. Additional pkl's and json's and other (important!) files.
+
+#. Run ``python camera_client.py``
+#. You should see a list of all real & virtual cameras.

@@ -69,8 +69,8 @@ def load_path(flight_path, lat0=32.775776, lon0=35.024963, alt0=229):
 def loadMapData():
     """Load height data for map visualization."""
 
-    path1 = r"..\data\reconstructions\N32E034.hgt"
-    path2 = r"..\data\reconstructions\N32E035.hgt"
+    path1 = os.path.abspath(os.path.join(r'..', r'data', r'reconstructions', r'N32E034.hgt'))
+    path2 = os.path.abspath(os.path.join(r'..', r'data', r'reconstructions', r'N32E035.hgt'))
     with open(path1) as hgt_data:
         hgt1 = np.fromfile(hgt_data, np.dtype('>i2')).reshape((1201, 1201))[:1200, :1200]
     with open(path2) as hgt_data:
