@@ -131,7 +131,7 @@ Savox SunShader Servo pins:
 
 
 
-Installation - Old Reference
+Installation - OLD
 ============================
 Prerequisites
 -------------
@@ -218,7 +218,7 @@ You will be asked for a camera id. Enter a unique camera id number.
 
 
 Installing the Client
-=====================
+---------------------
 
 It is recommended to install python using the `Anaconda <https://www.continuum.io/downloads>`_ distribution.
 Install the ``CameraNetwork`` package::
@@ -228,7 +228,7 @@ Install the ``CameraNetwork`` package::
     > python setup.py develop --user
 
 Installing the Calibration Station
-==================================
+----------------------------------
 
 It is recommended to install python using the `Anaconda <https://www.continuum.io/downloads>`_ distribution.
 Install the ``CameraNetwork`` package::
