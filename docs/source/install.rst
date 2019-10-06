@@ -11,13 +11,13 @@ Installation
 
 The ``CameraNetwork`` system is made of three logical parts:
 
-#. *Server*: The camera unit. The server performs the actual measuremetns.
+#. *Server*: The camera unit. The server performs the actual measurements.
 #. *Client*: A program that enables remote control of servers.
 #. *Proxy*: A program that bridges and manages the communication between the *Servers* and *Clients*.
 
 There can be multiple *Servers* and *Clients* but only one *proxy*.
 
-The ``CameraNetwork`` pacakge contains the code for both the *Server*, *Client* and *Proxy* subsystems.
+The ``CameraNetwork`` package contains the code for both the *Server*, *Client* and *Proxy* subsystems.
 This simplifies the deployment and enables code reuse. The installation procedures is similar for the
 three components but differs due to the different platforms.
 

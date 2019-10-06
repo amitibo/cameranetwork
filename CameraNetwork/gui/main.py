@@ -36,7 +36,7 @@
 ##
 """Run a GUI Client.
 
-A GUI client allows easy access to cameras thier settings and their
+A GUI client allows easy access to cameras their settings and their
 measurements.
 """
 from __future__ import division

@@ -461,11 +461,12 @@ enamldef TimesView(DockItem):
         PushButton: seek_pb:
             text = 'Seek'
             clicked ::
-                main.create_map()
+#                main.create_map() TODO Uncomment
                 index = times.img_index
                 main.broadcast_message(
                     gs.MSG_TYPE_SEEK,
                     kwds=dict(
+#                        seek_time="2017-04-06 12:00:00",
                         seek_time=index[0],
                         hdr_index=-1 if HDR_cb.checked else index[1],
                         normalize=True,
