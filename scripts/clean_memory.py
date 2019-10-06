@@ -37,7 +37,7 @@
 """
 Clean memory of the odroid.
 
-The script moves cpatured date to a backup folder. To remove
+The script moves captured date to a backup folder. To remove
 the backup folder (and clear the memory) use the ``--delete`` flag.
 """
 

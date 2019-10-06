@@ -270,7 +270,7 @@ class FisheyeProxy(object):
 class Normalization(object):
     """Normalized Image Class
 
-    This class encapsulates the conversion between caputered image and
+    This class encapsulates the conversion between captured image and
     the normalized image.
     """
 
