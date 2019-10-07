@@ -102,6 +102,15 @@ Noticable stuff
 */proxy_logs/cameralog_<date+time of ____ initialization>_proxy.txt* is a log.
 Mainly shows Heartbeats from connected cameras and notification of message transmissions to/from the client.
 
+Others
+======
+
+Image Acquisition flow
+----------------------
+On Odroid: rc.local --> main(start_server.py) --> start(server.py).278 -->
+loop_timer(server.py) --> handle_loop(controller.py) --> safe_capture(controller.py)
+--> IDSCamera.capture (cameras.py)
+
 Useful commands
 ---------------
 - ``ps -ef | grep python``  to view running python processes (should see start_proxy.py!)
@@ -116,20 +125,20 @@ Useful commands
 - `etcher <https://www.balena.io/etcher/>`_ to flash image onto the SD card
 
 Data Structures
-===============
+---------------
 When looking at a specific camera, under `captured_images`,
 for each that the camera recorded a folder `<%Y-%M-%D>` is created.
 Inside, the images are stored as `.mat` files. In addition there is a thumbnail `.jpg` version, add metadata as `.pkl`.
 The name is `utctime_date+exact time`.
 The `.pkl` file stores the following data::
 
-    img = pd.read_pickle('/media/shubi/rootfs/home/odroid/captured_images/2019_10_02/1570011900.0_2019_10_02_10_25_00_3.pkl')
+    img = pd.read_pickle('~/captured_images/2019_10_02/1570011900.0_2019_10_02_10_25_00_3.pkl')
 
 .. image:: images/img_data_sample.png
 
 In addition, one `database.pkl` is created and stored per day::
 
-    database = pd.read_pickle('/media/shubi/rootfs/home/odroid/captured_images/2019_10_02/database.pkl')
+    database = pd.read_pickle('~/captured_images/2019_10_02/database.pkl')
     database.head()
 
     Time                hdr   path                                                                            longitude  latitude   altitude  serial_num
@@ -143,7 +152,7 @@ In addition, one `database.pkl` is created and stored per day::
 
 
 Analyzing Results
-=================
+-----------------
 On Client PC::
 
     cd /cameranetwork/scripts_client
@@ -157,9 +166,9 @@ On Client PC::
 
 workflow + data structure:
 
-#. Run ``python start_local.py -d /home/shubi/Desktop/experiment_23_09_2019`` in the background
+#. Run ``python start_local.py -d ~/experiment_23_09_2019`` in the background
 where `experiment_date` is a folder containing `cam_ID` folder for each camera involved.
-Each `cam_ID` consists of
+Each `cam_ID` should consist of
 
     #. `captured_images` folder which stores inside a folder with images(.jpg, .mat & .pkl versions) and database.pkl for each day that the camera recorded.
     #. `dark_images` folder
