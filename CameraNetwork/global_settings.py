@@ -220,8 +220,8 @@ CAPTURE_SETTINGS = {
     UPLOAD_JPG_FILE: False,
     UPLOAD_MAT_FILE: False,
     DAY_SETTINGS: {
-        LOOP_DELAY: 300,
-        IMAGE_EXPOSURE: 50,
+        LOOP_DELAY: 300,  # [sec]
+        IMAGE_EXPOSURE: 50,  # [usec]
         IMAGE_GAIN: 0,
         GAIN_BOOST: False,
         FRAMES_NUM: 5,
@@ -229,8 +229,8 @@ CAPTURE_SETTINGS = {
         HDR_MODE: 4
         },
     NIGHT_SETTINGS: {
-        LOOP_DELAY: 1800,
-        IMAGE_EXPOSURE: 8000000,
+        LOOP_DELAY: 1800,  # [sec]
+        IMAGE_EXPOSURE: 8000000,  # [usec]
         IMAGE_GAIN: 0,
         GAIN_BOOST: True,
         FRAMES_NUM: 1,

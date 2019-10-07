@@ -115,6 +115,32 @@ Useful commands
 - ``sudo dd if=/dev/sdb of=~/xu4_lab.img status=progress`` to create an image of odroid
 - `etcher <https://www.balena.io/etcher/>`_ to flash image onto the SD card
 
+Data Structures
+===============
+When looking at a specific camera, under `captured_images`,
+for each that the camera recorded a folder `<%Y-%M-%D>` is created.
+Inside, the images are stored as `.mat` files. In addition there is a thumbnail `.jpg` version, add metadata as `.pkl`.
+The name is `utctime_date+exact time`.
+The `.pkl` file stores the following data::
+
+    img = pd.read_pickle('/media/shubi/rootfs/home/odroid/captured_images/2019_10_02/1570011900.0_2019_10_02_10_25_00_3.pkl')
+
+.. image:: images/img_data_sample.png
+
+In addition, one `database.pkl` is created and stored per day::
+
+    database = pd.read_pickle('/media/shubi/rootfs/home/odroid/captured_images/2019_10_02/database.pkl')
+    database.head()
+
+    Time                hdr   path                                                                            longitude  latitude   altitude  serial_num
+    2019-10-02 00:00:00 0    /home/odroid/captured_images/2019_10_02/1569974400.05_2019_10_02_00_00_00_0.mat  35.024963  32.775776  229       4103098529
+    2019-10-02 00:30:00 0    /home/odroid/captured_images/2019_10_02/1569976200.05_2019_10_02_00_30_00_0.mat  35.024963  32.775776  229       4103098529
+    2019-10-02 01:00:00 0    /home/odroid/captured_images/2019_10_02/1569978000.05_2019_10_02_01_00_00_0.mat  35.024963  32.775776  229       4103098529
+    2019-10-02 01:30:00 0    /home/odroid/captured_images/2019_10_02/1569979800.05_2019_10_02_01_30_00_0.mat  35.024963  32.775776  229       4103098529
+    2019-10-02 08:48:03 0    /home/odroid/captured_images/2019_10_02/1570006083.33_2019_10_02_08_48_03_0.mat  35.024963  32.775776  229       4103098529
+
+
+
 
 Analyzing Results
 =================

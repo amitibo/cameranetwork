@@ -1586,9 +1586,7 @@ class Controller(object):
             #
             # Capture the array.
             #
-            img_array, exposure_us, gain_db = self.safe_capture(
-                capture_settings, frames_num
-            )
+            img_array, exposure_us, gain_db = self.safe_capture(capture_settings, frames_num)
 
             #
             # update image data object.

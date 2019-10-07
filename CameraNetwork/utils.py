@@ -240,15 +240,13 @@ def upload_file_to_proxy(
     return scp_proc
 
 
-def save_camera_data(
-    general_settings_path,
-    capture_settings_path,
-    camera_settings=None,
-    capture_settings=None):
+def save_camera_data(general_settings_path, capture_settings_path,
+                     camera_settings=None, capture_settings=None):
 
     if camera_settings is not None:
         with open(general_settings_path, 'wb') as f:
             json.dump(camera_settings, f, sort_keys=True, indent=4, separators=(',', ': '))
+
     if capture_settings is not None:
         with open(capture_settings_path, 'wb') as f:
             json.dump(capture_settings, f, sort_keys=True, indent=4, separators=(',', ': '))
