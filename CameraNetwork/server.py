@@ -1353,4 +1353,5 @@ class Server(MDPWorker):
         logging.info("Performing reboot")
         logging.shutdown()
 
-        os.system('sudo reboot')
+        # TODO Long term fix
+        os.system('sync; sudo reboot -f')  # Changed from 'sudo reboot', workaround for reboot hanging
