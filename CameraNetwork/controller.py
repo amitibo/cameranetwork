@@ -532,7 +532,7 @@ class Controller(object):
                     self.start_camera()
                 except Exception as e:
                     logging.exception(
-                        'The camera failed restarting. Reboot.'
+                        'The camera failed restarting. Rebooting.'
                     )
                     logging.shutdown()
                     time.sleep(120)

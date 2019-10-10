@@ -146,7 +146,7 @@ def main():
         # I delay the reboot so that the tunnel will stay open and
         # enable debugging.
         #
-        logging.exception('Unkown error:\n{}'.format(repr(e)))
+        logging.exception('Rebooting. Unkown error:\n{}'.format(repr(e)))
         logging.shutdown()
         time.sleep(120)
         os.system('sudo reboot')
@@ -186,7 +186,7 @@ if __name__ == '__main__':
         # I delay the reboot so that the tunnel will stay open and
         # enable debugging.
         #
-        logging.exception('Unkown error:\n{}'.format(repr(e)))
+        logging.exception('Rebooting. Unkown error:\n{}'.format(repr(e)))
         logging.shutdown()
         time.sleep(120)
         os.system('sudo reboot')
