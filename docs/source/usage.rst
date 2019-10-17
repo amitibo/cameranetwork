@@ -47,10 +47,32 @@ in order to clean the camera len dome. Period Refers to activation time in secon
 
 Camera (server)
 ===============
+
+
+Field Deployment
+----------
+
+#. Verify Case Screws fully tightened.
+
+#. Verify plugs fully screwed.
+
+#. Verify sprinklers are pointing in the right direction
+
+#. Verify camera alignment with north-south
+
+Code
+----
+
+After changing any global_setting.py parameter, need to run setup_camera.py again.
+
+Connection
+----------
+
 There are options to connect to the camera
 
 Serial connection
------------------
+`````````````````
+
 On the Client's PC, from cameranetwork folder:
 
 ``bash scripts/listusb.sh`` to list all connected usb devices and to find the relevant one.
@@ -65,12 +87,12 @@ Should be /dev/tty/USB0 (replace '0' with relevant number)
 #. Enter odroid password
 
 SSH
----
+```
 
 #. Via SSH
 
 GUI
----
+```
 
 #. Via GUI (as mentioned in the client section)
 
