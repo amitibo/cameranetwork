@@ -150,6 +150,9 @@ Useful commands
 - gparted for microsd / eMMC partitioning & direct copying.
 - ``sudo dd if=/dev/sdb of=~/xu4_lab.img status=progress`` to create an image of odroid
 - `etcher <https://www.balena.io/etcher/>`_ to flash image onto the SD card
+- ``grep -a -e "Unregistering worker 236" -e "Registering new worker 236" cameralog_190929_092735_proxy.txt``
+    to see connections and disconnections. replace log.txt with * for all logs in folder.
+
 
 Data Structures
 ---------------
