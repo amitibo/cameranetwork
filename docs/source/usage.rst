@@ -50,7 +50,7 @@ Camera (server)
 
 
 Field Deployment
-----------
+----------------
 
 #. Verify Case Screws fully tightened.
 
@@ -113,7 +113,14 @@ To connect to the proxy
 
 If this is the initial setup of the proxy server::
 
-    python ./code/cameranetwork/scripts_proxy/start_proxy.py --log_level debug
+    screen _S session_name
+    python ./code/cameranetwork/scripts_proxy/start_proxy.py --log_level info
+
+Should be run from the root of the server, otherwise the logs would be put in a different location each time.
+Also, make sure to run it inside a screen.
+
+- Press *ctrl+a* then *ctrl+d* to detach the *start_proxy.py* from the terminal
+- ``screen -ls`` to see detached processes. then ``screen -r <name>`` to bring it back.
 
 
 
@@ -136,8 +143,6 @@ loop_timer(server.py) --> handle_loop(controller.py) --> safe_capture(controller
 Useful commands
 ---------------
 - ``ps -ef | grep python``  to view running python processes (should see start_proxy.py!)
-- Press ctrl+a then ctrl+d to detach the *start_proxy.py* from the terminal
-- ``screen -ls`` to see detached processes. then``screen -r <name>`` to bring it back.
 - ``sudo netstat -a -nlp -o | grep 198`` to see status of relevant ports
 - `adding ssh key to ssh-agent <https://help.github.com/en/articles/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent#adding-your-ssh-key-to-the-ssh-agent>`_.
 - `How to use scp to transfer files <https://linuxize.com/post/how-to-use-scp-command-to-securely-transfer-files/>`_.
