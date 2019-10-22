@@ -117,7 +117,7 @@ If this is the initial setup of the proxy server::
     python ./code/cameranetwork/scripts_proxy/start_proxy.py --log_level info
 
 Should be run from the root of the server, otherwise the logs would be put in a different location each time.
-Also, make sure to run it inside a screen.
+Screen is used to be able to detach and retrieve when ever needed.
 
 - Press *ctrl+a* then *ctrl+d* to detach the *start_proxy.py* from the terminal
 - ``screen -ls`` to see detached processes. then ``screen -r <name>`` to bring it back.
