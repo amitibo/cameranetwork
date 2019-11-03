@@ -38,6 +38,7 @@
 A GUI client allows easy access to cameras thier settings and their
 measurements.
 """
+
 from __future__ import division
 
 import pickle
