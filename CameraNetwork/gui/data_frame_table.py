@@ -33,7 +33,7 @@
 ## LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
 ## OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 ## ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.##
-# ----------------------------------------------------------------------------
+#----------------------------------------------------------------------------
 #
 #  Copyright (c) 2014, Enthought, Inc.
 #  All rights reserved.
@@ -45,7 +45,7 @@
 #
 #  Thanks for using Enthought open source!
 #
-# ----------------------------------------------------------------------------
+#----------------------------------------------------------------------------
 import numpy as np
 from pandas import DataFrame, datetime
 
@@ -53,14 +53,17 @@ from atom.api import Typed, set_default, observe, Int
 from enaml.core.declarative import d_
 from enaml.widgets.api import RawWidget
 from enaml.qt.QtCore import QAbstractTableModel, QModelIndex, Qt
-from enaml.qt.QtGui import (
-    QTableView, QHeaderView, QAbstractItemView, QFontMetrics)
-
+# fixing import from enaml.qt.QtGui. During the transision from Qt4 to Qt5: QtGui was split into QtGui and QtWidgets
+#from enaml.qt.QtGui import (
+    #QTableView, QHeaderView, QAbstractItemView, QFontMetrics) #  ADI - fixing import of QTableView in Qt5. This line was relevant to Qt4
+from enaml.qt.QtGui import QFontMetrics                                    #  ADI - preserving include of QFontMetrics in Qt5
+from enaml.qt.QtWidgets import (QTableView,QHeaderView, QAbstractItemView) #  ADI - fixing import of  (QTableView,QHeaderView, QAbstractItemView) in Qt5
 from traits_enaml.utils import get_unicode_string, format_value
 
 
 class ColumnCache(object):
     """ Pull out a view for each column for quick element access.
+
     """
 
     def __init__(self, data_frame):
@@ -72,6 +75,7 @@ class ColumnCache(object):
 
     def reset(self, new_data_frame=None):
         """ Reset the cache.
+
         """
         if new_data_frame is not None:
             self.data_frame = new_data_frame
@@ -165,12 +169,13 @@ class QDataFrameModel(QAbstractTableModel):
 
     def _emit_all_data_changed(self):
         """ Emit signals to note that all data has changed, e.g. by sorting.
+
         """
         self.dataChanged.emit(
             self.index(0, 0),
             self.index(
                 len(self.data_frame.index) - 1,
-                len(self.data_frame.columns) - 1), )
+                len(self.data_frame.columns) - 1),)
         self.headerDataChanged.emit(
             Qt.Vertical, 0, len(self.data_frame.index) - 1)
 
@@ -197,6 +202,7 @@ class QDataFrameTableView(QTableView):
     @classmethod
     def from_data_frame(cls, df, **kwds):
         """ Instantiate a DataFrameTableView directly from a DataFrame.
+
         """
         df_model = QDataFrameModel(df)
         self = cls(df_model, **kwds)
@@ -208,7 +214,7 @@ class QDataFrameTableView(QTableView):
 
     def _setup_selection(self):
         self.selection_model = self.selectionModel()
-        # self.selection_model.currentRowChanged.connect(self._current_row_changed)
+        #self.selection_model.currentRowChanged.connect(self._current_row_changed)
         self.setSelectionMode(QAbstractItemView.ContiguousSelection)
         self.setSelectionBehavior(QAbstractItemView.SelectItems)
 
@@ -224,14 +230,23 @@ class QDataFrameTableView(QTableView):
         max_width = fmetrics.width(u" {0} ".format(
             unicode(self.df_model.rowCount())))
         self.vheader.setMinimumWidth(max_width)
-        self.vheader.setClickable(True)
+
+        # self.vheader.setClickable(True) # ADI - this comment is relevant for Qt 4
+        self.vheader.setSectionsClickable(True) # ADI - this is relevant for Qt > 4
+
         self.vheader.setStretchLastSection(False)
-        self.vheader.setResizeMode(QHeaderView.Fixed)
+
+        # self.vheader.setResizeMode(QHeaderView.Fixed) # ADI - this comment is relevant for Qt 4
+        self.vheader.setSectionResizeMode(QHeaderView.Fixed) # ADI - this is relevant for Qt > 4
 
         self.hheader = self.horizontalHeader()
         self.hheader.setStretchLastSection(False)
-        self.hheader.setClickable(True)
-        self.hheader.setMovable(True)
+
+        # self.vheader.setClickable(True) # ADI - this comment is relevant for Qt 4
+        self.vheader.setSectionsClickable(True) # ADI - this is relevant for Qt > 4
+
+        # self.hheader.setMovable(True) # ADI - this comment is relevant for Qt 4
+        self.hheader.setSectionsMovable(True) # ADI - this is relevant for Qt > 4
 
     def _setup_style(self):
         self.setWordWrap(False)
@@ -279,5 +294,6 @@ class DataFrameTable(RawWidget):
             table.setModel(df_model)
 
     def current_changed(self, current_item, previous_item):
+
         self.selected_row = current_item.row()
         self.selected_index = self.data_frame.index[current_item.row()]
