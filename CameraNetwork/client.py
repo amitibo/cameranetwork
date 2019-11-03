@@ -163,12 +163,12 @@ class Client(MDPClient):
         status, cmd, args, kwds = cPickle.loads(msg[0])
 
         #
-        # Call the coresponding cmd callback.
+        # Call the corresponding cmd callback.
         #
         self.handle_receive(msg_extra, service, status, cmd, args, kwds)
 
     def on_timeout(self):
-        """Public method called when a timeout occured.
+        """Public method called when a timeout occurred.
 
         .. note:: Does nothing. Should be overloaded!
         """

@@ -59,7 +59,7 @@ def main():
         help='Skip starting the default tunnel')
     parser.add_argument(
         '--log_level',
-        default='INFO',
+        default='DEBUG',
         help='Set the log level (possible values: info, debug, ...)')
     args = parser.parse_args()
 
@@ -109,7 +109,8 @@ def main():
 
                 if failures_cnt > camera_settings[gs.INTERNET_FAILURE_THRESH]:
                     logging.error('Failed to connect 3G modem. Will reboot...')
-                    os.system('sudo reboot')
+                    # TODO Long term fix
+                    os.system('sync; sudo reboot -f')  # Changed from 'sudo reboot', workaround for reboot hanging
 
                 logging.error(
                     'Failed to retrieve proxy parameters. will sleep and try again later.')
@@ -148,7 +149,8 @@ def main():
             logging.debug('Internet watchdog: failure number: %d.' % failures_cnt)
             if failures_cnt > camera_settings[gs.INTERNET_FAILURE_THRESH]:
                 logging.error('Failed to connect 3G modem. Will reboot...')
-                os.system('sudo reboot')
+                # TODO Long term fix
+                os.system('sync; sudo reboot -f')  # Changed from 'sudo reboot', workaround for reboot hanging
         else:
             logging.debug('Internet watchdog: succeed.')
             failures_cnt = 0

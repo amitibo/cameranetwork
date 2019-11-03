@@ -6,18 +6,18 @@ Installation
 
 .. contents:: Table of Contents
 
-Introduction
+Installation
 ============
 
 The ``CameraNetwork`` system is made of three logical parts:
 
-#. *Server*: The camera unit. The server performs the actual measuremetns.
+#. *Server*: The camera unit. The server performs the actual measurements.
 #. *Client*: A program that enables remote control of servers.
 #. *Proxy*: A program that bridges and manages the communication between the *Servers* and *Clients*.
 
 There can be multiple *Servers* and *Clients* but only one *proxy*.
 
-The ``CameraNetwork`` pacakge contains the code for both the *Server*, *Client* and *Proxy* subsystems.
+The ``CameraNetwork`` package contains the code for both the *Server*, *Client* and *Proxy* subsystems.
 This simplifies the deployment and enables code reuse. The installation procedures is similar for the
 three components but differs due to the different platforms.
 
@@ -25,7 +25,7 @@ The ``CameraNetwork`` is implemented completely in `Python <http://www.python.or
 
 
 Installation - Client
-=====================
+---------------------
 #. Install conda. Tested on conda 4.7.11
 #. Clone the cameranetwork package::
 
@@ -34,7 +34,9 @@ Installation - Client
 
     cd cameranetwork
 
-#. Create conda virtual environment from *cn_client_ubuntu18.yml*
+#. Create virtual env:
+
+    LINUX: Create conda virtual environment from *cn_client_ubuntu18.yml*
 
     ::
 
@@ -43,6 +45,28 @@ Installation - Client
     .. Note::
 
         The first line of sets the new environment's name (currently *cn_client*)
+
+    WINDOWS (exact procedure)::
+
+        # Create new environment with name: cn_client
+
+        conda create -n cn_client --yes
+
+        conda activate cn_client
+
+        conda config --env --set restore_free_channel true
+
+        conda config --env --append channels conda-forge
+
+        conda install python=2.7 pip paramiko cython tornado=4.5.3 futures numpy scipy matplotlib beautifulsoup4 scikit-learn scikit-image pyside requests ephem pandas=0.19.2 ipython pyfirmata joblib pyzmq enaml pillow traits pyqtgraph pyopengl vtk mayavi opencv git mercurial
+
+
+
+        # pip install pymap3d, traits-enaml and pyfisheye
+        # Note, this installs pyfisheye without cloning it. For development of pyfisheye clone and install manually from https://bitbucket.org/amitibo/pyfisheye (TODO: migrate pyfisheye codebase to github)
+
+        python -m pip install pymap3d==1.1.1 git+https://github.com/enthought/traits-enaml.git@update-data-frame-table  hg+https://bitbucket.org/amitibo/pyfisheye
+
 
         
 #. Activate the environment::
@@ -65,8 +89,8 @@ Installation - Client
     python scripts_client/camera_client.py
 
 
-Installing the Server
-=====================
+Installation - Server
+---------------------
 
 The server software is run on an `Odroid U3 <http://www.hardkernel.com/main/products/prdt_info.php?g_code=g138745696275>`_
 as at the time of selection it offered a unique balance between capabilities and cost. Nonetheless it should be straight
@@ -78,18 +102,36 @@ once the package is installed on one computer, it is much more time effective to
 memory card and duplicate it as needed.
 
 
+Installation - Proxy
+--------------------
 
-Others
-======
-Circuit Board connections
--------------------------
+Currently the code assumes that the proxy server is run on an ec2 instance.
+Installation on the proxy follows the same steps of installation on the
+client.
+
+To run the proxy program, do::
+
+    start_proxy.py
+
+Installation - Calibration Station
+----------------------------------
+
+
+Camera setup
+------------
+
+Arduino connections
+`````````````````````````
+
 Savox SunShader Servo pins:
 
 #. Brown (Gnd) = Gnd
 #. Red (5V) = 5V
 #. Orange (Signal) = PIN NUM
 
-Installation - Old Reference
+
+
+Installation - OLD
 ============================
 Prerequisites
 -------------
@@ -173,20 +215,10 @@ Run the camera setup script to setup the camera environment.
 
 You will be asked for a camera id. Enter a unique camera id number.
 
-Installing the Proxy
-====================
-
-Currently the code assumes that the proxy server is run on an ec2 instance.
-Installation on the proxy follows the same steps of installation on the
-client.
-
-To run the proxy program, do:
-
-    > start_proxy.py
 
 
 Installing the Client
-=====================
+---------------------
 
 It is recommended to install python using the `Anaconda <https://www.continuum.io/downloads>`_ distribution.
 Install the ``CameraNetwork`` package::
@@ -196,7 +228,7 @@ Install the ``CameraNetwork`` package::
     > python setup.py develop --user
 
 Installing the Calibration Station
-==================================
+----------------------------------
 
 It is recommended to install python using the `Anaconda <https://www.continuum.io/downloads>`_ distribution.
 Install the ``CameraNetwork`` package::
@@ -255,12 +287,3 @@ Shubi reference
     ..    note::
 
         without --user it installs the scripts for all users (Windows: C:\ProgramData\Anaconda2\Scripts)
-
-
-
-Circuit Board connections
-=========================
-Savox SunShader Servo:
-#. Brown (Gnd) = Gnd
-#. Red (5V) = 5V
-#. Orange (Signal) = PIN NUM

@@ -36,7 +36,7 @@
 ##
 """Run a GUI Client.
 
-A GUI client allows easy access to cameras thier settings and their
+A GUI client allows easy access to cameras their settings and their
 measurements.
 """
 from __future__ import division
@@ -727,7 +727,7 @@ class TimesModel(Atom):
         if server_id in self.images_df.columns:
             new_df.drop(server_id, axis=1, inplace=True)
         new_df = pd.concat((new_df, images_series), axis=1)
-        new_df = new_df.reindex_axis(sorted(new_df.columns), axis=1)
+        new_df = new_df.reindex(sorted(new_df.columns), axis=1)
 
         self.images_df = new_df
 

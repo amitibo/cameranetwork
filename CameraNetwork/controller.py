@@ -464,9 +464,7 @@ class Controller(object):
                     data.index = data.index.time
                     angles.append(data['sunshader_angle'])
 
-                self.sunshader_angles_df = pd.concat(
-                    angles, axis=1
-                ).mean(axis=1).to_frame(name='angle')
+                self.sunshader_angles_df = pd.concat(angles, axis=1, sort=True).mean(axis=1).to_frame(name='angle')
             else:
                 self.sunshader_angles_df = pd.DataFrame(dict(angle=[]))
 
@@ -534,7 +532,7 @@ class Controller(object):
                     self.start_camera()
                 except Exception as e:
                     logging.exception(
-                        'The camera failed restarting. Reboot.'
+                        'The camera failed restarting. Rebooting.'
                     )
                     logging.shutdown()
                     time.sleep(120)
@@ -1588,9 +1586,7 @@ class Controller(object):
             #
             # Capture the array.
             #
-            img_array, exposure_us, gain_db = self.safe_capture(
-                capture_settings, frames_num
-            )
+            img_array, exposure_us, gain_db = self.safe_capture(capture_settings, frames_num)
 
             #
             # update image data object.

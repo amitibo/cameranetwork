@@ -14,7 +14,8 @@ from CameraNetwork.gui.image_analysis import ImageAnalysis
 from CameraNetwork.gui.mayavi_canvas import MayaviCanvas
 
 from .extra import GradientButtonSheet
-from .popups import ImageDataPopup
+from .popups import (ImageDataPopup, MsgDataPopup)
+#from .popups import ImageDataPopup TODO Check if fixes issue #6
 from .server_pages import (MainControlsPage, ImageControlPage, SeekControlPage,
     SunshaderControlPage, SprinklerControlPage, IntrinsicControlPage,
     ExtrinsicControlPage, RadiometricControlPage)

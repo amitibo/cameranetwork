@@ -62,7 +62,7 @@ sys.path.insert(0, os.path.abspath('../../scripts_calibrate'))
 sys.path.insert(0, os.path.abspath('../../scripts_client'))
 sys.path.insert(0, os.path.abspath('../../scripts_proxy'))
 sys.path.insert(0, os.path.abspath('../../scripts_sunphotometer'))
-# TODO Change to more Robust solution numpy
+# TODO Change to more Robust solution numfig
 sys.path.insert(0, os.path.abspath('../../../../.local/lib/python2.7/site-packages/sphinx/ext'))
 
 
@@ -76,7 +76,7 @@ sys.path.insert(0, os.path.abspath('../../../../.local/lib/python2.7/site-packag
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
-    'numfig',
+#     'sphinx.ext.numfig', # Commented so that readthedocs will work
     'sphinx.ext.autodoc',
     'sphinx.ext.intersphinx',
     'sphinx.ext.todo',
@@ -87,6 +87,8 @@ extensions = [
     'sphinx.ext.githubpages',
     'sphinx.ext.napoleon'
 ]
+
+numfig = True
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']

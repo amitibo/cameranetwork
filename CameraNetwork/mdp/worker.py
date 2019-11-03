@@ -158,7 +158,6 @@ class MDPWorker(object):
         #
         logging.debug('Worker lost connection')
         self.shutdown()
-
         #
         # try to recreate the connection
         #
