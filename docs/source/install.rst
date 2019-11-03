@@ -46,7 +46,7 @@ Installation - Client
 
         The first line of sets the new environment's name (currently *cn_client*)
 
-    WINDOWS::
+    WINDOWS (exact procedure)::
 
         # Create new environment with name: cn_client
 
@@ -58,14 +58,14 @@ Installation - Client
 
         conda config --env --append channels conda-forge
 
-        conda install python=2.7 pip paramiko cython tornado=4.5.3 futures numpy scipy matplotlib beautifulsoup4 scikit-learn scikit-image pyside requests ephem pandas ipython pyfirmata joblib pyzmq enaml pillow traits pyqtgraph pyopengl vtk mayavi opencv git mercurial
+        conda install python=2.7 pip paramiko cython tornado=4.5.3 futures numpy scipy matplotlib beautifulsoup4 scikit-learn scikit-image pyside requests ephem pandas=0.19.2 ipython pyfirmata joblib pyzmq enaml pillow traits pyqtgraph pyopengl vtk mayavi opencv git mercurial
 
 
 
         # pip install pymap3d, traits-enaml and pyfisheye
         # Note, this installs pyfisheye without cloning it. For development of pyfisheye clone and install manually from https://bitbucket.org/amitibo/pyfisheye (TODO: migrate pyfisheye codebase to github)
 
-        python -m pip install pymap3d==1.8.1 git+https://github.com/enthought/traits-enaml.git@update-data-frame-table  hg+https://bitbucket.org/amitibo/pyfisheye
+        python -m pip install pymap3d==1.1.1 git+https://github.com/enthought/traits-enaml.git@update-data-frame-table  hg+https://bitbucket.org/amitibo/pyfisheye
 
 
         
