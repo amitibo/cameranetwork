@@ -62,7 +62,7 @@ WD_INTERNET_FAILURE_THRESH = 2  # Changed from 0
 DEFAULT_PROXY_PARAMS = """
 {
     "autossh_monitor_port": 10000,
-    "ip": "3.123.49.101",
+    "ip": "3.123.47.23",
     "proxy_port": 1980,
     "client_port": 1981,
     "hb_port": 1985,
