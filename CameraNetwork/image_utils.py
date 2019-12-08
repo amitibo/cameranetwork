@@ -300,7 +300,7 @@ class Normalization(object):
         #
         # Create a grid of directions.
         # The coordinates create a 'linear' fisheye, where the distance
-        # from the center ranges between 0-pi/2 linearily.
+        # from the center ranges between 0-pi/2 linearly.
         #
         X, Y = np.meshgrid(
             np.linspace(-1, 1, self.resolution),
@@ -410,8 +410,7 @@ class Normalization(object):
             ).astype(np.bool)
 
         #
-        # TODO:
-        # Implement radiometric correction
+        # TODO: Implement radiometric correction compare with RadiometricCalibration.applyRadiometric() in calibration.py
         #
         #normalized_img = radiometric_correction(normalized_img, self._radiometric_model).astype(np.uint8)
         normalized_img = normalized_img.astype(img_dtype)
