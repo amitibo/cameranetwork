@@ -300,7 +300,7 @@ class Normalization(object):
         #
         # Create a grid of directions.
         # The coordinates create a 'linear' fisheye, where the distance
-        # from the center ranges between 0-pi/2 linearily.
+        # from the center ranges between 0-pi/2 linearly.
         #
         X, Y = np.meshgrid(
             np.linspace(-1, 1, self.resolution),
