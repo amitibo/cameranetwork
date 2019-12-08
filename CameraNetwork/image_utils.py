@@ -410,8 +410,7 @@ class Normalization(object):
             ).astype(np.bool)
 
         #
-        # TODO:
-        # Implement radiometric correction
+        # TODO: Implement radiometric correction compare with RadiometricCalibration.applyRadiometric() in calibration.py
         #
         #normalized_img = radiometric_correction(normalized_img, self._radiometric_model).astype(np.uint8)
         normalized_img = normalized_img.astype(img_dtype)

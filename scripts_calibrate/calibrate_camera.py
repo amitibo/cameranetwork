@@ -205,7 +205,7 @@ def main():
                 img, _, _ = cam.capture(settings, frames_num=1)
 
                 #
-                # Save image for debuging the calibration process.
+                # Save image for debugging the calibration process.
                 #
                 cv2.imwrite(
                     os.path.join(results_path, 'geometric', 'img_{:03}.jpg'.format(img_index)),

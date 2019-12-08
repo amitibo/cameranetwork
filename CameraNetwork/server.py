@@ -829,7 +829,7 @@ class Server(MDPWorker):
             gain_boost (bool, optional): Analog gain boost. Default False.
             color_mode (int, optional): Color mode of image. Default RAW.
             frames_num (int, optional): Number of frames to capture. Default 1.
-            jpeg (bool, optional): Whether to whether to compress as jpeg. Default False.
+            jpeg (bool, optional): Whether to compress as jpeg. Default False.
             normalize (bool, optional): Whether to normalize the image. Default True.
 
         Returns:
