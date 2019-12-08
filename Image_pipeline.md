@@ -11,7 +11,7 @@ Note: This function is called from [seekImageArray()]('CameraNetwork/controller.
 that means that the saved images are before prepossessing, and one needs to call one of these in order to apply the prepossessing. 
 
 ## Prepossessing using GUI:
-###1. Masking & Space carving:
+### 1. Masking & Space carving:
 1. 2D *grabcut*: choose under "Arrays" tab: "view settings"-> space carving. it creates a cloud mask based on dilation operation (Applied by a maximum filter). This operation is done in ArrayModel._update_cloud_weights() ([here](https://github.com/Addalin/cameranetwork/blob/f26cdd785dabfc6f8d217a0e9b16fa1870d26fa9/CameraNetwork/gui/main.py#L954))
 2. 2D *sunshader*: choose under "Arrays" tab: view settings-> sun shader.   it creates a sunshader mask based on *erosiom* operation (Since the mask is an inversion of the sunshader.) This is done in  calcSunshaderMask() ([here](https://github.com/Addalin/cameranetwork/blob/945e9e8519216d2bd8a75afa6e650367d8f7ee88/CameraNetwork/image_utils.py#L544)).
 
@@ -41,7 +41,7 @@ Which of the objects is being used in the final mask calculation of the image?
  Also, maybe we need to update the mesh visualization of ROI in 3D.  
 
 3. ***TODO*** Find a way to calculate the ROI automatically based on the grid projection?  
-###2. Extrinsic calibration
+### 2. Extrinsic calibration
 This proccess is done according to sun position and sunshader. 
 The process should apply for a sunny day having clear sky, and requires two steps:
 1. [handle_sunshader_scan()](https://github.com/Addalin/cameranetwork/blob/4f6a0b01111725799e6796dbf206f624a99c231b/CameraNetwork/server.py#L1066-L1088) - 
@@ -60,7 +60,7 @@ To save all cameras extrinsic calibration: "Arrays" --> "Save Extrinsic" (saves 
 
 
 
-###3. Radiometric calibration:
+### 3. Radiometric calibration:
 To make radiometric calibration with a sunphotometer, the camera should stay close to the sunphotometer, and make the measurements in a clear sky day. 
 
 To get the sunphotometer measurements: download files from NASA's [AERONET site](https://aeronet.gsfc.nasa.gov/cgi-bin/webtool_inv_v3?stage=3&region=Middle_East&state=Israel&site=Technion_Haifa_IL&place_code=10&if_polarized=0).
