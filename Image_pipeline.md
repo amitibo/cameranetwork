@@ -103,7 +103,7 @@ To save all cameras extrinsic calibration:
 
 Graphical Result:
 
-[extrinsic](docs/source/images/snapshot_extrinsic.png)
+![extrinsic](docs/source/images/snapshot_extrinsic.png)
 
 ### 3. Radiometric calibration:
 To perform radiometric calibration with a sunphotometer, 
@@ -131,7 +131,7 @@ To get the sunphotometer measurements:
 
 For example:
 
-[Radiometric](docs/source/images/radiometric_calibration.png)
+![Radiometric](docs/source/images/radiometric_calibration.png)
 
 ##### Questions regarding radiometric calibration:  
 1. What are the final conversion units?
