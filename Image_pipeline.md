@@ -77,6 +77,9 @@ The radiometric results are saved to radiometric.pkl under the camera's folder.
 1. What are the final conversion units?
 2. What inputs/changes are required for a new experiment?
 
+###4. 3D grid and space curving:
+
+
 ### TODO: Other issues to cover regarding image pipeline: 
 1. Space curving - the transition from 2d and 3d.
 2. Calculate pixels phase function.?
