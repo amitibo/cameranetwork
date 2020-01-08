@@ -95,6 +95,7 @@ To apply the extrinsic calibration from the GUI:
  `extrinsic calibrate` 
   - Also saves the extrinsic_data.npy in camera folder.
 
+
 To save all cameras extrinsic calibration: 
 
   - `Arrays` --> `Save Extrinsic`
@@ -105,11 +106,13 @@ Graphical Result:
 
 ![extrinsic](docs/source/images/snapshot_extrinsic.png)
 
+
 ### 3. Radiometric calibration:
 To perform radiometric calibration with a sunphotometer, 
 the camera should be close to the sunphotometer, and the measurements should be done in a clear sky day. 
 
 To get the sunphotometer measurements: 
+
 1. Download files from NASA's [AERONET site](https://aeronet.gsfc.nasa.gov/cgi-bin/webtool_inv_v3?stage=3&region=Middle_East&state=Israel&site=Technion_Haifa_IL&place_code=10&if_polarized=0).
 
     - All the current files can be found under `.../data/aeronet`. 
@@ -117,7 +120,8 @@ To get the sunphotometer measurements:
     - Some manipulation, such as deleting first rows, might be needed for new data. 
 
     - The meaning of numbers and measurements can be found [here](https://aeronet.gsfc.nasa.gov/new_web/units.html). 
-        - Specifically: irradiance sunphotometer units are [uW/cm^2/sr/nm].  (\\TODO : check how to write this in a letex way...)
+
+        - Specifically: irradiance sunphotometer units are ![formula](https://render.githubusercontent.com/render/math?math=uW/cm^2/sr/nm).
 
 2. The function [handle_radiometric()](https://github.com/Addalin/cameranetwork/blob/3552f2453f3d42942ae6f90c2245b9ccb7c3dbce/CameraNetwork/controller.py#L1095-L1178):
 
@@ -131,7 +135,8 @@ To get the sunphotometer measurements:
 
 For example:
 
-![Radiometric](docs/source/images/radiometric_calibration.png)
+[Radiometric](docs/source/images/radiometric_calibration.png)
+
 
 ##### Questions regarding radiometric calibration:  
 1. What are the final conversion units?
