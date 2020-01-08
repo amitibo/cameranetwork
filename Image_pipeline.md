@@ -156,17 +156,31 @@ The 3D NED grid is of size 12 X 12 X 10 [km^3], having 81 X 81 X 121 voxels, eac
 The 3D grid is projected to a 2D grid on the image plane, shown as red dots on image plane).
 This is done when choosing: `View settings`-->`Widgets`--> `show grid`. 
 
-// TODO : add snapshots of the 3d view and image with red dotted grid. 
+
+![roi_grid_los_and_settings](docs/source/images/roi_grid_los_and_settings.png)
+
 
 This method is also being used when computing the [space carve](https://github.com/Addalin/cameranetwork/blob/fa7d2b2f29d5217cdc2b216ae55d147393e9db0d/CameraNetwork/image_utils.py#L738-L810) score per each view.
-This is done when choosing in the map view `Space carving`-->`Show space carving`.
+This is done when choosing in the map view `Space carving`--> `Update` --> `Show space carving`.
 
-// TODO : add snapshots of the map with the space carving. 
+![space_carving](docs/source/images/space_carving.png)
 
 Another usage of this method is when applying [Update LOS](https://github.com/Addalin/cameranetwork/blob/c69dda2adc041dc2dc98660b34e57769213f23a9/CameraNetwork/gui/main.py#L620-L667). Ths function converts the  also uses 
 LOS of a single image to the epipolar lines on all other images.
 
-// TODO : add snapshot of showing LOS and how to get to it. 
+
+![camera_array-los1](docs/source/images/camera_array.png)
+
+To change the line of sight, simply press inside any oen of the images. The others should updat automatically.
+
+![los2](docs/source/images/los2.png)
+
+The change should also be visible in the map if `show LOS` has been enabled. 
+
+The 3D grid and ROI can also be seen in the map.
+
+![map_los_roi_grid](docs/source/images/map_los_roi_grid.png)
+
 
 2. The main process [do_space_carving()](https://github.com/Addalin/cameranetwork/blob/c69dda2adc041dc2dc98660b34e57769213f23a9/CameraNetwork/gui/main.py#L317-L337) of the 3D grid, calls visual hall calculation, using a process pool. 
 [calc_visual_hull()](https://github.com/Addalin/cameranetwork/blob/2583c47e52d937ba70c5d7f9293d970c0fcba428/CameraNetwork/image_utils.py#L655-L739) runs space carve per each view separately, and collects their results.   
