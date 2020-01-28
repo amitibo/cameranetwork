@@ -1396,7 +1396,7 @@ class Controller(object):
             correct_radiometric=True,
             ignore_date_extrinsic=False
     ):
-        """Apply preprocessing to the raw array:
+        """Apply pre-processing to the raw array:
         dark_image subtraction, normalization, vignetting, HDR...
 
         Args:
