@@ -113,7 +113,7 @@ To connect to the proxy
 
 If this is the initial setup of the proxy server::
 
-    screen _S session_name
+    screen -S session_name
     python ./code/cameranetwork/scripts_proxy/start_proxy.py --log_level info
 
 Should be run from the root of the server, otherwise the logs would be put in a different location each time.
