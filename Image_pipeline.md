@@ -122,7 +122,7 @@ To get the sunphotometer measurements:
 
     - The meaning of numbers and measurements can be found [here](https://aeronet.gsfc.nasa.gov/new_web/units.html). 
 
-        - Specifically: irradiance sunphotometer units are ![formula](https://render.githubusercontent.com/render/math?math=uW/cm^2/sr/nm).
+    - Specifically: irradiance sunphotometer units are ![formula](https://render.githubusercontent.com/render/math?math=uW/cm^2/sr/nm).
 
 2. The function [handle_radiometric()](https://github.com/Addalin/cameranetwork/blob/3552f2453f3d42942ae6f90c2245b9ccb7c3dbce/CameraNetwork/controller.py#L1095-L1178):
 
@@ -149,7 +149,8 @@ The [geographic coordinate systems](https://en.wikipedia.org/wiki/Geographic_coo
 2. The NED (North East Down) grid (X,Y,Z) is used for visualization and reconstruction grid.
 
 See their definitions in the project [here](https://github.com/Addalin/cameranetwork/blob/c69dda2adc041dc2dc98660b34e57769213f23a9/CameraNetwork/gui/main.py#L1393-L1420). 
-image of the relation between both coordinates systems: https://en.wikipedia.org/wiki/Geographic_coordinate_system#/media/File:ECEF_ENU_Longitude_Latitude_relationships.svg
+image of the relation between both coordinates systems: ![ECEF_ENU](https://en.wikipedia.org/wiki/Geographic_coordinate_system#/media/File:ECEF_ENU_Longitude_Latitude_relationships.svg)
+
 // TODO : add the image to here.
  
 There are several conversion processes that are being done: 
