@@ -175,7 +175,7 @@ LOS of a single image to the epipolar lines on all other images.
 
 ![camera_array-los1](docs/source/images/camera_array.png)
 
-To change the line of sight, simply press inside any oen of the images. The others should updat automatically.
+To change the line of sight, simply press inside any one of the images. The others should update automatically.
 
 ![los2](docs/source/images/los2.png)
 
