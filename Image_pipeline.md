@@ -149,9 +149,9 @@ The [geographic coordinate systems](https://en.wikipedia.org/wiki/Geographic_coo
 2. The NED (North East Down) grid (X,Y,Z) is used for visualization and reconstruction grid.
 
 See their definitions in the project [here](https://github.com/Addalin/cameranetwork/blob/c69dda2adc041dc2dc98660b34e57769213f23a9/CameraNetwork/gui/main.py#L1393-L1420). 
-image of the relation between both coordinates systems: ![ECEF_ENU](https://en.wikipedia.org/wiki/Geographic_coordinate_system#/media/File:ECEF_ENU_Longitude_Latitude_relationships.svg)
+image of the relation between both coordinates systems: 
 
-// TODO : add the image to here.
+![ECEF_ENU](docs/source/images/ECEF_ENU_Longitude_Latitude_relationships.png)
  
 There are several conversion processes that are being done: 
 
