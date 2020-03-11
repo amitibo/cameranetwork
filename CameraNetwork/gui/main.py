@@ -530,7 +530,7 @@ class Map3dModel(Atom):
         #
         self.LOS_vectors = None
 
-        self.draw_map()
+        #self.draw_map() # Uncomment to re-enable drawing of map by default
         self.draw_grid()
 
     def draw_map(self):
