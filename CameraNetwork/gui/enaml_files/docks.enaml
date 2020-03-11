@@ -316,8 +316,7 @@ enamldef MapperView(DockItem): mapper_view:
                     clouds_pb,
                     clouds_cb,
                     beta_pb,
-                    beta_cb,
-                    map_pb
+                    beta_cb
                 ),
             ),
         ]
@@ -365,10 +364,6 @@ enamldef MapperView(DockItem): mapper_view:
             checked := map3d.show_beta
             text = "Show Beta"
 
-        PushButton: map_pb:
-            text = "Show Map"
-            clicked ::
-                map3d.draw_map()
 
 
 ################################################################################

@@ -530,7 +530,7 @@ class Map3dModel(Atom):
         #
         self.LOS_vectors = None
 
-        #self.draw_map() # Uncomment to re-enable drawing of map by default
+        self.draw_map()
         self.draw_grid()
 
     def draw_map(self):
@@ -560,11 +560,12 @@ class Map3dModel(Atom):
 
         mayavi_scene = self.map_scene.mayavi_scene
 
-        s = self.map_scene.mlab.surf(Y, X, MAP_ZSCALE * Z, figure=mayavi_scene, color=(1.,1.,1.))
+        s = self.map_scene.mlab.surf(Y, X, MAP_ZSCALE * Z, figure=mayavi_scene, color=(1.,1.,1.), name='map1')
         s.actor.actor.mapper.scalar_visibility = False
         s.actor.enable_texture = True
         s.actor.tcoord_generator_mode = 'plane'
         s.actor.actor.texture = texture
+
 
     def updateROImesh(self, server_id, pts, shape):
         """Update the 3D visualization of the camera ROI."""
