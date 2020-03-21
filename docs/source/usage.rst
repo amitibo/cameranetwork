@@ -152,7 +152,7 @@ Useful commands
 - `etcher <https://www.balena.io/etcher/>`_ to flash image onto the SD card
 - ``grep -a -e "Unregistering worker 236" -e "Registering new worker 236" cameralog_190929_092735_proxy.txt``
     to see connections and disconnections. replace log.txt with * for all logs in folder.
-- ``du -h --max-depth=1 | sort -hr`` to see size of all subfolders     
+- ``du -ah --max-depth=1 | sort -hr`` to see size of all subfolders and files    
  
 
 
