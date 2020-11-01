@@ -155,6 +155,8 @@ def exportToShdom(
             MASK=array_view.image_widget.getArrayRegion(joint_mask),
             SUN_MASK=array_view.image_widget.getArrayRegion(array_model.sun_mask),
             Visibility=visibility,
+            manual_mask=manual_mask,
+            sunshader_mask=array_model.sunshader_mask
         )
 
         deferred_call(progress_callback, i / progress_cnt)
