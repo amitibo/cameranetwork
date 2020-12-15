@@ -155,6 +155,9 @@ def exportToShdom(
             MASK=array_view.image_widget.getArrayRegion(joint_mask),
             SUN_MASK=array_view.image_widget.getArrayRegion(array_model.sun_mask),
             Visibility=visibility,
+            manual_mask = manual_mask,
+            cloud_mask= array_model.cloud_weights,
+            sunshader_mask=array_model.sunshader_mask
         )
 
         deferred_call(progress_callback, i / progress_cnt)
@@ -263,8 +266,8 @@ def calcROIbounds(array_model, array_view):
     #
     # Get the transform from the ROI to the data.
     #
-    _, tr = roi.getArraySlice(array_model.img_array, array_view.image_widget.img_item)
 
+    #~, tr = roi.getArraySlice(array_model.img_array, array_view.image_widget.img_item)
     #
     # Calculate the bounds.
     #
