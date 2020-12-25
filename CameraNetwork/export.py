@@ -145,6 +145,7 @@ def exportToShdom(
             )
             continue
 
+
         export_data[server_id] = dict(
             extra_data=extra_data,
             R=array_view.image_widget.getArrayRegion(img_array[..., 0]),
@@ -152,12 +153,13 @@ def exportToShdom(
             B=array_view.image_widget.getArrayRegion(img_array[..., 2]),
             PHI=PHI_shdom,
             PSI=PSI_shdom,
-            MASK=array_view.image_widget.getArrayRegion(joint_mask),
-            SUN_MASK=array_view.image_widget.getArrayRegion(array_model.sun_mask),
-            Visibility=visibility,
-            manual_mask = manual_mask,
-            cloud_mask= array_model.cloud_weights,
-            sunshader_mask=array_model.sunshader_mask
+            MASK = array_view.image_widget.getArrayRegion(joint_mask),
+            SUN_MASK =  array_view.image_widget.getArrayRegion(array_model.sun_mask),
+            Visibility = visibility,
+            manual_mask = array_view.image_widget.getArrayRegion(manual_mask),
+            cloud_mask = array_view.image_widget.getArrayRegion(array_model.cloud_weights),
+            sunshader_mask = array_view.image_widget.getArrayRegion(array_model.sunshader_mask)
+            # TODO: check the output with returnMappedCoords=True in getArrayRegion()
         )
 
         deferred_call(progress_callback, i / progress_cnt)
