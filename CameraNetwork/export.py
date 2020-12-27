@@ -37,6 +37,7 @@
 """
 from __future__ import division
 from CameraNetwork.utils import sun_direction
+from CameraNetwork.image_utils import calcSunMaskRect
 import cPickle
 import cv2
 from enaml.application import deferred_call, is_main_thread
@@ -126,6 +127,14 @@ def exportToShdom(
             manual_mask = array_view.image_widget.mask
             joint_mask = (manual_mask * array_model.sunshader_mask).astype(np.uint8)
 
+            # calculate rectangle around sun mask
+            rect_sun_mask = calcSunMaskRect (
+                array_model.img_array.shape ,
+                sun_alt ,
+                sun_az ,
+                radius = array_model.sun_mask_radius
+            )
+
             #
             # Project the grid on the image and check viewed voxels.
             # Note:
@@ -158,8 +167,9 @@ def exportToShdom(
             Visibility = visibility,
             manual_mask = array_view.image_widget.getArrayRegion(manual_mask),
             cloud_mask = array_view.image_widget.getArrayRegion(array_model.cloud_weights),
-            sunshader_mask = array_view.image_widget.getArrayRegion(array_model.sunshader_mask)
-            # TODO: check the output with returnMappedCoords=True in getArrayRegion()
+            sunshader_mask = array_view.image_widget.getArrayRegion(array_model.sunshader_mask),
+            rect_sun_mask = array_view.image_widget.getArrayRegion(rect_sun_mask)
+            # TODO: check why getArrayRegion() fails when sending returnMappedCoords=True
         )
 
         deferred_call(progress_callback, i / progress_cnt)
