@@ -136,8 +136,7 @@ To get the sunphotometer measurements:
 
 For example:
 
-[Radiometric](docs/source/images/radiometric_calibration.png)
-
+![Radiometric](docs/source/images/radiometric_calibration.png)
 
 ##### Questions regarding radiometric calibration:  
 1. What are the final conversion units?
@@ -146,13 +145,22 @@ For example:
 ### 4. 3D grid and space curving:
 The [geographic coordinate systems](https://en.wikipedia.org/wiki/Geographic_coordinate_system) that are used here are: 
 1. The ECEF (earth-centered, earth-fixed frame) is the common 3D grid that is being used for moving the point-of-view (the observing camera) around the grid conveniently according to cameras' location (Latitude (\phi), longitude (\lambda),X_ecef,Y_ecef,Z_ecef). 
-2. The NED (North East Down) grid (X,Y,Z) is used for visualization and reconstruction grid.
+
+![ECEF](docs/source/images/ECEF.png)
+
+2. Local tangent plane coordinates (LTP). The NEU (North East Up) uses grid (X,Y,Z) as follows:
+ ![ECEF2ENU](docs/source/images/ECEF2ENU.png)
 
 See their definitions in the project [here](https://github.com/Addalin/cameranetwork/blob/c69dda2adc041dc2dc98660b34e57769213f23a9/CameraNetwork/gui/main.py#L1393-L1420). 
 image of the relation between both coordinates systems: 
 
 ![ECEF_ENU](docs/source/images/ECEF_ENU_Longitude_Latitude_relationships.png)
  
+In *cameranetwork*, the NED (North East Down) grid (X,Y,-Z) convention, is used for visualization and reconstruction grid.
+
+
+See their definitions in the project [here](https://github.com/Addalin/cameranetwork/blob/c69dda2adc041dc2dc98660b34e57769213f23a9/CameraNetwork/gui/main.py#L1393-L1420). 
+
 There are several conversion processes that are being done: 
 
 1. [ProjectGrid()](https://github.com/Addalin/cameranetwork/blob/fa7d2b2f29d5217cdc2b216ae55d147393e9db0d/CameraNetwork/image_utils.py#L615-L645) - Projecting the 3D grid of the interest volume, onto image plane. Which uses ecef2ned in [projectECEF()](https://github.com/Addalin/cameranetwork/blob/c69dda2adc041dc2dc98660b34e57769213f23a9/CameraNetwork/gui/main.py#L881-L933). 

@@ -37,6 +37,7 @@
 """
 from __future__ import division
 from CameraNetwork.utils import sun_direction
+from CameraNetwork.image_utils import calcSunMaskRect
 import cPickle
 import cv2
 from enaml.application import deferred_call, is_main_thread
@@ -126,6 +127,14 @@ def exportToShdom(
             manual_mask = array_view.image_widget.mask
             joint_mask = (manual_mask * array_model.sunshader_mask).astype(np.uint8)
 
+            # calculate rectangle around sun mask
+            rect_sun_mask = calcSunMaskRect (
+                array_model.img_array.shape ,
+                sun_alt ,
+                sun_az ,
+                radius = array_model.sun_mask_radius
+            )
+
             #
             # Project the grid on the image and check viewed voxels.
             # Note:
@@ -145,6 +154,7 @@ def exportToShdom(
             )
             continue
 
+
         export_data[server_id] = dict(
             extra_data=extra_data,
             R=array_view.image_widget.getArrayRegion(img_array[..., 0]),
@@ -152,9 +162,14 @@ def exportToShdom(
             B=array_view.image_widget.getArrayRegion(img_array[..., 2]),
             PHI=PHI_shdom,
             PSI=PSI_shdom,
-            MASK=array_view.image_widget.getArrayRegion(joint_mask),
-            SUN_MASK=array_view.image_widget.getArrayRegion(array_model.sun_mask),
-            Visibility=visibility,
+            MASK = array_view.image_widget.getArrayRegion(joint_mask),
+            SUN_MASK =  array_view.image_widget.getArrayRegion(array_model.sun_mask),
+            Visibility = visibility,
+            manual_mask = array_view.image_widget.getArrayRegion(manual_mask),
+            cloud_mask = array_view.image_widget.getArrayRegion(array_model.cloud_weights),
+            sunshader_mask = array_view.image_widget.getArrayRegion(array_model.sunshader_mask),
+            rect_sun_mask = array_view.image_widget.getArrayRegion(rect_sun_mask)
+            # TODO: check why getArrayRegion() fails when sending returnMappedCoords=True
         )
 
         deferred_call(progress_callback, i / progress_cnt)
@@ -263,8 +278,8 @@ def calcROIbounds(array_model, array_view):
     #
     # Get the transform from the ROI to the data.
     #
-    _, tr = roi.getArraySlice(array_model.img_array, array_view.image_widget.img_item)
 
+    #~, tr = roi.getArraySlice(array_model.img_array, array_view.image_widget.img_item)
     #
     # Calculate the bounds.
     #

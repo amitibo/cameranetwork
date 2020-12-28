@@ -583,12 +583,34 @@ def projectECEFThread(
     #
     deferred_call(setattr, array_model, 'grid_2D', grid_2D)
 
+def rectangle(center_x, center_y, width_x=0.25, width_y=0.25):
+    """Returns a gaussian function with the given parameters"""
+    return lambda x,y : ((np.abs ( center_x - x ) <= width_x) &
+                         (np.abs ( center_y - y ) <= width_y)).astype(np.int)
+
+
 
 def gaussian(center_x, center_y, height=1., width_x=0.25, width_y=0.25):
     """Returns a gaussian function with the given parameters"""
 
     return lambda x, y: height*np.exp(-(((center_x-x)/width_x)**2+((center_y-y)/width_y)**2)/2)
 
+def calcSunMaskRect(img_shape, sun_alt, sun_az, radius=0.25):
+    """Calculate a rectangle of the mask for the sun.
+
+        The sun pixels are weighted by a gaussian.
+        """
+
+    sun_r = (np.pi / 2 - sun_alt) / (np.pi / 2)
+    sun_x = sun_r * np.sin ( sun_az )
+    sun_y = sun_r * np.cos ( sun_az )
+
+    X , Y = np.meshgrid (
+        np.linspace ( -1 , 1 , img_shape [ 1 ] ) ,
+        np.linspace ( -1 , 1 , img_shape [ 0 ] )
+    )
+
+    return rectangle(center_x = sun_x,center_y = sun_y,width_x = radius,width_y = radius)(X,Y)
 
 def calcSunMask(img_shape, sun_alt, sun_az, radius=0.25):
     """Calculate a mask for the sun.
