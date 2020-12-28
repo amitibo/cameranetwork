@@ -122,7 +122,7 @@ To get the sunphotometer measurements:
 
     - The meaning of numbers and measurements can be found [here](https://aeronet.gsfc.nasa.gov/new_web/units.html). 
 
-        - Specifically: irradiance sunphotometer units are ![formula](https://render.githubusercontent.com/render/math?math=uW/cm^2/sr/nm).
+    - Specifically: irradiance sunphotometer units are ![formula](https://render.githubusercontent.com/render/math?math=uW/cm^2/sr/nm).
 
 2. The function [handle_radiometric()](https://github.com/Addalin/cameranetwork/blob/3552f2453f3d42942ae6f90c2245b9ccb7c3dbce/CameraNetwork/controller.py#L1095-L1178):
 
@@ -150,6 +150,11 @@ The [geographic coordinate systems](https://en.wikipedia.org/wiki/Geographic_coo
 
 2. Local tangent plane coordinates (LTP). The NEU (North East Up) uses grid (X,Y,Z) as follows:
  ![ECEF2ENU](docs/source/images/ECEF2ENU.png)
+
+See their definitions in the project [here](https://github.com/Addalin/cameranetwork/blob/c69dda2adc041dc2dc98660b34e57769213f23a9/CameraNetwork/gui/main.py#L1393-L1420). 
+image of the relation between both coordinates systems: 
+
+![ECEF_ENU](docs/source/images/ECEF_ENU_Longitude_Latitude_relationships.png)
  
 In *cameranetwork*, the NED (North East Down) grid (X,Y,-Z) convention, is used for visualization and reconstruction grid.
 
@@ -178,7 +183,7 @@ LOS of a single image to the epipolar lines on all other images.
 
 ![camera_array-los1](docs/source/images/camera_array.png)
 
-To change the line of sight, simply press inside any oen of the images. The others should updat automatically.
+To change the line of sight, simply press inside any one of the images. The others should update automatically.
 
 ![los2](docs/source/images/los2.png)
 
