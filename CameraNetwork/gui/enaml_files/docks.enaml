@@ -465,18 +465,19 @@ enamldef TimesView(DockItem):
             clicked ::
                 main.create_map()
                 index = times.img_index
-                main.broadcast_message(
-                    gs.MSG_TYPE_SEEK,
-                    kwds=dict(
-                        seek_time=index[0],
-                        hdr_index=-1 if HDR_cb.checked else index[1],
-                        normalize=True,
-                        jpeg=quality_fld.value if JPEG_cb.checked else False,
-                        resolution=resolution_fld.value,
-                        correct_radiometric=correct_radiometric_cb.checked,
-                        ignore_date_extrinsic=ignore_date_extrinsics_cb.checked,
+                if len(index) >1:
+                    main.broadcast_message(
+                        gs.MSG_TYPE_SEEK,
+                        kwds=dict(
+                            seek_time=index[0],
+                            hdr_index=-1 if HDR_cb.checked else index[1],
+                            normalize=True,
+                            jpeg=quality_fld.value if JPEG_cb.checked else False,
+                            resolution=resolution_fld.value,
+                            correct_radiometric=correct_radiometric_cb.checked,
+                            ignore_date_extrinsic=ignore_date_extrinsics_cb.checked,
+                        )
                     )
-                )
 
 
 
