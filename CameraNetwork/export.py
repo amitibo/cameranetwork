@@ -294,5 +294,3 @@ def calcROIbounds(array_model, array_view):
     bounding_psi = array_model.fov * np.sqrt(X**2 + Y**2)
 
     return bounding_phi, bounding_psi
-
-

@@ -248,8 +248,9 @@ class FisheyeProxy(object):
         Args:
             distorted (array): nx2 array of distorted image coords (x, y).
 
-        Retruns:
+        Returns:
             Phi, Theta (array): Phi and Theta undistorted directions.
+            TODO: mask is also returned...
         """
 
         if self._ocamcalib_flag:
@@ -534,7 +535,7 @@ def calcSunshaderMask(
     #
     # Dilate the mask.
     # Note:
-    # The actual action is ersion, as the mask is inversion of the sunshader.
+    # The actual action is erosion, as the mask is inversion of the sunshader.
     #
     if dilate_size > 1:
         kernel = cv2.getStructuringElement(
