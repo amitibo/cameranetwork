@@ -44,6 +44,11 @@ Author
 
 Amit Aides
 
+Contributors
+------
+Adi Vainiger, 
+Omer Shubi 
+
 License
 -------
 

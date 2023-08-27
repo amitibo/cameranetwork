@@ -348,7 +348,7 @@ def readSunPhotoMeter(df, timestamp, sun_angles=5):
 
 
 def calcSunphometerCoords(img_data, resolution):
-    """Calculate the Almucantar and PrinciplePlanes for a specifica datetime."""
+    """Calculate the Almucantar and PrinciplePlanes for a specific datetime."""
 
     Almucantar_coords, PrincipalPlane_coords, _, _ = \
         calcAlmucantarPrinciplePlanes(

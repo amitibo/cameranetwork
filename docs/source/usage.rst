@@ -113,7 +113,7 @@ To connect to the proxy
 
 If this is the initial setup of the proxy server::
 
-    screen _S session_name
+    screen -S session_name
     python ./code/cameranetwork/scripts_proxy/start_proxy.py --log_level info
 
 Should be run from the root of the server, otherwise the logs would be put in a different location each time.
@@ -152,6 +152,8 @@ Useful commands
 - `etcher <https://www.balena.io/etcher/>`_ to flash image onto the SD card
 - ``grep -a -e "Unregistering worker 236" -e "Registering new worker 236" cameralog_190929_092735_proxy.txt``
     to see connections and disconnections. replace log.txt with * for all logs in folder.
+- ``du -ah --max-depth=1 | sort -hr`` to see size of all subfolders and files    
+ 
 
 
 Data Structures

@@ -101,8 +101,8 @@ def main():
         #
         # Setup.
         # Note:
-        # The controller is intialized first, for some reasons:
-        # - Initialize and get camera infor.
+        # The controller is initialized first, for some reasons:
+        # - Initialize and get camera info.
         # - Pass a pointer to the controller to the server.
         #
         controller = Controller(offline=offline, local_path=args.local_path)
@@ -147,7 +147,7 @@ def main():
         # I delay the reboot so that the tunnel will stay open and
         # enable debugging.
         #
-        logging.exception('Rebooting. Unkown error:\n{}'.format(repr(e)))
+        logging.exception('Rebooting. Unknown error:\n{}'.format(repr(e)))
         logging.shutdown()
         time.sleep(120)
         # TODO Long term fix
@@ -189,7 +189,7 @@ if __name__ == '__main__':
         # I delay the reboot so that the tunnel will stay open and
         # enable debugging.
         #
-        logging.exception('Rebooting. Unkown error:\n{}'.format(repr(e)))
+        logging.exception('Rebooting. Unknown error:\n{}'.format(repr(e)))
         logging.shutdown()
         time.sleep(120)
         # TODO Long term fix

@@ -109,8 +109,14 @@ Currently the code assumes that the proxy server is run on an ec2 instance.
 Installation on the proxy follows the same steps of installation on the
 client.
 
-To run the proxy program, do::
+Before running make sure to update in the global setting the ip address: `DEFUALT_PROXI_PARAMS <https://github.com/Addalin/cameranetwork/blob/52e915f60d54a1f2679cc2d675f689dd45c1a599/CameraNetwork/global_settings.py#L62-L71>`_
+And make sure this is updated in all end units! 
 
+To run the proxy program, do::
+    python ./code/cameranetwork/scripts_proxy/start_proxy.py --log_level info
+    
+    or
+    
     start_proxy.py
 
 Installation - Calibration Station

@@ -1180,6 +1180,7 @@ class Controller(object):
     def sampleAlmucantarData(self, spm_df, t, camera_df, camera_settings, resolution=301):
         """Samples almucantar rgb values of some camera at specific time."""
 
+
         angles, values = spm.readSunPhotoMeter(spm_df, t)
         closest_time = spm.findClosestImageTime(camera_df, t, hdr='2')
         img_datas, img = self.seekImageArray(
@@ -1194,7 +1195,7 @@ class Controller(object):
         )
         almucantar_samples, almucantar_angles, almucantar_coords, \
         _, _, _ = spm.sampleImage(img, img_datas[0], almucantar_angles=angles)
-
+        # values- are sunphotometer measurments, almucantar_samples are the corresponding samples on the image plane.
         return angles, values, almucantar_samples
 
     @cmd_callback
@@ -1395,7 +1396,7 @@ class Controller(object):
             correct_radiometric=True,
             ignore_date_extrinsic=False
     ):
-        """Apply preprocessing to the raw array:
+        """Apply pre-processing to the raw array:
         dark_image subtraction, normalization, vignetting, HDR...
 
         Args:
