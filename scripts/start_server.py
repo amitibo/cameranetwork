@@ -35,8 +35,8 @@
 ## OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 ## ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.##
 """
-This script statrts the camera activity.
-Should be run at startup of the raspberry Pi.
+This script starts the camera activity.
+Should be run at startup of the raspberry Pi / Odroid XU4.
 """
 
 import argparse
@@ -101,8 +101,8 @@ def main():
         #
         # Setup.
         # Note:
-        # The controller is intialized first, for some reasons:
-        # - Initialize and get camera infor.
+        # The controller is initialized first, for some reasons:
+        # - Initialize and get camera info.
         # - Pass a pointer to the controller to the server.
         #
         controller = Controller(offline=offline, local_path=args.local_path)
@@ -138,7 +138,8 @@ def main():
         logging.exception('Failed starting the camera. Rebooting.')
         logging.shutdown()
         time.sleep(120)
-        os.system('sudo reboot')
+        # TODO Long term fix
+        os.system('sync; sudo reboot -f')  # Changed from 'sudo reboot', workaround for reboot hanging
     except Exception as e:
         #
         # Failed starting the camera, might be some USB problem.
@@ -146,10 +147,11 @@ def main():
         # I delay the reboot so that the tunnel will stay open and
         # enable debugging.
         #
-        logging.exception('Unkown error:\n{}'.format(repr(e)))
+        logging.exception('Rebooting. Unknown error:\n{}'.format(repr(e)))
         logging.shutdown()
         time.sleep(120)
-        os.system('sudo reboot')
+        # TODO Long term fix
+        os.system('sync; sudo reboot -f')  # Changed from 'sudo reboot', workaround for reboot hanging
 
 
 if __name__ == '__main__':
@@ -178,7 +180,8 @@ if __name__ == '__main__':
         logging.exception('Failed starting the camera. Rebooting.')
         logging.shutdown()
         time.sleep(120)
-        os.system('sudo reboot')
+        # TODO Long term fix
+        os.system('sync; sudo reboot -f')  # Changed from 'sudo reboot', workaround for reboot hanging
     except Exception as e:
         #
         # Failed starting the camera, might be some USB problem.
@@ -186,7 +189,8 @@ if __name__ == '__main__':
         # I delay the reboot so that the tunnel will stay open and
         # enable debugging.
         #
-        logging.exception('Unkown error:\n{}'.format(repr(e)))
+        logging.exception('Rebooting. Unknown error:\n{}'.format(repr(e)))
         logging.shutdown()
         time.sleep(120)
-        os.system('sudo reboot')
+        # TODO Long term fix
+        os.system('sync; sudo reboot -f')  # Changed from 'sudo reboot', workaround for reboot hanging

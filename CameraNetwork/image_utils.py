@@ -33,7 +33,8 @@
 ## LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
 ## OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 ## ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.##
-"""General utilities for image processing.
+"""
+General utilities for image processing.
 """
 from __future__ import division, absolute_import, print_function
 from CameraNetwork.utils import obj
@@ -247,8 +248,9 @@ class FisheyeProxy(object):
         Args:
             distorted (array): nx2 array of distorted image coords (x, y).
 
-        Retruns:
+        Returns:
             Phi, Theta (array): Phi and Theta undistorted directions.
+            TODO: mask is also returned...
         """
 
         if self._ocamcalib_flag:
@@ -270,7 +272,7 @@ class FisheyeProxy(object):
 class Normalization(object):
     """Normalized Image Class
 
-    This class encapsulates the conversion between caputered image and
+    This class encapsulates the conversion between captured image and
     the normalized image.
     """
 
@@ -300,7 +302,7 @@ class Normalization(object):
         #
         # Create a grid of directions.
         # The coordinates create a 'linear' fisheye, where the distance
-        # from the center ranges between 0-pi/2 linearily.
+        # from the center ranges between 0-pi/2 linearly.
         #
         X, Y = np.meshgrid(
             np.linspace(-1, 1, self.resolution),
@@ -410,8 +412,7 @@ class Normalization(object):
             ).astype(np.bool)
 
         #
-        # TODO:
-        # Implement radiometric correction
+        # TODO: Implement radiometric correction compare with RadiometricCalibration.applyRadiometric() in calibration.py
         #
         #normalized_img = radiometric_correction(normalized_img, self._radiometric_model).astype(np.uint8)
         normalized_img = normalized_img.astype(img_dtype)
@@ -534,7 +535,7 @@ def calcSunshaderMask(
     #
     # Dilate the mask.
     # Note:
-    # The actual action is ersion, as the mask is inversion of the sunshader.
+    # The actual action is erosion, as the mask is inversion of the sunshader.
     #
     if dilate_size > 1:
         kernel = cv2.getStructuringElement(
@@ -583,12 +584,34 @@ def projectECEFThread(
     #
     deferred_call(setattr, array_model, 'grid_2D', grid_2D)
 
+def rectangle(center_x, center_y, width_x=0.25, width_y=0.25):
+    """Returns a gaussian function with the given parameters"""
+    return lambda x,y : ((np.abs ( center_x - x ) <= width_x) &
+                         (np.abs ( center_y - y ) <= width_y)).astype(np.int)
+
+
 
 def gaussian(center_x, center_y, height=1., width_x=0.25, width_y=0.25):
     """Returns a gaussian function with the given parameters"""
 
     return lambda x, y: height*np.exp(-(((center_x-x)/width_x)**2+((center_y-y)/width_y)**2)/2)
 
+def calcSunMaskRect(img_shape, sun_alt, sun_az, radius=0.25):
+    """Calculate a rectangle of the mask for the sun.
+
+        The sun pixels are weighted by a gaussian.
+        """
+
+    sun_r = (np.pi / 2 - sun_alt) / (np.pi / 2)
+    sun_x = sun_r * np.sin ( sun_az )
+    sun_y = sun_r * np.cos ( sun_az )
+
+    X , Y = np.meshgrid (
+        np.linspace ( -1 , 1 , img_shape [ 1 ] ) ,
+        np.linspace ( -1 , 1 , img_shape [ 0 ] )
+    )
+
+    return rectangle(center_x = sun_x,center_y = sun_y,width_x = radius,width_y = radius)(X,Y)
 
 def calcSunMask(img_shape, sun_alt, sun_az, radius=0.25):
     """Calculate a mask for the sun.
@@ -702,23 +725,26 @@ class VisualHull(object):
         # Calculate the collective clouds weight.
         #
         weights = np.array(grid_scores).prod(axis=0)
-
+        # TODO: Consider to change the prod to other arithmethic calculation. (maybe OR ?) (I think this removes clouds edges from the space carving)
         #
         # voxels that are not seen (outside the fov/sun_mask) by at least two cameras
         # are zeroed.
         #
         grid_masks = np.array(grid_masks).sum(axis=0)
         weights[grid_masks<2] = 0
+
+        #
+        # More cameras viewing the voxel increase it's own score.
+        #
         nzi = weights > 0
         weights[nzi] = weights[nzi]**(1/grid_masks[nzi])
 
         #
-        # Calculate color consistency as described in the article
+        # Calculate color consistency as described in the article. (see Equation 5.5 in p.54 , Amit's thesis)
         #
         std_rgb = np.dstack(cloud_rgb).std(axis=2).mean(axis=1)
         mean_rgb = np.dstack(cloud_rgb).mean(axis=2).mean(axis=1)
-        color_consistency = np.exp(-(std_rgb/mean_rgb)/color_consistency_sigma)
-
+        color_consistency = np.exp(-(std_rgb/(mean_rgb + np.finfo(float).eps))/color_consistency_sigma)
         #
         # Take into account both the clouds weights and photo consistency.
         #

@@ -580,7 +580,7 @@ enamldef RadiometricControlPage(Page):
                         server_model_,
                         gs.MSG_TYPE_RADIOMETRIC,
                         kwds=dict(
-                            date=radiometric_day.date,
+                            date=query_day.selected, # date=radiometric_day.date
                             time_index=time_combo.items.index(time_combo.selected),
                             residual_threshold=residual_threshold.value,
                             save=cb_save.checked

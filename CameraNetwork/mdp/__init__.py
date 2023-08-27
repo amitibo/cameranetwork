@@ -46,7 +46,7 @@ Terms used
     process offering exactly one service in request/reply fashion.
 
   client
-    independant process using a service in request/reply fashion.
+    independent process using a service in request/reply fashion.
 
   broker
     process routing messages from a client to a worker and back.
@@ -76,6 +76,7 @@ __license__ = """
 
 __author__ = 'Guido Goldstein'
 __email__ = 'gst-py@a-nugget.de'
+
 
 from client import MDPClient
 from worker import MDPWorker

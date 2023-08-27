@@ -38,6 +38,7 @@
 A GUI client allows easy access to cameras thier settings and their
 measurements.
 """
+
 from __future__ import division
 
 import pickle
@@ -76,7 +77,8 @@ def main(local_mode, log_level):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Start the camera client application')
     parser.add_argument('--local', action='store_true', help='Run in local mode.')
-    parser.add_argument('--log_level', default='INFO', help='Set the log level (possible values: info, debug, ...)')
+    parser.add_argument('--log_level', default='debug', help='Set the log level (possible values: info, debug, ...)')
+    # parser.add_argument('--log_level', default='INFO', help='Set the log level (possible values: info, debug, ...)')
     args = parser.parse_args()
 
     main(args.local, args.log_level)

@@ -1,0 +1,7 @@
+conda config --env --set restore_free_channel true
+conda config --env --append channels conda-forge
+conda env create -f env2021_full.yaml
+cond activate cn_client_1
+python -m pip install pymap3d==1.1.1 git+https://github.com/enthought/traits-enaml.git@update-data-frame-table
+python setup.py develop --user # in pyfisheye folder
+python setup.py develop --user # in cameranetwork folder

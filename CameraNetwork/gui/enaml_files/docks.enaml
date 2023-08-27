@@ -14,7 +14,8 @@ from CameraNetwork.gui.image_analysis import ImageAnalysis
 from CameraNetwork.gui.mayavi_canvas import MayaviCanvas
 
 from .extra import GradientButtonSheet
-from .popups import ImageDataPopup
+from .popups import (ImageDataPopup, MsgDataPopup)
+#from .popups import ImageDataPopup TODO Check if fixes issue #6
 from .server_pages import (MainControlsPage, ImageControlPage, SeekControlPage,
     SunshaderControlPage, SprinklerControlPage, IntrinsicControlPage,
     ExtrinsicControlPage, RadiometricControlPage)
@@ -315,7 +316,7 @@ enamldef MapperView(DockItem): mapper_view:
                     clouds_pb,
                     clouds_cb,
                     beta_pb,
-                    beta_cb,
+                    beta_cb
                 ),
             ),
         ]
@@ -362,6 +363,7 @@ enamldef MapperView(DockItem): mapper_view:
             tool_tip = "Show the 3D Beta"
             checked := map3d.show_beta
             text = "Show Beta"
+
 
 
 ################################################################################
@@ -463,18 +465,19 @@ enamldef TimesView(DockItem):
             clicked ::
                 main.create_map()
                 index = times.img_index
-                main.broadcast_message(
-                    gs.MSG_TYPE_SEEK,
-                    kwds=dict(
-                        seek_time=index[0],
-                        hdr_index=-1 if HDR_cb.checked else index[1],
-                        normalize=True,
-                        jpeg=quality_fld.value if JPEG_cb.checked else False,
-                        resolution=resolution_fld.value,
-                        correct_radiometric=correct_radiometric_cb.checked,
-                        ignore_date_extrinsic=ignore_date_extrinsics_cb.checked,
+                if len(index) >1:
+                    main.broadcast_message(
+                        gs.MSG_TYPE_SEEK,
+                        kwds=dict(
+                            seek_time=index[0],
+                            hdr_index=-1 if HDR_cb.checked else index[1],
+                            normalize=True,
+                            jpeg=quality_fld.value if JPEG_cb.checked else False,
+                            resolution=resolution_fld.value,
+                            correct_radiometric=correct_radiometric_cb.checked,
+                            ignore_date_extrinsic=ignore_date_extrinsics_cb.checked,
+                        )
                     )
-                )
 
 
 

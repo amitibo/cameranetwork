@@ -35,7 +35,7 @@
 ## OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 ## ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.##
 """
-This script statrts the camera of the drone in a loop.
+This script starts the camera of the drone in a loop.
 """
 
 #from droneapi.lib import VehicleMode

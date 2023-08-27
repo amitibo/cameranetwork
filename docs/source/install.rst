@@ -1,38 +1,144 @@
-.. highlight:: sh
+.. highlight::sh
 
 ************
 Installation
 ************
 
-Introduction
+.. contents:: Table of Contents
+
+Installation
 ============
 
 The ``CameraNetwork`` system is made of three logical parts:
 
-#. *Server*: The camera unit. The server performs the actual measuremetns.
+#. *Server*: The camera unit. The server performs the actual measurements.
 #. *Client*: A program that enables remote control of servers.
 #. *Proxy*: A program that bridges and manages the communication between the *Servers* and *Clients*.
 
 There can be multiple *Servers* and *Clients* but only one *proxy*.
 
-The ``CameraNetwork`` pacakge contains the code for both the *Server*, *Client* and *Proxy* subsystems.
+The ``CameraNetwork`` package contains the code for both the *Server*, *Client* and *Proxy* subsystems.
 This simplifies the deployment and enables code reuse. The installation procedures is similar for the
 three components but differs due to the different platforms.
 
 The ``CameraNetwork`` is implemented completely in `Python <http://www.python.org/>_`.
 
-Installing the Server
-=====================
+
+Installation - Client
+---------------------
+#. Install conda. Tested on conda 4.7.11
+#. Clone the cameranetwork package::
+
+    git clone https://github.com/Addalin/cameranetwork.git
+#. Navigate to it::
+
+    cd cameranetwork
+
+#. Create virtual env:
+
+    LINUX: Create conda virtual environment from *cn_client_ubuntu18.yml*
+
+    ::
+
+        conda env create -f cn_client_ubuntu18.yml
+
+    .. Note::
+
+        The first line of sets the new environment's name (currently *cn_client*)
+
+    WINDOWS (exact procedure)::
+
+        # Create new environment with name: cn_client
+
+        conda create -n cn_client --yes
+
+        conda activate cn_client
+
+        conda config --env --set restore_free_channel true
+
+        conda config --env --append channels conda-forge
+
+        conda install python=2.7 pip paramiko cython tornado=4.5.3 futures numpy scipy matplotlib beautifulsoup4 scikit-learn scikit-image pyside requests ephem pandas=0.19.2 ipython pyfirmata joblib pyzmq enaml pillow traits pyqtgraph pyopengl vtk mayavi opencv git mercurial
+
+
+
+        # pip install pymap3d, traits-enaml and pyfisheye
+        # Note, this installs pyfisheye without cloning it. For development of pyfisheye clone and install manually from https://bitbucket.org/amitibo/pyfisheye (TODO: migrate pyfisheye codebase to github)
+
+        python -m pip install pymap3d==1.1.1 git+https://github.com/enthought/traits-enaml.git@update-data-frame-table  hg+https://bitbucket.org/amitibo/pyfisheye
+
+
+        
+#. Activate the environment::
+
+    conda activate <venv_name>
+
+
+#. Install the cameranetwork package
+
+    ::
+
+        python setup.py develop --user
+
+    ..    note::
+
+        without --user it installs the scripts for all users (Windows: C:\ProgramData\Anaconda2\Scripts)
+
+#. Verify successful installation by opening the GUI::
+
+    python scripts_client/camera_client.py
+
+
+Installation - Server
+---------------------
 
 The server software is run on an `Odroid U3 <http://www.hardkernel.com/main/products/prdt_info.php?g_code=g138745696275>`_
-as at the time of selection it offered a unique balance between capabilites and cost. Nonetheless it should be straight
-forward to install the ``CameraNetwork`` pacakge and its prerequisites on other platforms like newer Oroids and even
+as at the time of selection it offered a unique balance between capabilities and cost. Nonetheless it should be straight
+forward to install the ``CameraNetwork`` package and its prerequisites on other platforms like newer Oroids and even
 on the RaspberrPi.
 
-In the following we detail the procedure of installing the required prerequisites and main pacakge. Note that
-once the package is installed on one compture, it is much more time effective to create an image of the Odroid
+In the following we detail the procedure of installing the required prerequisites and main package. Note that
+once the package is installed on one computer, it is much more time effective to create an image of the Odroid
 memory card and duplicate it as needed.
 
+
+Installation - Proxy
+--------------------
+
+Currently the code assumes that the proxy server is run on an ec2 instance.
+Installation on the proxy follows the same steps of installation on the
+client.
+
+Before running make sure to update in the global setting the ip address: `DEFUALT_PROXI_PARAMS <https://github.com/Addalin/cameranetwork/blob/52e915f60d54a1f2679cc2d675f689dd45c1a599/CameraNetwork/global_settings.py#L62-L71>`_
+And make sure this is updated in all end units! 
+
+To run the proxy program, do::
+    python ./code/cameranetwork/scripts_proxy/start_proxy.py --log_level info
+    
+    or
+    
+    start_proxy.py
+
+Installation - Calibration Station
+----------------------------------
+
+
+Camera setup
+------------
+
+Arduino connections
+`````````````````````````
+
+Savox SunShader Servo pins:
+
+#. Brown (Gnd) = Gnd
+#. Red (5V) = 5V
+#. Orange (Signal) = PIN NUM
+
+
+
+Installation - OLD
+============================
 Prerequisites
 -------------
 
@@ -43,7 +149,7 @@ commands. Copy paste these to a commandline::
     > sudo pip install paramiko
     > sudo pip install cython
     > sudo pip install pyzmq --install-option="--zmq=bundled"
-    > sudo pip install tornado
+    > sudo pip install tornado==4.5.3
     > sudo pip install futures
     > sudo apt-get install python-numpy python-scipy python-matplotlib
     > sudo pip install beautifulsoup4
@@ -115,20 +221,10 @@ Run the camera setup script to setup the camera environment.
 
 You will be asked for a camera id. Enter a unique camera id number.
 
-Installing the Proxy
-====================
-
-Currently the code assumes that the proxy server is run on an ec2 instance.
-Installation on the proxy follows the same steps of installation on the
-client.
-
-To run the proxy program, do:
-
-    > start_proxy.py
 
 
 Installing the Client
-=====================
+---------------------
 
 It is recommended to install python using the `Anaconda <https://www.continuum.io/downloads>`_ distribution.
 Install the ``CameraNetwork`` package::
@@ -138,7 +234,7 @@ Install the ``CameraNetwork`` package::
     > python setup.py develop --user
 
 Installing the Calibration Station
-==================================
+----------------------------------
 
 It is recommended to install python using the `Anaconda <https://www.continuum.io/downloads>`_ distribution.
 Install the ``CameraNetwork`` package::
@@ -146,3 +242,54 @@ Install the ``CameraNetwork`` package::
     > git clone https://amitibo@bitbucket.org/amitibo/cameranetwork_git.git cameranetwork
     > cd cameranetwork
     > python setup.py develop --user
+
+
+
+Shubi reference
+---------------
+
+#. Create conda virtual environment::
+
+    conda create --name <venv_name> --no-default-packages
+    conda config --add channels conda-forge
+    conda activate cnvenv
+
+
+
+#. Install prerequisites::
+
+    conda install python=2.7 pip paramiko cython tornado=4.5.3 futures numpy scipy matplotlib beautifulsoup4 scikit-learn scikit-image ephem pandas ipython pyfirmata joblib
+    pip install pyzmq --install-option="--zmq=bundled"
+    pip install pymap3d
+    conda install enaml pillow traits pyqtgraph pyopengl vtk mayavi opencv
+
+#. Install additional modules::
+
+    pip install ephem
+    conda install -c anaconda pil
+    conda install -c anaconda enaml
+    conda install -c anaconda traits pyqtgraph pyopengl
+    conda install -c anaconda vtk
+    pip install mayavi
+
+#. Install traits-enaml::
+
+    git clone https://github.com/enthought/traits-enaml.git --branch update-data-frame-table
+    cd traits-enaml
+    python setup.py install
+    cd..
+    
+
+
+
+#. Install the cameranetwork package
+    #. Navigate back to cameranetwork::
+
+        cd ..
+    #. Install the cameranetwork package::
+
+        python setup.py develop --user
+
+    ..    note::
+
+        without --user it installs the scripts for all users (Windows: C:\ProgramData\Anaconda2\Scripts)

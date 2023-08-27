@@ -53,9 +53,11 @@ from atom.api import Typed, set_default, observe, Int
 from enaml.core.declarative import d_
 from enaml.widgets.api import RawWidget
 from enaml.qt.QtCore import QAbstractTableModel, QModelIndex, Qt
-from enaml.qt.QtGui import (
-    QTableView, QHeaderView, QAbstractItemView, QFontMetrics)
-
+# fixing import from enaml.qt.QtGui. During the transision from Qt4 to Qt5: QtGui was split into QtGui and QtWidgets
+#from enaml.qt.QtGui import (
+    #QTableView, QHeaderView, QAbstractItemView, QFontMetrics) #  ADI - fixing import of QTableView in Qt5. This line was relevant to Qt4
+from enaml.qt.QtGui import QFontMetrics                                    #  ADI - preserving include of QFontMetrics in Qt5
+from enaml.qt.QtWidgets import (QTableView,QHeaderView, QAbstractItemView) #  ADI - fixing import of  (QTableView,QHeaderView, QAbstractItemView) in Qt5
 from traits_enaml.utils import get_unicode_string, format_value
 
 
@@ -228,14 +230,23 @@ class QDataFrameTableView(QTableView):
         max_width = fmetrics.width(u" {0} ".format(
             unicode(self.df_model.rowCount())))
         self.vheader.setMinimumWidth(max_width)
-        self.vheader.setClickable(True)
+
+        # self.vheader.setClickable(True) # ADI - this comment is relevant for Qt 4
+        self.vheader.setSectionsClickable(True) # ADI - this is relevant for Qt > 4
+
         self.vheader.setStretchLastSection(False)
-        self.vheader.setResizeMode(QHeaderView.Fixed)
+
+        # self.vheader.setResizeMode(QHeaderView.Fixed) # ADI - this comment is relevant for Qt 4
+        self.vheader.setSectionResizeMode(QHeaderView.Fixed) # ADI - this is relevant for Qt > 4
 
         self.hheader = self.horizontalHeader()
         self.hheader.setStretchLastSection(False)
-        self.hheader.setClickable(True)
-        self.hheader.setMovable(True)
+
+        # self.vheader.setClickable(True) # ADI - this comment is relevant for Qt 4
+        self.vheader.setSectionsClickable(True) # ADI - this is relevant for Qt > 4
+
+        # self.hheader.setMovable(True) # ADI - this comment is relevant for Qt 4
+        self.hheader.setSectionsMovable(True) # ADI - this is relevant for Qt > 4
 
     def _setup_style(self):
         self.setWordWrap(False)
@@ -246,14 +257,14 @@ class QDataFrameTableView(QTableView):
 
 class DataFrameTable(RawWidget):
     """ A widget that displays a table view tied to a pandas DataFrame."""
-    
+
     #
     # The data frame to display
     #
     data_frame = d_(Typed(DataFrame))
     selected_row = d_(Int())
     selected_index = d_(Typed(object))
-    
+
     #
     # Expand the table by default
     #
@@ -262,19 +273,19 @@ class DataFrameTable(RawWidget):
 
     def create_widget(self, parent):
         """Create the DataFrameTable Qt widget."""
-        
+
         widget = QDataFrameTableView.from_data_frame(
             self.data_frame,
             parent=parent
         )
         widget.currentChanged = self.current_changed
-        
+
         return widget
 
     @observe('data_frame')
     def _data_frame_changed(self, change):
         """ Proxy changes in `data_frame` down to the Qt widget."""
-        
+
         table = self.get_widget()
         if table is not None:
             df_model = QDataFrameModel(change['value'])
@@ -283,7 +294,6 @@ class DataFrameTable(RawWidget):
             table.setModel(df_model)
 
     def current_changed(self, current_item, previous_item):
-        
+
         self.selected_row = current_item.row()
         self.selected_index = self.data_frame.index[current_item.row()]
-    

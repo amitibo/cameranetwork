@@ -509,7 +509,7 @@ class Server(MDPWorker):
             # Store time here so that hopefully it will be as synchronized
             # as possible.
             #
-            name_time=datetime.utcnow()
+            name_time = datetime.utcnow()
 
             #
             # Select capture settings according day night.
@@ -548,9 +548,7 @@ class Server(MDPWorker):
             #
             capture_delay = max(1, capture_settings[gs.LOOP_DELAY])
 
-            next_capture_time = (
-                int(time.time() / capture_delay) + 1
-                ) * capture_delay - time.time()
+            next_capture_time = (int(time.time() / capture_delay) + 1) * capture_delay - time.time()
 
             nxt = gen.sleep(next_capture_time)
 
@@ -611,7 +609,7 @@ class Server(MDPWorker):
 
 
     ###########################################################
-    # Message handlders
+    # Message handlers
     ###########################################################
 
     @gen.coroutine
@@ -831,7 +829,7 @@ class Server(MDPWorker):
             gain_boost (bool, optional): Analog gain boost. Default False.
             color_mode (int, optional): Color mode of image. Default RAW.
             frames_num (int, optional): Number of frames to capture. Default 1.
-            jpeg (bool, optional): Whether to whether to compress as jpeg. Default False.
+            jpeg (bool, optional): Whether to compress as jpeg. Default False.
             normalize (bool, optional): Whether to normalize the image. Default True.
 
         Returns:
@@ -1355,4 +1353,5 @@ class Server(MDPWorker):
         logging.info("Performing reboot")
         logging.shutdown()
 
-        os.system('sudo reboot')
+        # TODO Long term fix
+        os.system('sync; sudo reboot -f')  # Changed from 'sudo reboot', workaround for reboot hanging

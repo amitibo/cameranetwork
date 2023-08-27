@@ -33,6 +33,7 @@
 ## LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
 ## OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 ## ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.##
+
 """Intrinsic and Vignetting calibration
 
 This scripts does calibration of the camera. There are three steps:
@@ -44,6 +45,7 @@ The results are stored in the repository under a folder named according to
 the camera serial number. After successful run, the results should be added,
 commited and pushed into the repository.
 """
+from __future__ import print_function
 from __future__ import division
 import CameraNetwork
 from CameraNetwork.calibration import VignettingCalibration
@@ -203,7 +205,7 @@ def main():
                 img, _, _ = cam.capture(settings, frames_num=1)
 
                 #
-                # Save image for debuging the calibration process.
+                # Save image for debugging the calibration process.
                 #
                 cv2.imwrite(
                     os.path.join(results_path, 'geometric', 'img_{:03}.jpg'.format(img_index)),
@@ -334,12 +336,12 @@ def main():
         try:
             measurement = findSpot(np.clip(img-black_img, 0, 255))
         except:
-            print 'FAIL'
-            print traceback.format_exc()
+            print('FAIL')
+            print(traceback.format_exc())
             measurement = None, None, None
 
         measurements.append(measurement)
-        print measurement
+        print(measurement)
 
         #
         # Store the measurement image.

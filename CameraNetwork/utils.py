@@ -240,15 +240,13 @@ def upload_file_to_proxy(
     return scp_proc
 
 
-def save_camera_data(
-    general_settings_path,
-    capture_settings_path,
-    camera_settings=None,
-    capture_settings=None):
+def save_camera_data(general_settings_path, capture_settings_path,
+                     camera_settings=None, capture_settings=None):
 
     if camera_settings is not None:
         with open(general_settings_path, 'wb') as f:
             json.dump(camera_settings, f, sort_keys=True, indent=4, separators=(',', ': '))
+
     if capture_settings is not None:
         with open(capture_settings_path, 'wb') as f:
             json.dump(capture_settings, f, sort_keys=True, indent=4, separators=(',', ': '))
@@ -608,15 +606,19 @@ def f(angles, calculated_directions, measured_directions):
 
 def find_camera_orientation(calculated_directions, measured_directions):
     """
-    Find the rotation of the camera based on the coordinates of a celestail object
-    The input is two sets. The first is x,y image coordinates of the object (taken
-    from several images). The second set is the azimuth/altitude coordinates of the
-    celestial object (in Horizontal coordinate system).
-    The output is the rotation matrix of the camera. The rotation matrix is converts
-    between world coordinates to camera coordinates, where the world coordinates
-    are centered in camera, z is in the zenith and the x-axis points to the North.
-    The inner calibration of the camera is given as a function that converts
-    between the image coordinates and the camera coordinates.
+    Find the rotation of the camera based on the coordinates of a celestial object.
+
+    The input includes two sets:
+    1. `calculated_directions` - is x,y image coordinates of the object (taken from several images).
+    2. `measured_directions` - is the azimuth/altitude coordinates of the celestial object (in Horizontal coordinate system).
+
+    The output is the rotation matrix of the camera.
+    The rotation matrix, converts between world coordinates to camera coordinates,
+    where the world coordinates are centered in camera, z is in the zenith and the x-axis
+    points to the North.
+
+    The inner calibration of the camera is given as a function that
+    converts between the image coordinates and the camera coordinates.
 
     Args:
         calculated_directions (array like): The reference direction of the celestial

@@ -158,7 +158,6 @@ class MDPWorker(object):
         #
         logging.debug('Worker lost connection')
         self.shutdown()
-
         #
         # try to recreate the connection
         #
@@ -278,7 +277,7 @@ class MDPWorker(object):
             self.curr_liveness = 0
         elif msg_type == W_READY:
             #
-            # The message contains the unique id attahced to the worker.
+            # The message contains the unique id attached to the worker.
             #
             if len(msg) > 0:
                 #

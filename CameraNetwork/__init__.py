@@ -33,11 +33,14 @@
 ## LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
 ## OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 ## ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.##
+
+
 from CameraNetwork.utils import *
 from CameraNetwork.internet import *
 from CameraNetwork.client import *
 from CameraNetwork.calibration import *
 from CameraNetwork.hg import *
+from CameraNetwork.global_settings import *
 import CameraNetwork.mdp as mdp
 import CameraNetwork.image_utils as image_utils
 import CameraNetwork.integral_sphere as integral_sphere
